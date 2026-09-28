@@ -1,0 +1,19 @@
+/* T-Money icon helper - use with the inlined sprite */
+.tm-icon{width:1.5em;height:1.5em;display:inline-block;vertical-align:-.3em;flex:none}
+.tm-icon--sm{width:1em;height:1em;vertical-align:-.15em}
+.tm-icon--lg{width:2em;height:2em;vertical-align:-.45em}
+.tm-icon--xl{width:3rem;height:3rem}
+
+/* per-instance retint without touching the SVG */
+.tm-icon--mono{--tm-icon-secondary:currentColor;--tm-icon-primary:currentColor;--tm-icon-accent:currentColor}
+/* Inverse tones for icons on a dark surface. In Money the ONLY dark surface
+   is the navy subnav band (#315599) — the left rail is light (§11.1), so do
+   not use this there. Values come from tm-tokens.css. */
+.tm-icon--inverse{--tm-icon-primary:var(--tm-pure-white);--tm-icon-secondary:var(--tm-ms-toolbar-top);--tm-icon-accent:var(--tm-sky-tint);--tm-icon-knockout:var(--tm-ms-subnav)}
+.tm-icon--muted{--tm-icon-primary:#7C8B9C;--tm-icon-secondary:#C3CDD8;--tm-icon-accent:#D7DEE6}
+
+/* round tile treatment used on dashboards */
+.tm-icon-tile{display:inline-flex;align-items:center;justify-content:center;
+  width:2.75rem;height:2.75rem;border-radius:var(--tm-radius-md,10px);
+  background:var(--tm-sky-tint,#D9E9FC)}
+.tm-icon-tile .tm-icon{width:1.5rem;height:1.5rem}

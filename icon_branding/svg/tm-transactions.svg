@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" role="img" aria-label="Transactions"><style>
+.p{fill:var(--tm-icon-primary,#1B4B9C)}
+.s{fill:var(--tm-icon-secondary,#7FB2EE)}
+.a{fill:var(--tm-icon-accent,#A9B4C0)}
+.w{fill:var(--tm-icon-knockout,#FFFFFF)}
+.ps,.ss,.as,.ws{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ps{stroke:var(--tm-icon-primary,#1B4B9C)}
+.ss{stroke:var(--tm-icon-secondary,#7FB2EE)}
+.as{stroke:var(--tm-icon-accent,#A9B4C0)}
+.ws{stroke:var(--tm-icon-knockout,#FFFFFF);stroke-width:1.6}
+</style><rect class="p" x="2.6" y="6.6" width="13.2" height="2.3" rx="1.15"/>
+<path class="p" d="M15.3 3.55 21.3 7.75 15.3 11.95z"/>
+<rect class="s" x="8.2" y="15.1" width="13.2" height="2.3" rx="1.15"/>
+<path class="s" d="M8.7 12.05 2.7 16.25 8.7 20.45z"/></svg>

@@ -1,0 +1,79 @@
+[package]
+name = "t-money"
+version = "1.0.0"
+description = "T-Money — local-first, encrypted personal finance desktop app"
+authors = ["T-Money contributors"]
+license = "GPL-3.0-or-later"
+repository = "https://github.com/HuskerMinion/t-money"
+edition = "2021"
+rust-version = "1.77"
+
+# The library target holds all application logic (run(), commands, db, import).
+# The binary target (src/main.rs) is a thin entry point that calls t_money::run().
+[lib]
+name = "t_money"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+
+# --- §108: one copy of the app, not several ---
+#
+# Two copies open on the SAME file are two writers against one SQLite
+# database. The file association (§105) makes that easy to do by accident:
+# double-click a .tmny while the app is already running and Windows launches a
+# second process. This plugin hands the path to the copy that is already
+# running instead, which is both safer and what every document application
+# does. Desktop only; there is no other target.
+tauri-plugin-single-instance = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# --- Encrypted database (SQLCipher via rusqlite) + connection pool ---
+# `bundled-sqlcipher-vendored-openssl` compiles SQLCipher AND OpenSSL from
+# source, so the build is fully self-contained (only needs the MSVC C
+# compiler). This is the safe choice on a machine with no system OpenSSL.
+rusqlite = { version = "0.40", features = ["bundled-sqlcipher-vendored-openssl"] }
+r2d2 = "0.8"
+# r2d2_sqlite 0.35 depends on rusqlite 0.40 and re-exports it, so the
+# Connection type unifies with our direct rusqlite dependency.
+r2d2_sqlite = { version = "0.35", features = ["bundled-sqlcipher-vendored-openssl"] }
+
+# --- Money math: integer cents (i64) for storage/calc, rust_decimal for
+#     parsing decimal amount strings from QIF/OFX imports. Never f64. ---
+rust_decimal = { version = "1", features = ["serde-with-str"] }
+
+# --- The single outbound HTTP call: on-demand share prices (src/prices.rs).
+#     `ureq` rather than reqwest: blocking, tiny, and rustls-backed, so it
+#     brings no async runtime and no second TLS stack alongside the OpenSSL
+#     vendored for SQLCipher. Calls run on spawn_blocking. ---
+ureq = "2"
+
+# --- Misc ---
+uuid = { version = "1", features = ["v4", "serde"] }
+rand = "0.8"
+chrono = { version = "0.4", features = ["serde"] }
+keyring = "4"
+thiserror = "2"
+tauri-plugin-dialog = "2.0.0-rc.8"
+# Remembers the main window's size, position and maximized state between runs
+# (a machine preference, kept beside the app data — not in the encrypted file).
+tauri-plugin-window-state = "2"
+tauri-plugin-opener = "2"
+
+[features]
+# by default Tauri produces a debug build; `tauri build` enables this.
+default = []
+custom-protocol = ["tauri/custom-protocol"]
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true
+# Release builds are made on GitHub's runners (.github/workflows/release.yml),
+# so no path from a developer's machine ends up in the shipped binary.

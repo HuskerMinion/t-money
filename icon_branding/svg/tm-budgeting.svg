@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" role="img" aria-label="Budgeting"><style>
+.p{fill:var(--tm-icon-primary,#1B4B9C)}
+.s{fill:var(--tm-icon-secondary,#7FB2EE)}
+.a{fill:var(--tm-icon-accent,#A9B4C0)}
+.w{fill:var(--tm-icon-knockout,#FFFFFF)}
+.ps,.ss,.as,.ws{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ps{stroke:var(--tm-icon-primary,#1B4B9C)}
+.ss{stroke:var(--tm-icon-secondary,#7FB2EE)}
+.as{stroke:var(--tm-icon-accent,#A9B4C0)}
+.ws{stroke:var(--tm-icon-knockout,#FFFFFF);stroke-width:1.6}
+</style><path class="p" d="M8.5 7.4h7c1.4 0 5.4 4 5.4 8.5 0 3.5-2.9 5.5-8.9 5.5S3.1 19.4 3.1 15.9c0-4.5 4-8.5 5.4-8.5z"/>
+<path class="a" d="M8.15 2.7h7.7a.95.95 0 0 1 .77 1.51l-1.4 1.93a1.5 1.5 0 0 1-1.21.62h-4.02a1.5 1.5 0 0 1-1.21-.62l-1.4-1.93a.95.95 0 0 1 .77-1.51z"/>
+<path class="ws" d="M14.2 12.35c-.55-.75-1.35-1.1-2.35-1.1-1.35 0-2.25.65-2.25 1.65s.75 1.35 2.3 1.7 2.5.85 2.5 2c0 1.15-1.05 1.85-2.5 1.85-1.1 0-2-.4-2.55-1.2"/>
+<path class="ws" d="M12 9.7v1.4M12 18.5v1.4"/></svg>

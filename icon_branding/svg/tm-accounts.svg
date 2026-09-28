@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" role="img" aria-label="Accounts"><style>
+.p{fill:var(--tm-icon-primary,#1B4B9C)}
+.s{fill:var(--tm-icon-secondary,#7FB2EE)}
+.a{fill:var(--tm-icon-accent,#A9B4C0)}
+.w{fill:var(--tm-icon-knockout,#FFFFFF)}
+.ps,.ss,.as,.ws{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ps{stroke:var(--tm-icon-primary,#1B4B9C)}
+.ss{stroke:var(--tm-icon-secondary,#7FB2EE)}
+.as{stroke:var(--tm-icon-accent,#A9B4C0)}
+.ws{stroke:var(--tm-icon-knockout,#FFFFFF);stroke-width:1.6}
+</style><path class="p" d="M11.6 2.35a.9.9 0 0 1 .8 0l9.3 4.9c.75.4.47 1.55-.4 1.55H2.7c-.87 0-1.15-1.15-.4-1.55z"/>
+<circle class="w" cx="12" cy="5.6" r="1.15"/>
+<rect class="s" x="4.5" y="10.4" width="2.7" height="7.5" rx=".7"/>
+<rect class="s" x="10.65" y="10.4" width="2.7" height="7.5" rx=".7"/>
+<rect class="s" x="16.8" y="10.4" width="2.7" height="7.5" rx=".7"/>
+<rect class="p" x="2.2" y="18.9" width="19.6" height="2.7" rx="1.1"/></svg>

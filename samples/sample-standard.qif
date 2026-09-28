@@ -1,0 +1,22 @@
+!Type:Bank
+D08/03/2026
+T-58.42
+PKroger
+LFood:Groceries
+MWeekly shop
+^
+D08/04/2026
+T-41.10
+PShell
+LAutomobile:Gasoline
+^
+D08/07/2026
+T2140.88
+PAcme Corp Payroll
+LIncome:Salary
+^
+D08/10/2026
+T-1450.00
+POakridge Property Mgmt
+LBills:Rent
+^

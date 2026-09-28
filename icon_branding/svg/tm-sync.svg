@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" role="img" aria-label="Sync"><style>
+.p{fill:var(--tm-icon-primary,#1B4B9C)}
+.s{fill:var(--tm-icon-secondary,#7FB2EE)}
+.a{fill:var(--tm-icon-accent,#A9B4C0)}
+.w{fill:var(--tm-icon-knockout,#FFFFFF)}
+.ps,.ss,.as,.ws{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ps{stroke:var(--tm-icon-primary,#1B4B9C)}
+.ss{stroke:var(--tm-icon-secondary,#7FB2EE)}
+.as{stroke:var(--tm-icon-accent,#A9B4C0)}
+.ws{stroke:var(--tm-icon-knockout,#FFFFFF);stroke-width:1.6}
+</style><path class="p" d="M12 4.3a7.7 7.7 0 0 1 7.15 4.83 1 1 0 1 1-1.86.74A5.7 5.7 0 0 0 12 6.3a5.68 5.68 0 0 0-4.03 1.67l-.3.31h2.03a1 1 0 1 1 0 2H5.3a1 1 0 0 1-1-1V5.3a1 1 0 0 1 2 0v1.16A7.68 7.68 0 0 1 12 4.3z"/>
+<path class="s" d="M12 19.7a7.7 7.7 0 0 1-7.15-4.83 1 1 0 1 1 1.86-.74A5.7 5.7 0 0 0 12 17.7a5.68 5.68 0 0 0 4.03-1.67l.3-.31h-2.03a1 1 0 1 1 0-2h4.4a1 1 0 0 1 1 1v4.98a1 1 0 0 1-2 0v-1.16A7.68 7.68 0 0 1 12 19.7z"/></svg>

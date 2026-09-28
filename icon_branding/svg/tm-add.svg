@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" role="img" aria-label="Add"><style>
+.p{fill:var(--tm-icon-primary,#1B4B9C)}
+.s{fill:var(--tm-icon-secondary,#7FB2EE)}
+.a{fill:var(--tm-icon-accent,#A9B4C0)}
+.w{fill:var(--tm-icon-knockout,#FFFFFF)}
+.ps,.ss,.as,.ws{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ps{stroke:var(--tm-icon-primary,#1B4B9C)}
+.ss{stroke:var(--tm-icon-secondary,#7FB2EE)}
+.as{stroke:var(--tm-icon-accent,#A9B4C0)}
+.ws{stroke:var(--tm-icon-knockout,#FFFFFF);stroke-width:1.6}
+</style><circle class="p" cx="12" cy="12" r="9.5"/>
+<path class="w" d="M10.9 6.9h2.2v4h4v2.2h-4v4h-2.2v-4h-4v-2.2h4z"/></svg>

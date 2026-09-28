@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" role="img" aria-label="Settings"><style>
+.p{fill:var(--tm-icon-primary,#1B4B9C)}
+.s{fill:var(--tm-icon-secondary,#7FB2EE)}
+.a{fill:var(--tm-icon-accent,#A9B4C0)}
+.w{fill:var(--tm-icon-knockout,#FFFFFF)}
+.ps,.ss,.as,.ws{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ps{stroke:var(--tm-icon-primary,#1B4B9C)}
+.ss{stroke:var(--tm-icon-secondary,#7FB2EE)}
+.as{stroke:var(--tm-icon-accent,#A9B4C0)}
+.ws{stroke:var(--tm-icon-knockout,#FFFFFF);stroke-width:1.6}
+</style><path class="p" d="M9.56 4.49L9.64 2.18L14.36 2.18L14.44 4.49L15.59 4.96L17.28 3.39L20.61 6.72L19.04 8.41L19.51 9.56L21.82 9.64L21.82 14.36L19.51 14.44L19.04 15.59L20.61 17.28L17.28 20.61L15.59 19.04L14.44 19.51L14.36 21.82L9.64 21.82L9.56 19.51L8.41 19.04L6.72 20.61L3.39 17.28L4.96 15.59L4.49 14.44L2.18 14.36L2.18 9.64L4.49 9.56L4.96 8.41L3.39 6.72L6.72 3.39L8.41 4.96Z"/>
+<circle class="w" cx="12" cy="12" r="4.5"/>
+<circle class="s" cx="12" cy="12" r="3"/></svg>

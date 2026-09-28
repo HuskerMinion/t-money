@@ -1,0 +1,222 @@
+/* T-Money design tokens — SINGLE SOURCE OF TRUTH for color.
+ *
+ * Everything here that is prefixed --tm-ms- was MEASURED, pixel by pixel, from
+ * real Microsoft Money Plus screenshots. Do not "improve" these values by
+ * eye — re-sample the screenshots instead (§11; the structures they belong
+ * to are §6.1a–f).
+ *
+ * tailwind.config.js (aero.*) and index.css both read from this file. If you
+ * find a hardcoded hex anywhere else in src/, it is a bug — move it here.
+ */
+:root {
+  /* ===================================================================
+   * Brand palette — logo, marketing, website. NOT the app chrome.
+   * =================================================================== */
+  --tm-ms-money-blue: #1b4b9c;
+  --tm-deep-navy: #0c2557;
+  --tm-royal-blue: #2e6fd9;
+  --tm-aero-sky: #7fb2ee;
+  --tm-sky-tint: #d9e9fc;
+  --tm-pure-white: #ffffff;
+  --tm-steel-silver: #a9b4c0;
+  --tm-silver-tint: #e3e8ed;
+  --tm-ink: #0b1b33;
+
+  --tm-font-display: Montserrat, "Segoe UI Semibold", "Segoe UI", Roboto, Arial, sans-serif;
+
+  /* ===================================================================
+   * MS Money Plus chrome — measured. reference/ms-money-01-home.png
+   * =================================================================== */
+  --tm-ms-toolbar-top: #80b4e6;
+  --tm-ms-toolbar-bot: #72adde;
+  --tm-ms-tabstrip-top: #4a8fd2;
+  --tm-ms-tabstrip-bot: #3f81c9;
+  --tm-ms-tab-inactive-top: #6c86b2; /* desaturated gray-blue */
+  --tm-ms-tab-inactive-bot: #5c74a3;
+  --tm-ms-tab-active-top: #5482c1; /* darkens DOWN into the subnav band */
+  --tm-ms-tab-active-bot: #315599;
+  /* §102 — the selected/hovered CHROME pair: menu titles, menu rows, the
+     Settings tab strip. It defaults to the active tab's color, which is what
+     these have always used, but it is its own token because the text on top
+     of it was hard-coded white — and a theme is free to make the active tab
+     WHITE. The high-contrast theme did exactly that, so hovering a menu
+     painted white on white and the labels vanished under the pointer. */
+  --tm-ms-chrome-sel: var(--tm-ms-tab-active-bot);
+  --tm-ms-chrome-sel-text: #ffffff;
+  /* The navigation tabs' own text, split because a theme can invert one of
+     them: high contrast paints the ACTIVE tab white, where white text would
+     disappear exactly the way the menu's did. */
+  --tm-ms-tab-text: var(--tm-pure-white);
+  --tm-ms-tab-active-text: var(--tm-pure-white);
+  --tm-ms-subnav: #315599; /* solid, no gradient */
+  --tm-ms-subnav-selected: #ffdd80; /* the only warm color in the UI */
+
+  /* Left rail — LIGHT, and a HORIZONTAL gradient. Money's rail is not dark. */
+  --tm-ms-rail-left: #cbe4fc;
+  --tm-ms-rail-right: #e2f2fe;
+  --tm-ms-rail-divider: #8caad0;
+
+  /* Content */
+  --tm-ms-page-bg: #ffffff; /* flat — Money does not gradient the page */
+  --tm-ms-content-bg: #eef4fb; /* the main area behind the cards (§63) */
+  --tm-ms-card-border: #9cbde9;
+  --tm-ms-card-body: #e3f1fe; /* flat */
+  --tm-ms-card-hdr-top: #99bae7; /* NOTE: gets LIGHTER downward */
+  --tm-ms-card-hdr-bot: #a6caee;
+
+  /* Text */
+  --tm-ms-text: #1a1a1a;
+  --tm-ms-text-link: #0a2ea0;
+  --tm-ms-text-heading: #10257f;
+  --tm-ms-text-cardhdr: #102f8b;
+  --tm-ms-text-railhead: #002b9c;
+  --tm-ms-text-muted: #5a6b80;
+
+  /* ===================================================================
+   * Register grid — measured. reference/ms-money-02-account-register.png
+   * =================================================================== */
+  --tm-ms-grid-header: #cfddf0; /* FLAT, not a gradient */
+  --tm-ms-grid-header-rule: #94b8e6;
+  --tm-ms-row: #ffffff;
+  --tm-ms-row-alt: #f6fafd;
+  --tm-ms-grid-line: #cbcbcb; /* NEUTRAL GRAY — this is what makes it read as Money */
+  --tm-ms-row-active: #fff0c2; /* selected row; also the entry-form ground */
+  --tm-ms-group-header: #d9e9fa; /* Deposits / Checks / Other Withdrawals */
+  --tm-ms-group-header-rule: #c4c7ca;
+
+  /* ===================================================================
+   * Form controls — measured. reference/ms-money-03-transaction-form.png
+   * Money's chrome is Aero; its CONTROLS are stock Win32. Keep them flat.
+   * =================================================================== */
+  --tm-ms-field-bg: #ffffff;
+  --tm-ms-field-border-top: #959595;
+  --tm-ms-field-border-in: #bfbfbf;
+  --tm-ms-field-border-bot: #eaeaea;
+  --tm-ms-button-face: #e9e8e1;
+  --tm-ms-button-disabled: #efeee2;
+  --tm-ms-button-default: #3f5e9f;
+
+  /* Vista modal dialogs — reference/ms-money-06-reconcile-B-statement.png */
+  --tm-ms-dialog-bg: #eff7fd;
+  --tm-ms-dialog-title: #f3f3f3;
+  --tm-ms-dialog-rule: #d3d5d6;
+  --tm-ms-dialog-field-border: #7a9cc1;
+
+  /* The permanent master-key / scratch-database warning box (§34, §63). */
+  --tm-ms-warn-bg: #fff6e0;
+  --tm-ms-warn-border: #d9b45f;
+
+  /* §142 — the ERROR box, as distinct from the amber warning above. Was
+   * three literals inline in SettingsView, which is how it stayed light pink
+   * on the dark themes. */
+  --tm-ms-error-bg: #fdecea;
+  --tm-ms-error-border: #e6b0aa;
+  --tm-ms-error-text: #c0392b;
+
+  /* ===================================================================
+   * Money / data colors
+   * =================================================================== */
+  --tm-positive: #1e7b34;
+  --tm-negative: #d52b2b; /* register red, measured */
+  --tm-bar-amber: #ffcc66; /* spending tracker, under budget */
+  --tm-bar-red: #cc0000; /* spending tracker, over budget */
+
+  /* §142 — progress and spending bars. Each bar is a two-stop vertical
+   * gradient; these were written inline in SpendingTrackerWidget and
+   * GoalsView, in two slightly different blues that were meant to be one.
+   *
+   * A DARK THEME MUST OVERRIDE THESE. Measured on `midnight`'s card body
+   * (#0f1620), the shipped --tm-positive scored 3.41 against text and
+   * --tm-negative 3.64, both under the 4.5 that makes a figure readable —
+   * so every positive amount in the register on all three dark themes was
+   * the §19.2 bug again, a color that passed because nothing looked. */
+  --tm-bar-neutral-top: #9fb3c8;
+  --tm-bar-neutral-bot: #7c93ac;
+  --tm-bar-over-top: #e74c3c;
+  --tm-bar-over-bot: #c0392b;
+  --tm-bar-under-top: #5aa9e6;
+  --tm-bar-under-bot: #2e6db4;
+  --tm-bar-done-top: #7fc97f;
+  --tm-bar-done-bot: #3f9b3f;
+
+  /* Report chart series — Money's categorical palette, read off
+   * Money's Spending by Category report (§39): muted, mid-value,
+   * one hue per category, in the order Money assigns them. */
+  --tm-series-1: #a2497a; /* plum */
+  --tm-series-2: #6b8a5a; /* olive green */
+  --tm-series-3: #e8785c; /* salmon */
+  --tm-series-4: #4e9c96; /* teal */
+  --tm-series-5: #c94d4d; /* brick red */
+  --tm-series-6: #3f8f6a; /* green */
+  --tm-series-7: #ef9d4a; /* orange */
+  --tm-series-8: #9a9a4c; /* khaki */
+  --tm-series-9: #f0a860; /* apricot */
+  --tm-series-10: #6f8fb8; /* steel blue */
+  --tm-series-11: #4c8a7f; /* sea green */
+  --tm-series-12: #c9d47c; /* light olive */
+  --tm-series-13: #a05a6a; /* dusty rose */
+  --tm-series-14: #3f77b0; /* blue */
+  --tm-series-15: #f2e26a; /* yellow */
+  --tm-series-16: #2f4f8f; /* navy */
+  --tm-chart-axis: #8a8a8a;
+  --tm-chart-grid: #dcdcdc;
+
+  /* ===================================================================
+   * Shape + type. Money Plus is Tahoma ~11px, 3px radii, 1px hairlines.
+   * =================================================================== */
+  --tm-font-body: Tahoma, "Segoe UI", Verdana, sans-serif;
+  --tm-font-size: 11px;
+  --tm-row-height: 21px;
+  --tm-radius-sm: 3px;
+  --tm-radius-md: 4px;
+
+  /* ===================================================================
+   * Semantic aliases — components should prefer these.
+   * =================================================================== */
+  --tm-surface: var(--tm-ms-page-bg);
+  --tm-surface-alt: var(--tm-ms-card-body);
+  --tm-text: var(--tm-ms-text);
+  --tm-text-muted: var(--tm-ms-text-muted);
+  --tm-border: var(--tm-ms-card-border);
+
+  /* Icon tones — override these to retheme every icon at once.
+   * The rail is LIGHT, so icons there use the normal tones; there is no
+   * inverse surface in Money's chrome except the subnav band. */
+  --tm-icon-primary: var(--tm-ms-tabstrip-bot);
+  --tm-icon-secondary: var(--tm-ms-toolbar-top);
+  --tm-icon-accent: var(--tm-ms-rail-divider);
+  --tm-icon-knockout: var(--tm-pure-white);
+}
+
+/* Themes (§63) are token OVERRIDES set as inline custom properties on <html>
+ * by src/lib/theme.ts — nothing here changes; "Money Plus" is these values.
+ * The one dark theme ("Evening") sets data-theme="dark", which the rules
+ * below use to retint the few Tailwind text utilities the components use. */
+:root[data-theme="dark"] .text-slate-400,
+:root[data-theme="dark"] .text-slate-500,
+:root[data-theme="dark"] .text-slate-600 {
+  color: var(--tm-ms-text-muted);
+}
+:root[data-theme="dark"] .text-red-700 {
+  color: var(--tm-negative);
+}
+:root[data-theme="dark"] .text-green-700 {
+  color: var(--tm-positive);
+}
+:root[data-theme="dark"] .bg-blue-50 {
+  background-color: var(--tm-ms-card-body);
+}
+:root[data-theme="dark"] .border-blue-100 {
+  border-color: var(--tm-ms-card-border);
+}
+
+/* NO DARK THEME IN THE TOKENS THEMSELVES.
+ *
+ * There used to be `prefers-color-scheme: dark` and `[data-theme="dark"]`
+ * blocks here. They only retinted icons and four surface variables while every
+ * gradient in index.css stayed light, so on a dark-mode machine the app
+ * rendered light chrome with dark icons. MS Money Plus had no dark mode.
+ * index.html pins color-scheme: light. If dark mode is ever wanted, it is a
+ * deliberate project that must redefine every --tm-ms-* value above, not a
+ * four-variable patch (§11.3 step 6).
+ */

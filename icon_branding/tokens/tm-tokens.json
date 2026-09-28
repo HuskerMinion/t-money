@@ -1,0 +1,111 @@
+{
+  "brand": "T-Money",
+  "concept": "Concept 3 - classic financial blue & silver",
+  "palette": {
+    "ms-money-blue": {
+      "hex": "#1B4B9C",
+      "role": "Primary brand blue / icon primary",
+      "rgb": "27,75,156"
+    },
+    "deep-navy": {
+      "hex": "#0C2557",
+      "role": "Deep shade, gradients, dark surfaces",
+      "rgb": "12,37,87"
+    },
+    "royal-blue": {
+      "hex": "#2E6FD9",
+      "role": "Interactive / hover / links",
+      "rgb": "46,111,217"
+    },
+    "aero-sky": {
+      "hex": "#7FB2EE",
+      "role": "Secondary icon tone, highlights",
+      "rgb": "127,178,238"
+    },
+    "sky-tint": {
+      "hex": "#D9E9FC",
+      "role": "Surfaces, chips, chart fills",
+      "rgb": "217,233,252"
+    },
+    "pure-white": {
+      "hex": "#FFFFFF",
+      "role": "Knockouts, cards, app background",
+      "rgb": "255,255,255"
+    },
+    "steel-silver": {
+      "hex": "#A9B4C0",
+      "role": "Accent metal, dividers, muted glyphs",
+      "rgb": "169,180,192"
+    },
+    "silver-tint": {
+      "hex": "#E3E8ED",
+      "role": "Borders, tracks, disabled",
+      "rgb": "227,232,237"
+    },
+    "ink": {
+      "hex": "#0B1B33",
+      "role": "Body text on light",
+      "rgb": "11,27,51"
+    },
+    "positive": {
+      "hex": "#1F9D6B",
+      "role": "Gains (semantic only, not branding)",
+      "rgb": "31,157,107"
+    },
+    "negative": {
+      "hex": "#D0453B",
+      "role": "Losses / alerts (semantic only)",
+      "rgb": "208,69,59"
+    }
+  },
+  "typography": {
+    "display": {
+      "family": "Montserrat",
+      "weights": [
+        700,
+        800
+      ],
+      "stack": "Montserrat, 'Segoe UI Semibold', 'Segoe UI', Roboto, Arial, sans-serif"
+    },
+    "body": {
+      "family": "Open Sans",
+      "weights": [
+        400,
+        600
+      ],
+      "stack": "'Open Sans', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+    },
+    "numeric": {
+      "family": "Open Sans",
+      "featureSettings": "'tnum' 1",
+      "note": "tabular figures for currency columns"
+    }
+  },
+  "radius": {
+    "sm": "6px",
+    "md": "10px",
+    "lg": "16px",
+    "pill": "999px"
+  },
+  "elevation": {
+    "card": "0 1px 2px rgba(11,27,51,.06), 0 8px 24px rgba(11,27,51,.08)",
+    "raised": "0 2px 6px rgba(11,27,51,.10), 0 18px 40px rgba(27,75,156,.18)"
+  },
+  "icon": {
+    "grid": 24,
+    "strokeWidth": 2,
+    "tones": [
+      "primary",
+      "secondary",
+      "accent",
+      "knockout"
+    ],
+    "sizes": [
+      16,
+      20,
+      24,
+      32,
+      48
+    ]
+  }
+}

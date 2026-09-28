@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>T-Money Icon System</title>
+<link rel="icon" href="app-icons/web/favicon.ico">
+<link rel="apple-touch-icon" href="app-icons/web/apple-touch-icon-180.png">
+<link rel="stylesheet" href="tokens/tm-tokens.css">
+<link rel="stylesheet" href="tokens/tm-icons.css">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:var(--tm-surface-alt);color:var(--tm-text);
+  font-family:var(--tm-font-body);-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--tm-font-display);letter-spacing:.2px;margin:0}
+.wrap{max-width:1120px;margin:0 auto;padding:28px 20px 72px}
+header.top{background:linear-gradient(135deg,#3E80E4,#1B4B9C 52%,#0B2150);color:#fff;
+  padding:34px 20px}
+.top__in{max-width:1120px;margin:0 auto;display:flex;gap:20px;align-items:center;flex-wrap:wrap}
+.top h1{font-size:clamp(22px,3.4vw,32px)}
+.top p{margin:6px 0 0;color:#CFE0F7;font-size:15px;max-width:60ch}
+.top img{width:76px;height:76px;flex:none}
+.themebtn{margin-left:auto;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);
+  color:#fff;border-radius:var(--tm-radius-pill);padding:9px 16px;cursor:pointer;font:inherit;font-size:14px}
+section{margin-top:34px}
+section>h2{font-size:19px;margin-bottom:4px}
+section>p.sub{margin:0 0 16px;color:var(--tm-text-muted);font-size:14px}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(148px,1fr))}
+.card{position:relative;margin:0;background:var(--tm-surface);border:1px solid var(--tm-border);
+  border-radius:var(--tm-radius-lg);padding:18px 12px 14px;text-align:center;cursor:pointer;
+  transition:transform .12s ease,box-shadow .12s ease}
+.card:hover{transform:translateY(-2px);box-shadow:var(--tm-shadow-card)}
+.card__art{height:56px;display:flex;align-items:center;justify-content:center}
+figcaption b{display:block;font-size:13.5px;margin-top:10px}
+figcaption code{display:block;font-size:11px;color:var(--tm-text-muted);margin-top:3px}
+.tag{position:absolute;top:8px;right:8px;font-size:9px;letter-spacing:.7px;padding:2px 6px;
+  border-radius:var(--tm-radius-pill);font-weight:700}
+.tag--core{background:var(--tm-sky-tint);color:var(--tm-ms-money-blue)}
+.tag--ui{background:var(--tm-silver-tint);color:var(--tm-text-muted)}
+.panel{background:var(--tm-surface);border:1px solid var(--tm-border);border-radius:var(--tm-radius-lg);padding:20px}
+.sizes{display:flex;gap:26px;align-items:flex-end;flex-wrap:wrap}
+.sizes figure{margin:0;text-align:center}
+.sizes small{display:block;color:var(--tm-text-muted);font-size:11px;margin-top:8px}
+.tones{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(190px,1fr))}
+.tone{border:1px solid var(--tm-border);border-radius:var(--tm-radius-md);padding:16px;text-align:center}
+.tone--inverse{background:var(--tm-ms-money-blue);border-color:transparent;color:#fff}
+.tone small{display:block;margin-top:10px;font-size:11.5px;opacity:.75}
+.sw{display:flex;gap:12px;align-items:center}
+.sws{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(238px,1fr))}
+.sw__chip{width:46px;height:46px;border-radius:var(--tm-radius-md);border:1px solid rgba(11,27,51,.12);flex:none}
+.sw__meta b{display:block;font-size:13px}
+.sw__meta code{font-size:11.5px;color:var(--tm-ms-money-blue)}
+.sw__meta small{display:block;color:var(--tm-text-muted);font-size:11px}
+.nav{display:flex;gap:4px;background:var(--tm-surface);border:1px solid var(--tm-border);
+  border-radius:var(--tm-radius-lg);padding:8px}
+.nav__btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;background:none;
+  border:0;padding:10px 4px;border-radius:var(--tm-radius-md);cursor:pointer;font:inherit;
+  font-size:11px;color:var(--tm-text-muted)}
+.nav__btn:first-child{background:var(--tm-sky-tint);color:var(--tm-ms-money-blue);font-weight:600}
+.tile{display:flex;gap:12px;align-items:center;padding:11px 4px;border-bottom:1px solid var(--tm-border)}
+.tile:last-child{border-bottom:0}
+.tile b{display:block;font-size:14px}
+.tile small{color:var(--tm-text-muted);font-size:12px}
+.two{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+pre{background:#0B1B33;color:#D9E9FC;padding:16px;border-radius:var(--tm-radius-md);
+  overflow-x:auto;font-size:12.5px;line-height:1.6;margin:0}
+pre b{color:#7FB2EE;font-weight:400}
+.fonts p{margin:0 0 6px}
+.f-display{font-family:var(--tm-font-display);font-weight:700;font-size:28px}
+.f-body{font-family:var(--tm-font-body);font-size:15px;color:var(--tm-text-muted)}
+.toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,90px);background:var(--tm-ink);
+  color:#fff;padding:11px 18px;border-radius:var(--tm-radius-pill);font-size:13.5px;
+  transition:transform .22s ease;z-index:9}
+.toast.show{transform:translate(-50%,0)}
+footer{color:var(--tm-text-muted);font-size:12.5px;margin-top:40px;text-align:center}
+</style>
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none"><style>
+.p{fill:var(--tm-icon-primary,#1B4B9C)}
+.s{fill:var(--tm-icon-secondary,#7FB2EE)}
+.a{fill:var(--tm-icon-accent,#A9B4C0)}
+.w{fill:var(--tm-icon-knockout,#FFFFFF)}
+.ps,.ss,.as,.ws{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ps{stroke:var(--tm-icon-primary,#1B4B9C)}
+.ss{stroke:var(--tm-icon-secondary,#7FB2EE)}
+.as{stroke:var(--tm-icon-accent,#A9B4C0)}
+.ws{stroke:var(--tm-icon-knockout,#FFFFFF);stroke-width:1.6}
+</style><symbol id="tm-accounts" viewBox="0 0 24 24" fill="none"><title>Accounts</title><path class="p" d="M11.6 2.35a.9.9 0 0 1 .8 0l9.3 4.9c.75.4.47 1.55-.4 1.55H2.7c-.87 0-1.15-1.15-.4-1.55z"/>
+<circle class="w" cx="12" cy="5.6" r="1.15"/>
+<rect class="s" x="4.5" y="10.4" width="2.7" height="7.5" rx=".7"/>
+<rect class="s" x="10.65" y="10.4" width="2.7" height="7.5" rx=".7"/>
+<rect class="s" x="16.8" y="10.4" width="2.7" height="7.5" rx=".7"/>
+<rect class="p" x="2.2" y="18.9" width="19.6" height="2.7" rx="1.1"/></symbol><symbol id="tm-transactions" viewBox="0 0 24 24" fill="none"><title>Transactions</title><rect class="p" x="2.6" y="6.6" width="13.2" height="2.3" rx="1.15"/>
+<path class="p" d="M15.3 3.55 21.3 7.75 15.3 11.95z"/>
+<rect class="s" x="8.2" y="15.1" width="13.2" height="2.3" rx="1.15"/>
+<path class="s" d="M8.7 12.05 2.7 16.25 8.7 20.45z"/></symbol><symbol id="tm-payments" viewBox="0 0 24 24" fill="none"><title>Payments</title><rect class="p" x="1.6" y="4.4" width="20.8" height="15.2" rx="2.7"/>
+<rect class="a" x="1.6" y="7.8" width="20.8" height="3.1"/>
+<rect class="s" x="4.3" y="14.4" width="6.2" height="2.1" rx="1.05"/>
+<rect class="s" x="14.6" y="14.6" width="5.4" height="3.9" rx="1.1"/>
+<path class="ss" d="M16 14.6v-1.1a1.3 1.3 0 0 1 2.6 0v1.1"/></symbol><symbol id="tm-budgeting" viewBox="0 0 24 24" fill="none"><title>Budgeting</title><path class="p" d="M8.5 7.4h7c1.4 0 5.4 4 5.4 8.5 0 3.5-2.9 5.5-8.9 5.5S3.1 19.4 3.1 15.9c0-4.5 4-8.5 5.4-8.5z"/>
+<path class="a" d="M8.15 2.7h7.7a.95.95 0 0 1 .77 1.51l-1.4 1.93a1.5 1.5 0 0 1-1.21.62h-4.02a1.5 1.5 0 0 1-1.21-.62l-1.4-1.93a.95.95 0 0 1 .77-1.51z"/>
+<path class="ws" d="M14.2 12.35c-.55-.75-1.35-1.1-2.35-1.1-1.35 0-2.25.65-2.25 1.65s.75 1.35 2.3 1.7 2.5.85 2.5 2c0 1.15-1.05 1.85-2.5 1.85-1.1 0-2-.4-2.55-1.2"/>
+<path class="ws" d="M12 9.7v1.4M12 18.5v1.4"/></symbol><symbol id="tm-reports" viewBox="0 0 24 24" fill="none"><title>Reports</title><path class="p" d="M10.9 3.15A9.3 9.3 0 1 0 20.85 13.1H10.9z"/>
+<path class="s" d="M13.1 2.05a10 10 0 0 1 8.85 8.85H13.1z"/></symbol><symbol id="tm-investments" viewBox="0 0 24 24" fill="none"><title>Investments</title><rect class="s" x="2.7" y="14.6" width="3.5" height="6.9" rx="1"/>
+<rect class="s" x="8.4" y="11.9" width="3.5" height="9.6" rx="1"/>
+<rect class="s" x="14.1" y="16.4" width="3.5" height="5.1" rx="1"/>
+<path class="ps" d="M3.6 12.3 8.9 7.1l3.3 3.2 6.6-6.5"/>
+<path class="p" d="M21.35 2.2a1 1 0 0 1 1 1v4.6a1 1 0 0 1-2 0V5.7l-.05.05V4.2h-3.6a1 1 0 0 1 0-2z"/>
+<rect class="p" x="16.7" y="2.2" width="5.65" height="2" rx="1"/></symbol><symbol id="tm-goals" viewBox="0 0 24 24" fill="none"><title>Goals</title><path class="ps" d="M20.6 8.6a9.2 9.2 0 1 1-5.2-5.2"/>
+<path class="ss" d="M16.6 10.6a5 5 0 1 1-3.2-3.2"/>
+<circle class="p" cx="12" cy="12" r="2.3"/>
+<path class="a" d="M17.5 2.3a1 1 0 0 1 1.7.55l.33 2.02 2.02.33a1 1 0 0 1 .55 1.7l-2.5 2.5a1 1 0 0 1-.71.29h-1.72l-4.46 4.46a1 1 0 1 1-1.42-1.42l4.46-4.46V6.55a1 1 0 0 1 .29-.71z"/></symbol><symbol id="tm-taxes" viewBox="0 0 24 24" fill="none"><title>Taxes</title><path class="p" d="M5.1 2.4h8.2l7 7v11.4a1.9 1.9 0 0 1-1.9 1.9H5.1a1.9 1.9 0 0 1-1.9-1.9V4.3a1.9 1.9 0 0 1 1.9-1.9z"/>
+<path class="a" d="M13.3 2.4l7 7h-5.1a1.9 1.9 0 0 1-1.9-1.9z"/>
+<circle class="ws" cx="9.1" cy="13.3" r="1.55"/>
+<circle class="ws" cx="14.6" cy="18.1" r="1.55"/>
+<path class="ws" d="M15.5 12 8.2 19.4"/></symbol><symbol id="tm-home" viewBox="0 0 24 24" fill="none"><title>Home</title><path class="p" d="M11.34 2.72a1.05 1.05 0 0 1 1.32 0l8.9 7.3a1 1 0 0 1 .37.78V19.7a1.9 1.9 0 0 1-1.9 1.9h-4.4v-5.35a3.63 3.63 0 0 0-7.26 0v5.35h-4.4a1.9 1.9 0 0 1-1.9-1.9v-8.9a1 1 0 0 1 .37-.78z"/>
+<path class="s" d="M12 13.6a2.65 2.65 0 0 1 2.63 2.65v5.35H9.37v-5.35A2.65 2.65 0 0 1 12 13.6z"/></symbol><symbol id="tm-search" viewBox="0 0 24 24" fill="none"><title>Search</title><circle class="ps" cx="10.6" cy="10.6" r="6.9"/>
+<path class="ss" d="M10.6 5.9a4.7 4.7 0 0 0-4.7 4.7"/>
+<path class="ps" d="m15.7 15.7 4.9 4.9"/></symbol><symbol id="tm-settings" viewBox="0 0 24 24" fill="none"><title>Settings</title><path class="p" d="M9.56 4.49L9.64 2.18L14.36 2.18L14.44 4.49L15.59 4.96L17.28 3.39L20.61 6.72L19.04 8.41L19.51 9.56L21.82 9.64L21.82 14.36L19.51 14.44L19.04 15.59L20.61 17.28L17.28 20.61L15.59 19.04L14.44 19.51L14.36 21.82L9.64 21.82L9.56 19.51L8.41 19.04L6.72 20.61L3.39 17.28L4.96 15.59L4.49 14.44L2.18 14.36L2.18 9.64L4.49 9.56L4.96 8.41L3.39 6.72L6.72 3.39L8.41 4.96Z"/>
+<circle class="w" cx="12" cy="12" r="4.5"/>
+<circle class="s" cx="12" cy="12" r="3"/></symbol><symbol id="tm-notifications" viewBox="0 0 24 24" fill="none"><title>Notifications</title><path class="p" d="M12 2.1a6.75 6.75 0 0 1 6.75 6.75v3.5l1.72 3.06a1.1 1.1 0 0 1-.96 1.64H4.49a1.1 1.1 0 0 1-.96-1.64l1.72-3.06v-3.5A6.75 6.75 0 0 1 12 2.1z"/>
+<path class="s" d="M9.25 18.35h5.5a2.75 2.75 0 0 1-5.5 0z"/>
+<circle class="a" cx="18.6" cy="4.6" r="2.6"/></symbol><symbol id="tm-profile" viewBox="0 0 24 24" fill="none"><title>Profile</title><circle class="s" cx="12" cy="12" r="9.6"/>
+<circle class="p" cx="12" cy="9.5" r="3.5"/>
+<path class="p" d="M12 14.1c-3.25 0-6 1.95-7 4.7a9.57 9.57 0 0 0 14 0c-1-2.75-3.75-4.7-7-4.7z"/></symbol><symbol id="tm-calendar" viewBox="0 0 24 24" fill="none"><title>Calendar</title><rect class="s" x="2.5" y="4.2" width="19" height="17.3" rx="2.5"/>
+<path class="p" d="M5 4.2h14a2.5 2.5 0 0 1 2.5 2.5v3.2h-19V6.7A2.5 2.5 0 0 1 5 4.2z"/>
+<rect class="p" x="6.2" y="1.7" width="2.3" height="4.6" rx="1.15"/>
+<rect class="p" x="15.5" y="1.7" width="2.3" height="4.6" rx="1.15"/>
+<rect class="p" x="6.1" y="12.6" width="3" height="2.5" rx=".8"/>
+<rect class="p" x="10.5" y="12.6" width="3" height="2.5" rx=".8"/>
+<rect class="a" x="14.9" y="12.6" width="3" height="2.5" rx=".8"/>
+<rect class="a" x="6.1" y="16.7" width="3" height="2.5" rx=".8"/>
+<rect class="p" x="10.5" y="16.7" width="3" height="2.5" rx=".8"/></symbol><symbol id="tm-add" viewBox="0 0 24 24" fill="none"><title>Add</title><circle class="p" cx="12" cy="12" r="9.5"/>
+<path class="w" d="M10.9 6.9h2.2v4h4v2.2h-4v4h-2.2v-4h-4v-2.2h4z"/></symbol><symbol id="tm-filter" viewBox="0 0 24 24" fill="none"><title>Filter</title><path class="p" d="M3.2 4.1h17.6a1.1 1.1 0 0 1 .84 1.81L14.7 14.3a1 1 0 0 0-.24.65v1.1H9.54v-1.1a1 1 0 0 0-.24-.65L2.36 5.91A1.1 1.1 0 0 1 3.2 4.1z"/>
+<path class="s" d="M9.54 16.05h4.92v3.35a1 1 0 0 1-.55.9l-2.95 1.47a1 1 0 0 1-1.42-.9z"/></symbol><symbol id="tm-export" viewBox="0 0 24 24" fill="none"><title>Export</title><path class="s" d="M4 13.9a1 1 0 0 1 1 1v3.7h14v-3.7a1 1 0 1 1 2 0v4.2a1.9 1.9 0 0 1-1.9 1.9H4.9A1.9 1.9 0 0 1 3 19.1v-4.2a1 1 0 0 1 1-1z"/>
+<path class="p" d="M11.29 2.99a1 1 0 0 1 1.42 0l4.4 4.4a1 1 0 1 1-1.42 1.42L13 6.12V15a1 1 0 1 1-2 0V6.12L8.31 8.81A1 1 0 0 1 6.89 7.39z"/></symbol><symbol id="tm-sync" viewBox="0 0 24 24" fill="none"><title>Sync</title><path class="p" d="M12 4.3a7.7 7.7 0 0 1 7.15 4.83 1 1 0 1 1-1.86.74A5.7 5.7 0 0 0 12 6.3a5.68 5.68 0 0 0-4.03 1.67l-.3.31h2.03a1 1 0 1 1 0 2H5.3a1 1 0 0 1-1-1V5.3a1 1 0 0 1 2 0v1.16A7.68 7.68 0 0 1 12 4.3z"/>
+<path class="s" d="M12 19.7a7.7 7.7 0 0 1-7.15-4.83 1 1 0 1 1 1.86-.74A5.7 5.7 0 0 0 12 17.7a5.68 5.68 0 0 0 4.03-1.67l.3-.31h-2.03a1 1 0 1 1 0-2h4.4a1 1 0 0 1 1 1v4.98a1 1 0 0 1-2 0v-1.16A7.68 7.68 0 0 1 12 19.7z"/></symbol><symbol id="tm-alerts" viewBox="0 0 24 24" fill="none"><title>Alerts</title><path class="p" d="M10.27 3.05a2 2 0 0 1 3.46 0l8.15 14.1a2 2 0 0 1-1.73 3H3.85a2 2 0 0 1-1.73-3z"/>
+<rect class="w" x="10.95" y="8.1" width="2.1" height="6.2" rx="1.05"/>
+<circle class="w" cx="12" cy="16.9" r="1.3"/></symbol><symbol id="tm-logout" viewBox="0 0 24 24" fill="none"><title>Log out</title><path class="s" d="M4.9 2.5h6.4a1 1 0 0 1 0 2H5.9v15h5.4a1 1 0 0 1 0 2H4.9a1 1 0 0 1-1-1v-17a1 1 0 0 1 1-1z"/>
+<path class="p" d="M15.29 7.29a1 1 0 0 1 1.42 0l4 4a1 1 0 0 1 0 1.42l-4 4a1 1 0 0 1-1.42-1.42L17.58 13H10a1 1 0 1 1 0-2h7.58l-2.29-2.29a1 1 0 0 1 0-1.42z"/></symbol></svg>
+<header class="top">
+  <div class="top__in">
+    <img src="logo/tm-logo-mark.svg" alt="T-Money">
+    <div>
+      <h1>T-Money Icon System</h1>
+      <p>20 duotone icons on a 24&#215;24 grid, plus logo, launcher icons and design tokens.
+         Click any icon to copy its snippet.</p>
+    </div>
+    <button class="themebtn" id="themebtn">Dark preview</button>
+  </div>
+</header>
+
+<div class="wrap">
+
+<section>
+  <h2>Icon library</h2>
+  <p class="sub">Eight core finance icons from the branding sheet, plus twelve interface icons in the same style.</p>
+  <div class="grid"><figure class="card" data-name="accounts">
+  <div class="card__art"><svg class="tm-icon tm-icon--xl"><use href="#tm-accounts"/></svg></div>
+  <figcaption>
+    <b>Accounts</b>
+    <code data-copy='&lt;svg class="tm-icon"&gt;&lt;use href="#tm-accounts"/&gt;&lt;/svg&gt;'>tm-accounts</code>
+  </figcaption>
+  <span class="tag tag--core">CORE</span>
+</figure>
+<figure class="card" data-name="transactions">
+  <div class="card__art"><svg class="tm-icon tm-icon--xl"><use href="#tm-transactions"/></svg></div>
+  <figcaption>
+    <b>Transactions</b>
+    <code data-copy='&lt;svg class="tm-icon"&gt;&lt;use href="#tm-transactions"/&gt;&lt;/svg&gt;'>tm-transactions</code>
+  </figcaption>
+  <span class="tag tag--core">CORE</span>
+</figure>
+<figure class="card" data-name="payments">
+  <div class="card__art"><svg class="tm-icon tm-icon--xl"><use href="#tm-payments"/></svg></div>
+  <figcaption>
+    <b>Payments</b>
+    <code data-copy='&lt;svg class="tm-icon"&gt;&lt;use href="#tm-payments"/&gt;&lt;/svg&gt;'>tm-payments</code>
+  </figcaption>
+  <span class="tag tag--core">CORE</span>
+</figure>
+<figure class="card" data-name="budgeting">
+  <div class="card__art"><svg class="tm-icon tm-icon--xl"><use href="#tm-budgeting"/></svg></div>
+  <figcaption>
+    <b>Budgeting</b>
+    <code data-copy='&lt;svg class="tm-icon"&gt;&lt;use href="#tm-budgeting"/&gt;&lt;/svg&gt;'>tm-budgeting</code>
+  </figcaption>
+  <span class="tag tag--core">CORE</span>
+</figure>
+<figure class="card" data-name="reports">
+  <div class="card__art"><svg class="tm-icon tm-icon--xl"><use href="#tm-reports"/></svg></div>
+  <figcaption>
+    <b>Reports</b>
+    <code data-copy='&lt;svg class="tm-icon"&gt;&lt;use href="#tm-reports"/&gt;&lt;/svg&gt;'>tm-reports</code>
+  </figcaption>
+  <span class="tag tag--core">CORE</span>
+</figure>
+<figure class="card" data-name="investments">
+  <div class="card__art"><svg class="tm-icon tm-icon--xl"><use href="#tm-investments"/></svg></div>
+  <figcaption>
+    <b>Investments</b>
+    <code data-copy='&lt;svg class="tm-icon"&gt;&lt;use href="#tm-investments"/&gt;&lt;/svg&gt;'>tm-investments</code>
+  </figcaption>
+  <span class="tag tag--core">CORE</span>
+</figure>
+<figure class="card" data-name="goals">
+  <div class="card__art"><svg class="tm-icon tm-icon--xl"><use href="#tm-goals"/></svg></div>
+  <figcaption>
+    <b>Goals</b>
+    <code data-copy='&lt;svg class="tm-icon"&gt;&lt;use href="#tm-goals"/&gt;&lt;/svg&gt;'>tm-goals</code>
+  </figcaption>
+  <span class="tag tag--core">CORE</span>
+</figure>
+<figure class="card" data-name="taxes">
+  <div class="card__art"><svg class="tm-icon tm-icon--xl"><use href="#tm-taxes"/></svg></div>
+  <figcaption>
+    <b>Taxes</b>
+    <code data-copy='&lt;svg class="tm-icon"&gt;&lt;use href="#tm-taxes"/&gt;&lt;/svg&gt;'>tm-taxes</code>
+  </figcaption>
+  <span class="tag tag--core">CORE</span>
+</figure>
+<figure class="card" data-name="home">
+  <div class="card__art"><svg class="tm-icon tm-icon--xl"><use href="#tm-home"/></svg></div>
+  <figcaption>
+    <b>Home</b>
+    <code data-copy='&lt;svg class="tm-icon"&gt;&lt;use href="#tm-home"/&gt;&lt;/svg&gt;'>tm-home</code>
+  </figcaption>
+  <span class="tag tag--ui">UI</span>
+</figure>
+<figure class="card" data-name="search">
+  <div class="card__art"><svg class="tm-icon tm-icon--xl"><use href="#tm-search"/></svg></div>
+  <figcaption>
+    <b>Search</b>
+    <code data-copy='&lt;svg class="tm-icon"&gt;&lt;use href="#tm-search"/&gt;&lt;/svg&gt;'>tm-search</code>
+  </figcaption>
+  <span class="tag tag--ui">UI</span>
+</figure>
+<figure class="card" data-name="settings">
+  <div class="card__art"><svg class="tm-icon tm-icon--xl"><use href="#tm-settings"/></svg></div>
+  <figcaption>
+    <b>Settings</b>
+    <code data-copy='&lt;svg class="tm-icon"&gt;&lt;use href="#tm-settings"/&gt;&lt;/svg&gt;'>tm-settings</code>
+  </figcaption>
+  <span class="tag tag--ui">UI</span>
+</figure>
+<figure class="card" data-name="notifications">
+  <div class="card__art"><svg class="tm-icon tm-icon--xl"><use href="#tm-notifications"/></svg></div>
+  <figcaption>
+    <b>Notifications</b>
+    <code data-copy='&lt;svg class="tm-icon"&gt;&lt;use href="#tm-notifications"/&gt;&lt;/svg&gt;'>tm-notifications</code>
+  </figcaption>
+  <span class="tag tag--ui">UI</span>
+</figure>
+<figure class="card" data-name="profile">
+  <div class="card__art"><svg class="tm-icon tm-icon--xl"><use href="#tm-profile"/></svg></div>
+  <figcaption>
+    <b>Profile</b>
+    <code data-copy='&lt;svg class="tm-icon"&gt;&lt;use href="#tm-profile"/&gt;&lt;/svg&gt;'>tm-profile</code>
+  </figcaption>
+  <span class="tag tag--ui">UI</span>
+</figure>
+<figure class="card" data-name="calendar">
+  <div class="card__art"><svg class="tm-icon tm-icon--xl"><use href="#tm-calendar"/></svg></div>
+  <figcaption>
+    <b>Calendar</b>
+    <code data-copy='&lt;svg class="tm-icon"&gt;&lt;use href="#tm-calendar"/&gt;&lt;/svg&gt;'>tm-calendar</code>
+  </figcaption>
+  <span class="tag tag--ui">UI</span>
+</figure>
+<figure class="card" data-name="add">
+  <div class="card__art"><svg class="tm-icon tm-icon--xl"><use href="#tm-add"/></svg></div>
+  <figcaption>
+    <b>Add</b>
+    <code data-copy='&lt;svg class="tm-icon"&gt;&lt;use href="#tm-add"/&gt;&lt;/svg&gt;'>tm-add</code>
+  </figcaption>
+  <span class="tag tag--ui">UI</span>
+</figure>
+<figure class="card" data-name="filter">
+  <div class="card__art"><svg class="tm-icon tm-icon--xl"><use href="#tm-filter"/></svg></div>
+  <figcaption>
+    <b>Filter</b>
+    <code data-copy='&lt;svg class="tm-icon"&gt;&lt;use href="#tm-filter"/&gt;&lt;/svg&gt;'>tm-filter</code>
+  </figcaption>
+  <span class="tag tag--ui">UI</span>
+</figure>
+<figure class="card" data-name="export">
+  <div class="card__art"><svg class="tm-icon tm-icon--xl"><use href="#tm-export"/></svg></div>
+  <figcaption>
+    <b>Export</b>
+    <code data-copy='&lt;svg class="tm-icon"&gt;&lt;use href="#tm-export"/&gt;&lt;/svg&gt;'>tm-export</code>
+  </figcaption>
+  <span class="tag tag--ui">UI</span>
+</figure>
+<figure class="card" data-name="sync">
+  <div class="card__art"><svg class="tm-icon tm-icon--xl"><use href="#tm-sync"/></svg></div>
+  <figcaption>
+    <b>Sync</b>
+    <code data-copy='&lt;svg class="tm-icon"&gt;&lt;use href="#tm-sync"/&gt;&lt;/svg&gt;'>tm-sync</code>
+  </figcaption>
+  <span class="tag tag--ui">UI</span>
+</figure>
+<figure class="card" data-name="alerts">
+  <div class="card__art"><svg class="tm-icon tm-icon--xl"><use href="#tm-alerts"/></svg></div>
+  <figcaption>
+    <b>Alerts</b>
+    <code data-copy='&lt;svg class="tm-icon"&gt;&lt;use href="#tm-alerts"/&gt;&lt;/svg&gt;'>tm-alerts</code>
+  </figcaption>
+  <span class="tag tag--ui">UI</span>
+</figure>
+<figure class="card" data-name="logout">
+  <div class="card__art"><svg class="tm-icon tm-icon--xl"><use href="#tm-logout"/></svg></div>
+  <figcaption>
+    <b>Log out</b>
+    <code data-copy='&lt;svg class="tm-icon"&gt;&lt;use href="#tm-logout"/&gt;&lt;/svg&gt;'>tm-logout</code>
+  </figcaption>
+  <span class="tag tag--ui">UI</span>
+</figure></div>
+</section>
+
+<section>
+  <h2>Sizes</h2>
+  <p class="sub">Vector at every size. 16&#8211;20&nbsp;px for inline text, 24&nbsp;px for nav and lists, 32&#8211;48&nbsp;px for feature tiles.</p>
+  <div class="panel sizes">
+    <figure><svg class="tm-icon" style="width:16px;height:16px"><use href="#tm-investments"/></svg><small>16</small></figure>
+    <figure><svg class="tm-icon" style="width:20px;height:20px"><use href="#tm-investments"/></svg><small>20</small></figure>
+    <figure><svg class="tm-icon" style="width:24px;height:24px"><use href="#tm-investments"/></svg><small>24</small></figure>
+    <figure><svg class="tm-icon" style="width:32px;height:32px"><use href="#tm-investments"/></svg><small>32</small></figure>
+    <figure><svg class="tm-icon" style="width:48px;height:48px"><use href="#tm-investments"/></svg><small>48</small></figure>
+    <figure><svg class="tm-icon" style="width:72px;height:72px"><use href="#tm-investments"/></svg><small>72</small></figure>
+  </div>
+</section>
+
+<section>
+  <h2>Tones</h2>
+  <p class="sub">Every icon reads four CSS variables, so a class is enough to retint it &#8212; no second file.</p>
+  <div class="tones">
+    <div class="tone"><svg class="tm-icon tm-icon--lg"><use href="#tm-budgeting"/></svg><small>default (duotone)</small></div>
+    <div class="tone"><svg class="tm-icon tm-icon--lg tm-icon--mono" style="color:var(--tm-ms-money-blue)"><use href="#tm-budgeting"/></svg><small>.tm-icon--mono</small></div>
+    <div class="tone"><svg class="tm-icon tm-icon--lg tm-icon--muted"><use href="#tm-budgeting"/></svg><small>.tm-icon--muted</small></div>
+    <div class="tone tone--inverse"><svg class="tm-icon tm-icon--lg tm-icon--inverse"><use href="#tm-budgeting"/></svg><small>.tm-icon--inverse</small></div>
+  </div>
+</section>
+
+<section>
+  <h2>In context</h2>
+  <p class="sub">The same sprite driving a mobile tab bar and a dashboard list.</p>
+  <div class="two">
+    <div>
+      <div class="nav"><button class="nav__btn"><svg class="tm-icon"><use href="#tm-home"/></svg><span>Home</span></button><button class="nav__btn"><svg class="tm-icon"><use href="#tm-accounts"/></svg><span>Accounts</span></button><button class="nav__btn"><svg class="tm-icon"><use href="#tm-transactions"/></svg><span>Transactions</span></button><button class="nav__btn"><svg class="tm-icon"><use href="#tm-reports"/></svg><span>Reports</span></button><button class="nav__btn"><svg class="tm-icon"><use href="#tm-profile"/></svg><span>Profile</span></button></div>
+      <p class="sub" style="margin-top:10px">Tab bar &#8212; 24&nbsp;px icons, active tab tinted.</p>
+    </div>
+    <div class="panel"><div class="tile"><span class="tm-icon-tile"><svg class="tm-icon"><use href="#tm-accounts"/></svg></span>
+<div><b>Accounts</b><small>Sample row label</small></div></div><div class="tile"><span class="tm-icon-tile"><svg class="tm-icon"><use href="#tm-transactions"/></svg></span>
+<div><b>Transactions</b><small>Sample row label</small></div></div><div class="tile"><span class="tm-icon-tile"><svg class="tm-icon"><use href="#tm-payments"/></svg></span>
+<div><b>Payments</b><small>Sample row label</small></div></div><div class="tile"><span class="tm-icon-tile"><svg class="tm-icon"><use href="#tm-budgeting"/></svg></span>
+<div><b>Budgeting</b><small>Sample row label</small></div></div><div class="tile"><span class="tm-icon-tile"><svg class="tm-icon"><use href="#tm-reports"/></svg></span>
+<div><b>Reports</b><small>Sample row label</small></div></div><div class="tile"><span class="tm-icon-tile"><svg class="tm-icon"><use href="#tm-investments"/></svg></span>
+<div><b>Investments</b><small>Sample row label</small></div></div><div class="tile"><span class="tm-icon-tile"><svg class="tm-icon"><use href="#tm-goals"/></svg></span>
+<div><b>Goals</b><small>Sample row label</small></div></div><div class="tile"><span class="tm-icon-tile"><svg class="tm-icon"><use href="#tm-taxes"/></svg></span>
+<div><b>Taxes</b><small>Sample row label</small></div></div></div>
+  </div>
+</section>
+
+<section>
+  <h2>Palette</h2>
+  <p class="sub">Blue and silver only. Green and red appear as data semantics, never as branding.</p>
+  <div class="sws"><div class="sw"><div class="sw__chip" style="background:#1B4B9C"></div>
+  <div class="sw__meta"><b>Ms Money Blue</b><code>#1B4B9C</code><small>Primary brand blue / icon primary</small></div></div><div class="sw"><div class="sw__chip" style="background:#0C2557"></div>
+  <div class="sw__meta"><b>Deep Navy</b><code>#0C2557</code><small>Deep shade, gradients, dark surfaces</small></div></div><div class="sw"><div class="sw__chip" style="background:#2E6FD9"></div>
+  <div class="sw__meta"><b>Royal Blue</b><code>#2E6FD9</code><small>Interactive / hover / links</small></div></div><div class="sw"><div class="sw__chip" style="background:#7FB2EE"></div>
+  <div class="sw__meta"><b>Aero Sky</b><code>#7FB2EE</code><small>Secondary icon tone, highlights</small></div></div><div class="sw"><div class="sw__chip" style="background:#D9E9FC"></div>
+  <div class="sw__meta"><b>Sky Tint</b><code>#D9E9FC</code><small>Surfaces, chips, chart fills</small></div></div><div class="sw"><div class="sw__chip" style="background:#FFFFFF"></div>
+  <div class="sw__meta"><b>Pure White</b><code>#FFFFFF</code><small>Knockouts, cards, app background</small></div></div><div class="sw"><div class="sw__chip" style="background:#A9B4C0"></div>
+  <div class="sw__meta"><b>Steel Silver</b><code>#A9B4C0</code><small>Accent metal, dividers, muted glyphs</small></div></div><div class="sw"><div class="sw__chip" style="background:#E3E8ED"></div>
+  <div class="sw__meta"><b>Silver Tint</b><code>#E3E8ED</code><small>Borders, tracks, disabled</small></div></div><div class="sw"><div class="sw__chip" style="background:#0B1B33"></div>
+  <div class="sw__meta"><b>Ink</b><code>#0B1B33</code><small>Body text on light</small></div></div><div class="sw"><div class="sw__chip" style="background:#1F9D6B"></div>
+  <div class="sw__meta"><b>Positive</b><code>#1F9D6B</code><small>Gains (semantic only, not branding)</small></div></div><div class="sw"><div class="sw__chip" style="background:#D0453B"></div>
+  <div class="sw__meta"><b>Negative</b><code>#D0453B</code><small>Losses / alerts (semantic only)</small></div></div></div>
+</section>
+
+<section class="fonts">
+  <h2>Type</h2>
+  <div class="panel">
+    <p class="f-display">Montserrat Bold &#8212; headings, balances, numbers</p>
+    <p class="f-body">Open Sans Regular &#8212; body copy, labels and long-form guidance. Use tabular figures
+      (<code>font-feature-settings:'tnum'</code>) for any column of currency.</p>
+  </div>
+</section>
+
+<section>
+  <h2>How to use</h2>
+  <div class="two">
+    <div>
+      <p class="sub"><b>Web &#8212; sprite (recommended)</b></p>
+<pre>&lt;<b>link</b> rel="stylesheet" href="tokens/tm-tokens.css"&gt;
+&lt;<b>link</b> rel="stylesheet" href="tokens/tm-icons.css"&gt;
+
+&lt;!-- paste sprite/tm-icons-sprite.svg once, right after &lt;body&gt; --&gt;
+
+&lt;<b>svg</b> class="tm-icon"&gt;&lt;<b>use</b> href="#tm-accounts"/&gt;&lt;/<b>svg</b>&gt;</pre>
+    </div>
+    <div>
+      <p class="sub"><b>Web &#8212; single file</b></p>
+<pre>&lt;<b>img</b> src="svg/tm-accounts.svg" width="24" height="24" alt=""&gt;
+
+&lt;!-- or as a CSS mask, tinted by color --&gt;
+.icon-accounts{
+  -webkit-mask:url(svg/tm-accounts.svg) center/contain no-repeat;
+          mask:url(svg/tm-accounts.svg) center/contain no-repeat;
+  background:currentColor;
+}</pre>
+    </div>
+    <div>
+      <p class="sub"><b>React Native / Expo</b></p>
+<pre>import { SvgXml } from 'react-native-svg';
+import xml from './svg/tm-accounts.svg';
+
+&lt;SvgXml xml={xml} width={24} height={24} /&gt;</pre>
+    </div>
+    <div>
+      <p class="sub"><b>Android / iOS raster</b></p>
+<pre><b>android/</b> app-icons/android/ic_launcher-*.png
+          + ic_launcher_foreground-432.png (adaptive)
+<b>ios/</b>     app-icons/ios/AppIcon-*.png
+<b>list icons</b> png/48, png/96, png/192 (@1x/@2x/@3x)</pre>
+    </div>
+  </div>
+</section>
+
+<footer>T-Money &#8212; Concept 3 branding. Icons drawn as vectors on a 24&#215;24 grid; every raster here is generated from them.</footer>
+</div>
+
+<div class="toast" id="toast">Snippet copied</div>
+<script>
+const root=document.documentElement, btn=document.getElementById('themebtn'), toast=document.getElementById('toast');
+btn.addEventListener('click',()=>{
+  const dark = root.getAttribute('data-theme')==='dark';
+  root.setAttribute('data-theme', dark?'light':'dark');
+  btn.textContent = dark?'Dark preview':'Light preview';
+});
+let t;
+document.querySelectorAll('.card').forEach(c=>c.addEventListener('click',()=>{
+  const snip=c.querySelector('code').dataset.copy;
+  navigator.clipboard?.writeText(snip);
+  toast.textContent=c.dataset.name+' snippet copied';
+  toast.classList.add('show'); clearTimeout(t); t=setTimeout(()=>toast.classList.remove('show'),1500);
+}));
+</script>
+</body>
+</html>

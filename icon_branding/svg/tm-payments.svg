@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" role="img" aria-label="Payments"><style>
+.p{fill:var(--tm-icon-primary,#1B4B9C)}
+.s{fill:var(--tm-icon-secondary,#7FB2EE)}
+.a{fill:var(--tm-icon-accent,#A9B4C0)}
+.w{fill:var(--tm-icon-knockout,#FFFFFF)}
+.ps,.ss,.as,.ws{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ps{stroke:var(--tm-icon-primary,#1B4B9C)}
+.ss{stroke:var(--tm-icon-secondary,#7FB2EE)}
+.as{stroke:var(--tm-icon-accent,#A9B4C0)}
+.ws{stroke:var(--tm-icon-knockout,#FFFFFF);stroke-width:1.6}
+</style><rect class="p" x="1.6" y="4.4" width="20.8" height="15.2" rx="2.7"/>
+<rect class="a" x="1.6" y="7.8" width="20.8" height="3.1"/>
+<rect class="s" x="4.3" y="14.4" width="6.2" height="2.1" rx="1.05"/>
+<rect class="s" x="14.6" y="14.6" width="5.4" height="3.9" rx="1.1"/>
+<path class="ss" d="M16 14.6v-1.1a1.3 1.3 0 0 1 2.6 0v1.1"/></svg>

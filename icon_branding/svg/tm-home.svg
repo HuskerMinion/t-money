@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" role="img" aria-label="Home"><style>
+.p{fill:var(--tm-icon-primary,#1B4B9C)}
+.s{fill:var(--tm-icon-secondary,#7FB2EE)}
+.a{fill:var(--tm-icon-accent,#A9B4C0)}
+.w{fill:var(--tm-icon-knockout,#FFFFFF)}
+.ps,.ss,.as,.ws{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ps{stroke:var(--tm-icon-primary,#1B4B9C)}
+.ss{stroke:var(--tm-icon-secondary,#7FB2EE)}
+.as{stroke:var(--tm-icon-accent,#A9B4C0)}
+.ws{stroke:var(--tm-icon-knockout,#FFFFFF);stroke-width:1.6}
+</style><path class="p" d="M11.34 2.72a1.05 1.05 0 0 1 1.32 0l8.9 7.3a1 1 0 0 1 .37.78V19.7a1.9 1.9 0 0 1-1.9 1.9h-4.4v-5.35a3.63 3.63 0 0 0-7.26 0v5.35h-4.4a1.9 1.9 0 0 1-1.9-1.9v-8.9a1 1 0 0 1 .37-.78z"/>
+<path class="s" d="M12 13.6a2.65 2.65 0 0 1 2.63 2.65v5.35H9.37v-5.35A2.65 2.65 0 0 1 12 13.6z"/></svg>

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" role="img" aria-label="Investments"><style>
+.p{fill:var(--tm-icon-primary,#1B4B9C)}
+.s{fill:var(--tm-icon-secondary,#7FB2EE)}
+.a{fill:var(--tm-icon-accent,#A9B4C0)}
+.w{fill:var(--tm-icon-knockout,#FFFFFF)}
+.ps,.ss,.as,.ws{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ps{stroke:var(--tm-icon-primary,#1B4B9C)}
+.ss{stroke:var(--tm-icon-secondary,#7FB2EE)}
+.as{stroke:var(--tm-icon-accent,#A9B4C0)}
+.ws{stroke:var(--tm-icon-knockout,#FFFFFF);stroke-width:1.6}
+</style><rect class="s" x="2.7" y="14.6" width="3.5" height="6.9" rx="1"/>
+<rect class="s" x="8.4" y="11.9" width="3.5" height="9.6" rx="1"/>
+<rect class="s" x="14.1" y="16.4" width="3.5" height="5.1" rx="1"/>
+<path class="ps" d="M3.6 12.3 8.9 7.1l3.3 3.2 6.6-6.5"/>
+<path class="p" d="M21.35 2.2a1 1 0 0 1 1 1v4.6a1 1 0 0 1-2 0V5.7l-.05.05V4.2h-3.6a1 1 0 0 1 0-2z"/>
+<rect class="p" x="16.7" y="2.2" width="5.65" height="2" rx="1"/></svg>

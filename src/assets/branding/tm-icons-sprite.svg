@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none"><style>
+.p{fill:var(--tm-icon-primary,#1B4B9C)}
+.s{fill:var(--tm-icon-secondary,#7FB2EE)}
+.a{fill:var(--tm-icon-accent,#A9B4C0)}
+.w{fill:var(--tm-icon-knockout,#FFFFFF)}
+.ps,.ss,.as,.ws{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ps{stroke:var(--tm-icon-primary,#1B4B9C)}
+.ss{stroke:var(--tm-icon-secondary,#7FB2EE)}
+.as{stroke:var(--tm-icon-accent,#A9B4C0)}
+.ws{stroke:var(--tm-icon-knockout,#FFFFFF);stroke-width:1.6}
+</style><symbol id="tm-accounts" viewBox="0 0 24 24" fill="none"><title>Accounts</title><path class="p" d="M11.6 2.35a.9.9 0 0 1 .8 0l9.3 4.9c.75.4.47 1.55-.4 1.55H2.7c-.87 0-1.15-1.15-.4-1.55z"/>
+<circle class="w" cx="12" cy="5.6" r="1.15"/>
+<rect class="s" x="4.5" y="10.4" width="2.7" height="7.5" rx=".7"/>
+<rect class="s" x="10.65" y="10.4" width="2.7" height="7.5" rx=".7"/>
+<rect class="s" x="16.8" y="10.4" width="2.7" height="7.5" rx=".7"/>
+<rect class="p" x="2.2" y="18.9" width="19.6" height="2.7" rx="1.1"/></symbol><symbol id="tm-transactions" viewBox="0 0 24 24" fill="none"><title>Transactions</title><rect class="p" x="2.6" y="6.6" width="13.2" height="2.3" rx="1.15"/>
+<path class="p" d="M15.3 3.55 21.3 7.75 15.3 11.95z"/>
+<rect class="s" x="8.2" y="15.1" width="13.2" height="2.3" rx="1.15"/>
+<path class="s" d="M8.7 12.05 2.7 16.25 8.7 20.45z"/></symbol><symbol id="tm-payments" viewBox="0 0 24 24" fill="none"><title>Payments</title><rect class="p" x="1.6" y="4.4" width="20.8" height="15.2" rx="2.7"/>
+<rect class="a" x="1.6" y="7.8" width="20.8" height="3.1"/>
+<rect class="s" x="4.3" y="14.4" width="6.2" height="2.1" rx="1.05"/>
+<rect class="s" x="14.6" y="14.6" width="5.4" height="3.9" rx="1.1"/>
+<path class="ss" d="M16 14.6v-1.1a1.3 1.3 0 0 1 2.6 0v1.1"/></symbol><symbol id="tm-budgeting" viewBox="0 0 24 24" fill="none"><title>Budgeting</title><path class="p" d="M8.5 7.4h7c1.4 0 5.4 4 5.4 8.5 0 3.5-2.9 5.5-8.9 5.5S3.1 19.4 3.1 15.9c0-4.5 4-8.5 5.4-8.5z"/>
+<path class="a" d="M8.15 2.7h7.7a.95.95 0 0 1 .77 1.51l-1.4 1.93a1.5 1.5 0 0 1-1.21.62h-4.02a1.5 1.5 0 0 1-1.21-.62l-1.4-1.93a.95.95 0 0 1 .77-1.51z"/>
+<path class="ws" d="M14.2 12.35c-.55-.75-1.35-1.1-2.35-1.1-1.35 0-2.25.65-2.25 1.65s.75 1.35 2.3 1.7 2.5.85 2.5 2c0 1.15-1.05 1.85-2.5 1.85-1.1 0-2-.4-2.55-1.2"/>
+<path class="ws" d="M12 9.7v1.4M12 18.5v1.4"/></symbol><symbol id="tm-reports" viewBox="0 0 24 24" fill="none"><title>Reports</title><path class="p" d="M10.9 3.15A9.3 9.3 0 1 0 20.85 13.1H10.9z"/>
+<path class="s" d="M13.1 2.05a10 10 0 0 1 8.85 8.85H13.1z"/></symbol><symbol id="tm-investments" viewBox="0 0 24 24" fill="none"><title>Investments</title><rect class="s" x="2.7" y="14.6" width="3.5" height="6.9" rx="1"/>
+<rect class="s" x="8.4" y="11.9" width="3.5" height="9.6" rx="1"/>
+<rect class="s" x="14.1" y="16.4" width="3.5" height="5.1" rx="1"/>
+<path class="ps" d="M3.6 12.3 8.9 7.1l3.3 3.2 6.6-6.5"/>
+<path class="p" d="M21.35 2.2a1 1 0 0 1 1 1v4.6a1 1 0 0 1-2 0V5.7l-.05.05V4.2h-3.6a1 1 0 0 1 0-2z"/>
+<rect class="p" x="16.7" y="2.2" width="5.65" height="2" rx="1"/></symbol><symbol id="tm-goals" viewBox="0 0 24 24" fill="none"><title>Goals</title><path class="ps" d="M20.6 8.6a9.2 9.2 0 1 1-5.2-5.2"/>
+<path class="ss" d="M16.6 10.6a5 5 0 1 1-3.2-3.2"/>
+<circle class="p" cx="12" cy="12" r="2.3"/>
+<path class="a" d="M17.5 2.3a1 1 0 0 1 1.7.55l.33 2.02 2.02.33a1 1 0 0 1 .55 1.7l-2.5 2.5a1 1 0 0 1-.71.29h-1.72l-4.46 4.46a1 1 0 1 1-1.42-1.42l4.46-4.46V6.55a1 1 0 0 1 .29-.71z"/></symbol><symbol id="tm-taxes" viewBox="0 0 24 24" fill="none"><title>Taxes</title><path class="p" d="M5.1 2.4h8.2l7 7v11.4a1.9 1.9 0 0 1-1.9 1.9H5.1a1.9 1.9 0 0 1-1.9-1.9V4.3a1.9 1.9 0 0 1 1.9-1.9z"/>
+<path class="a" d="M13.3 2.4l7 7h-5.1a1.9 1.9 0 0 1-1.9-1.9z"/>
+<circle class="ws" cx="9.1" cy="13.3" r="1.55"/>
+<circle class="ws" cx="14.6" cy="18.1" r="1.55"/>
+<path class="ws" d="M15.5 12 8.2 19.4"/></symbol><symbol id="tm-home" viewBox="0 0 24 24" fill="none"><title>Home</title><path class="p" d="M11.34 2.72a1.05 1.05 0 0 1 1.32 0l8.9 7.3a1 1 0 0 1 .37.78V19.7a1.9 1.9 0 0 1-1.9 1.9h-4.4v-5.35a3.63 3.63 0 0 0-7.26 0v5.35h-4.4a1.9 1.9 0 0 1-1.9-1.9v-8.9a1 1 0 0 1 .37-.78z"/>
+<path class="s" d="M12 13.6a2.65 2.65 0 0 1 2.63 2.65v5.35H9.37v-5.35A2.65 2.65 0 0 1 12 13.6z"/></symbol><symbol id="tm-search" viewBox="0 0 24 24" fill="none"><title>Search</title><circle class="ps" cx="10.6" cy="10.6" r="6.9"/>
+<path class="ss" d="M10.6 5.9a4.7 4.7 0 0 0-4.7 4.7"/>
+<path class="ps" d="m15.7 15.7 4.9 4.9"/></symbol><symbol id="tm-settings" viewBox="0 0 24 24" fill="none"><title>Settings</title><path class="p" fill-rule="evenodd" clip-rule="evenodd" d="M 10.17 0.44 L 13.83 0.44 L 13.71 3.27 L 14.88 3.58 L 16.19 1.08 L 19.36 2.91 L 17.85 5.29 L 18.71 6.15 L 21.09 4.64 L 22.92 7.81 L 20.42 9.12 L 20.73 10.29 L 23.56 10.17 L 23.56 13.83 L 20.73 13.71 L 20.42 14.88 L 22.92 16.19 L 21.09 19.36 L 18.71 17.85 L 17.85 18.71 L 19.36 21.09 L 16.19 22.92 L 14.88 20.42 L 13.71 20.73 L 13.83 23.56 L 10.17 23.56 L 10.29 20.73 L 9.12 20.42 L 7.81 22.92 L 4.64 21.09 L 6.15 18.71 L 5.29 17.85 L 2.91 19.36 L 1.08 16.19 L 3.58 14.88 L 3.27 13.71 L 0.44 13.83 L 0.44 10.17 L 3.27 10.29 L 3.58 9.12 L 1.08 7.81 L 2.91 4.64 L 5.29 6.15 L 6.15 5.29 L 4.64 2.91 L 7.81 1.08 L 9.12 3.58 L 10.29 3.27 Z M 5.90 12.00 a 6.10 6.10 0 1 0 12.20 0 a 6.10 6.10 0 1 0 -12.20 0 Z"/><path class="s" d="M 7.90 7.40 L 16.10 7.40 L 16.10 9.80 L 13.30 9.80 L 13.30 16.80 L 10.70 16.80 L 10.70 9.80 L 7.90 9.80 Z"/></symbol><symbol id="tm-notifications" viewBox="0 0 24 24" fill="none"><title>Notifications</title><path class="p" d="M12 2.1a6.75 6.75 0 0 1 6.75 6.75v3.5l1.72 3.06a1.1 1.1 0 0 1-.96 1.64H4.49a1.1 1.1 0 0 1-.96-1.64l1.72-3.06v-3.5A6.75 6.75 0 0 1 12 2.1z"/>
+<path class="s" d="M9.25 18.35h5.5a2.75 2.75 0 0 1-5.5 0z"/>
+<circle class="a" cx="18.6" cy="4.6" r="2.6"/></symbol><symbol id="tm-profile" viewBox="0 0 24 24" fill="none"><title>Profile</title><circle class="s" cx="12" cy="12" r="9.6"/>
+<circle class="p" cx="12" cy="9.5" r="3.5"/>
+<path class="p" d="M12 14.1c-3.25 0-6 1.95-7 4.7a9.57 9.57 0 0 0 14 0c-1-2.75-3.75-4.7-7-4.7z"/></symbol><symbol id="tm-calendar" viewBox="0 0 24 24" fill="none"><title>Calendar</title><rect class="s" x="2.5" y="4.2" width="19" height="17.3" rx="2.5"/>
+<path class="p" d="M5 4.2h14a2.5 2.5 0 0 1 2.5 2.5v3.2h-19V6.7A2.5 2.5 0 0 1 5 4.2z"/>
+<rect class="p" x="6.2" y="1.7" width="2.3" height="4.6" rx="1.15"/>
+<rect class="p" x="15.5" y="1.7" width="2.3" height="4.6" rx="1.15"/>
+<rect class="p" x="6.1" y="12.6" width="3" height="2.5" rx=".8"/>
+<rect class="p" x="10.5" y="12.6" width="3" height="2.5" rx=".8"/>
+<rect class="a" x="14.9" y="12.6" width="3" height="2.5" rx=".8"/>
+<rect class="a" x="6.1" y="16.7" width="3" height="2.5" rx=".8"/>
+<rect class="p" x="10.5" y="16.7" width="3" height="2.5" rx=".8"/></symbol><symbol id="tm-add" viewBox="0 0 24 24" fill="none"><title>Add</title><circle class="p" cx="12" cy="12" r="9.5"/>
+<path class="w" d="M10.9 6.9h2.2v4h4v2.2h-4v4h-2.2v-4h-4v-2.2h4z"/></symbol><symbol id="tm-filter" viewBox="0 0 24 24" fill="none"><title>Filter</title><path class="p" d="M3.2 4.1h17.6a1.1 1.1 0 0 1 .84 1.81L14.7 14.3a1 1 0 0 0-.24.65v1.1H9.54v-1.1a1 1 0 0 0-.24-.65L2.36 5.91A1.1 1.1 0 0 1 3.2 4.1z"/>
+<path class="s" d="M9.54 16.05h4.92v3.35a1 1 0 0 1-.55.9l-2.95 1.47a1 1 0 0 1-1.42-.9z"/></symbol><symbol id="tm-export" viewBox="0 0 24 24" fill="none"><title>Export</title><path class="s" d="M4 13.9a1 1 0 0 1 1 1v3.7h14v-3.7a1 1 0 1 1 2 0v4.2a1.9 1.9 0 0 1-1.9 1.9H4.9A1.9 1.9 0 0 1 3 19.1v-4.2a1 1 0 0 1 1-1z"/>
+<path class="p" d="M11.29 2.99a1 1 0 0 1 1.42 0l4.4 4.4a1 1 0 1 1-1.42 1.42L13 6.12V15a1 1 0 1 1-2 0V6.12L8.31 8.81A1 1 0 0 1 6.89 7.39z"/></symbol><symbol id="tm-sync" viewBox="0 0 24 24" fill="none"><title>Sync</title><path class="p" d="M12 4.3a7.7 7.7 0 0 1 7.15 4.83 1 1 0 1 1-1.86.74A5.7 5.7 0 0 0 12 6.3a5.68 5.68 0 0 0-4.03 1.67l-.3.31h2.03a1 1 0 1 1 0 2H5.3a1 1 0 0 1-1-1V5.3a1 1 0 0 1 2 0v1.16A7.68 7.68 0 0 1 12 4.3z"/>
+<path class="s" d="M12 19.7a7.7 7.7 0 0 1-7.15-4.83 1 1 0 1 1 1.86-.74A5.7 5.7 0 0 0 12 17.7a5.68 5.68 0 0 0 4.03-1.67l.3-.31h-2.03a1 1 0 1 1 0-2h4.4a1 1 0 0 1 1 1v4.98a1 1 0 0 1-2 0v-1.16A7.68 7.68 0 0 1 12 19.7z"/></symbol><symbol id="tm-alerts" viewBox="0 0 24 24" fill="none"><title>Alerts</title><path class="p" d="M10.27 3.05a2 2 0 0 1 3.46 0l8.15 14.1a2 2 0 0 1-1.73 3H3.85a2 2 0 0 1-1.73-3z"/>
+<rect class="w" x="10.95" y="8.1" width="2.1" height="6.2" rx="1.05"/>
+<circle class="w" cx="12" cy="16.9" r="1.3"/></symbol><symbol id="tm-logout" viewBox="0 0 24 24" fill="none"><title>Log out</title><path class="s" d="M4.9 2.5h6.4a1 1 0 0 1 0 2H5.9v15h5.4a1 1 0 0 1 0 2H4.9a1 1 0 0 1-1-1v-17a1 1 0 0 1 1-1z"/>
+<path class="p" d="M15.29 7.29a1 1 0 0 1 1.42 0l4 4a1 1 0 0 1 0 1.42l-4 4a1 1 0 0 1-1.42-1.42L17.58 13H10a1 1 0 1 1 0-2h7.58l-2.29-2.29a1 1 0 0 1 0-1.42z"/></symbol></svg>

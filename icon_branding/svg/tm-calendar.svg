@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" role="img" aria-label="Calendar"><style>
+.p{fill:var(--tm-icon-primary,#1B4B9C)}
+.s{fill:var(--tm-icon-secondary,#7FB2EE)}
+.a{fill:var(--tm-icon-accent,#A9B4C0)}
+.w{fill:var(--tm-icon-knockout,#FFFFFF)}
+.ps,.ss,.as,.ws{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ps{stroke:var(--tm-icon-primary,#1B4B9C)}
+.ss{stroke:var(--tm-icon-secondary,#7FB2EE)}
+.as{stroke:var(--tm-icon-accent,#A9B4C0)}
+.ws{stroke:var(--tm-icon-knockout,#FFFFFF);stroke-width:1.6}
+</style><rect class="s" x="2.5" y="4.2" width="19" height="17.3" rx="2.5"/>
+<path class="p" d="M5 4.2h14a2.5 2.5 0 0 1 2.5 2.5v3.2h-19V6.7A2.5 2.5 0 0 1 5 4.2z"/>
+<rect class="p" x="6.2" y="1.7" width="2.3" height="4.6" rx="1.15"/>
+<rect class="p" x="15.5" y="1.7" width="2.3" height="4.6" rx="1.15"/>
+<rect class="p" x="6.1" y="12.6" width="3" height="2.5" rx=".8"/>
+<rect class="p" x="10.5" y="12.6" width="3" height="2.5" rx=".8"/>
+<rect class="a" x="14.9" y="12.6" width="3" height="2.5" rx=".8"/>
+<rect class="a" x="6.1" y="16.7" width="3" height="2.5" rx=".8"/>
+<rect class="p" x="10.5" y="16.7" width="3" height="2.5" rx=".8"/></svg>

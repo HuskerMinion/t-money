@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Frontend build output
+dist/
+
+# Rust / Tauri build artifacts
+src-tauri/target/
+src-tauri/gen/
+
+# Local logs and scratch
+*.log
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/
+
+# NEVER commit a money file or a backup of one. They hold real financial data.
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.tmny

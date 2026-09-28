@@ -1,0 +1,2994 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* All color comes from src/branding/tm-tokens.css. No literal hex below this
+   line — if you need a new color, add a token there (§11). */
+
+:root {
+  font-family: var(--tm-font-body);
+  font-size: var(--tm-font-size);
+  color: var(--tm-ms-text);
+  color-scheme: light; /* Money Plus had no dark mode — see tm-tokens.css */
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  /* Money fills the window; there is no visible desktop backdrop. */
+  background: var(--tm-ms-page-bg);
+  overflow: hidden;
+}
+
+/* --- Reusable Money/Aero building blocks -------------------------------- */
+
+@layer components {
+  /* Toolbar band above the tabs. */
+  .aero-header {
+    background: linear-gradient(
+      180deg,
+      var(--tm-ms-toolbar-top) 0%,
+      var(--tm-ms-toolbar-bot) 100%
+    );
+    border-bottom: 1px solid var(--tm-ms-tabstrip-bot);
+  }
+
+  /* The strip the tab row sits on. */
+  .aero-tabstrip {
+    background: linear-gradient(
+      180deg,
+      var(--tm-ms-tabstrip-top) 0%,
+      var(--tm-ms-tabstrip-bot) 100%
+    );
+  }
+
+  /* Solid band under the tabs; holds the page's sibling links. */
+  .aero-subnav {
+    background: var(--tm-ms-subnav);
+    color: var(--tm-pure-white);
+    padding: 3px 10px;
+  }
+  .aero-subnav .selected {
+    color: var(--tm-ms-subnav-selected);
+    font-weight: bold;
+  }
+
+  /* LIGHT left rail — horizontal gradient. Money's rail is not dark. */
+  .aero-sidebar {
+    background: linear-gradient(
+      90deg,
+      var(--tm-ms-rail-left) 0%,
+      var(--tm-ms-rail-right) 100%
+    );
+    border-right: 1px solid var(--tm-ms-rail-divider);
+  }
+
+  .aero-card {
+    border: 1px solid var(--tm-ms-card-border);
+    border-radius: var(--tm-radius-md);
+    background: var(--tm-ms-card-body); /* flat, not a gradient */
+    overflow: hidden;
+  }
+
+  /* Card header gradient runs LIGHTER downward — the inverse of the usual. */
+  .aero-card-title {
+    background: linear-gradient(
+      180deg,
+      var(--tm-ms-card-hdr-top) 0%,
+      var(--tm-ms-card-hdr-bot) 100%
+    );
+    border-bottom: 1px solid var(--tm-ms-card-border);
+    padding: 4px 8px;
+    font-weight: bold;
+    color: var(--tm-ms-text-cardhdr);
+  }
+
+  /* Tabs. The ACTIVE tab is darker and its bottom matches the subnav band,
+     so tab and band read as one shape. Selection = darken + merge. */
+  .aero-tab {
+    padding: 4px 12px;
+    color: var(--tm-ms-tab-text);
+    background: linear-gradient(
+      180deg,
+      var(--tm-ms-tab-inactive-top) 0%,
+      var(--tm-ms-tab-inactive-bot) 100%
+    );
+    border: none;
+    cursor: pointer;
+    user-select: none;
+  }
+  /* The Settings gear in the header.
+   *
+   * Deliberately NOT an .aero-tab. The gear's body is `.p`, which fills from
+   * --tm-icon-primary — navy (#1B4B9C) by default — and .aero-tab's plate is
+   * a dark gradient, so the body disappeared into it and all that showed was
+   * the small knockout ring and hub. Reported, exactly, as "a tiny dot in a
+   * dark square".
+   *
+   * So: no plate at rest, and the icon is re-tinted here rather than by a
+   * class on the <svg>: custom properties inherit into the <use> shadow tree,
+   * and setting them on the button means nothing on the icon can out-specify
+   * them (§19.2). The gray is the button face, so the gear reads as a control
+   * rather than as a second brand mark. The hover plate is only an
+   * affordance — at rest this is just the gear. */
+  .aero-gear {
+    /* Slate ring, brand-navy T. The muted slate rather than the button face:
+       on the blue header the button gray read as almost-white. The T is
+       `.s` in the sprite, so it takes --tm-icon-secondary. */
+    --tm-icon-primary: var(--tm-ms-text-muted);
+    --tm-icon-secondary: var(--tm-ms-text-heading);
+    --tm-icon-accent: var(--tm-ms-text-muted);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px;
+    margin: 0 2px 3px;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    opacity: 0.9;
+    transition: opacity 0.12s ease, background 0.12s ease;
+  }
+  .aero-gear:hover {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.18);
+  }
+  .aero-gear.active {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.26);
+  }
+  .aero-gear:focus-visible {
+    outline: 2px solid var(--tm-pure-white);
+    outline-offset: 1px;
+  }
+
+  .aero-tab.active {
+    background: linear-gradient(
+      180deg,
+      var(--tm-ms-tab-active-top) 0%,
+      var(--tm-ms-tab-active-bot) 100%
+    );
+    color: var(--tm-ms-tab-active-text);
+    font-weight: bold;
+  }
+
+  /* Rail groups: a bold navy heading that is itself a link, then blue links. */
+  .aero-side-group {
+    color: var(--tm-ms-text-railhead);
+    font-weight: bold;
+    padding: 6px 10px 2px;
+    cursor: pointer;
+  }
+  .aero-side-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 10px;
+    color: var(--tm-ms-text-link);
+    cursor: pointer;
+  }
+  .aero-side-item:hover {
+    text-decoration: underline;
+  }
+  .aero-side-item.active {
+    font-weight: bold;
+    text-decoration: underline;
+  }
+  .aero-side-divider {
+    border-top: 1px solid var(--tm-ms-rail-divider);
+    margin: 6px 10px;
+  }
+  .aero-side-more {
+    padding: 2px 10px;
+    color: var(--tm-ms-text-link);
+    cursor: pointer;
+  }
+
+  /* Stock Win32 button — Money's chrome is Aero, its controls are not. */
+  .aero-btn {
+    background: var(--tm-ms-button-face);
+    border: 1px solid var(--tm-ms-field-border-in);
+    border-radius: var(--tm-radius-sm);
+    padding: 2px 10px;
+    color: var(--tm-ms-text);
+    cursor: pointer;
+  }
+  .aero-btn:hover {
+    border-color: var(--tm-ms-field-border-top);
+  }
+  .aero-btn:disabled {
+    background: var(--tm-ms-button-disabled);
+    color: var(--tm-ms-text-muted);
+    cursor: default;
+  }
+  .aero-btn.default {
+    outline: 1px solid var(--tm-ms-button-default);
+  }
+
+  /* The Common Transactions menu (§31). Anchored to the button strip rather
+     than portaled: unlike the category combo (§19.1) this sits in the button
+     row, which is not inside the register's overflow-auto wrapper, so there is
+     nothing here to clip it. */
+  .tm-common-menu {
+    /* Positioned by the component from the button's measured rect — it is
+       portaled to <body>, so nothing here can be clipped by the register's
+       overflow-auto wrapper (§19.1, §31.2). The CSS keeps only the look. */
+    position: fixed;
+    z-index: 20;
+    min-width: 260px;
+    max-width: 420px;
+    max-height: 300px;
+    overflow-y: auto;
+    margin-bottom: 2px;
+    padding: 2px;
+    list-style: none;
+    background: var(--tm-ms-field-bg);
+    border: 1px solid var(--tm-ms-field-border-in);
+    border-radius: var(--tm-radius-sm);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
+  }
+  .tm-common-row {
+    display: flex;
+    align-items: stretch;
+  }
+  .tm-common-row:hover .tm-common-remove {
+    opacity: 1;
+  }
+  .tm-common-remove {
+    padding: 0 8px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--tm-ms-text-muted);
+    opacity: 0;
+    transition: opacity 0.12s ease, color 0.12s ease;
+  }
+  .tm-common-remove:hover,
+  .tm-common-remove:focus-visible {
+    opacity: 1;
+    color: var(--tm-negative);
+  }
+  .tm-common-item {
+    display: block;
+    width: 100%;
+    padding: 3px 8px;
+    text-align: left;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--tm-ms-text);
+  }
+  .tm-common-item:hover {
+    background: var(--tm-ms-row-active);
+  }
+  .tm-common-name {
+    display: block;
+    font-weight: 600;
+  }
+  .tm-common-detail {
+    display: block;
+    font-size: 11px;
+    color: var(--tm-ms-text-muted);
+  }
+  .tm-common-save {
+    border-top: 1px solid var(--tm-ms-card-border);
+    margin-top: 2px;
+    font-style: italic;
+  }
+  .tm-common-empty {
+    padding: 6px 8px;
+    font-size: 11px;
+    color: var(--tm-ms-text-muted);
+  }
+  .tm-common-saverow {
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+  }
+  .tm-common-saverow .aero-field {
+    flex: 1;
+  }
+
+  /* The 90-day balance projection (§33).
+     Thin marks, hairline chrome. The first version was 91 saturated bars,
+     which went solid red the moment an account was already negative. */
+  .tm-chart {
+    border: 1px solid var(--tm-ms-field-border-in);
+    background: var(--tm-ms-field-bg);
+  }
+  .tm-fc-area {
+    fill: var(--tm-ms-text-link);
+    opacity: 0.12;
+  }
+  .tm-fc-area.neg {
+    fill: var(--tm-negative);
+    opacity: 0.14;
+  }
+  .tm-fc-line {
+    fill: none;
+    stroke: var(--tm-ms-text-link);
+    stroke-width: 2;
+    vector-effect: non-scaling-stroke;
+  }
+  .tm-fc-line.neg {
+    stroke: var(--tm-negative);
+  }
+  /* Solid, one shade off the surface — a dashed rule would read as a
+     threshold rather than as zero. */
+  .tm-fc-zero {
+    stroke: var(--tm-ms-card-border);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+  }
+  .tm-fc-low {
+    fill: var(--tm-ms-text-link);
+    stroke: var(--tm-ms-field-bg);
+    stroke-width: 2;
+    vector-effect: non-scaling-stroke;
+  }
+  .tm-fc-low.neg {
+    fill: var(--tm-negative);
+  }
+  .tm-fc-lowlabel {
+    font-size: 11px;
+    fill: var(--tm-ms-text);
+  }
+  .tm-fc-tick {
+    font-size: 10px;
+    fill: var(--tm-ms-text-muted);
+  }
+  .tm-fc-crosshair {
+    stroke: var(--tm-ms-text-muted);
+    stroke-width: 1;
+    opacity: 0.5;
+    vector-effect: non-scaling-stroke;
+  }
+  /* The master-key warning. Permanent, not dismissable: it describes a way to
+     lose everything that no amount of care with the app prevents (§34). */
+  .tm-keywarn {
+    padding: 6px 8px;
+    background: var(--tm-ms-warn-bg);
+    border: 1px solid var(--tm-ms-warn-border);
+    border-radius: var(--tm-radius-sm);
+    color: var(--tm-ms-text);
+  }
+  .tm-keyvalue {
+    display: block;
+    padding: 6px 8px;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 12px;
+    word-break: break-all;
+    user-select: all;
+    background: var(--tm-ms-field-bg);
+    border: 1px solid var(--tm-ms-field-border-in);
+  }
+
+  /* The flat case: a number and a sentence, not a chart. */
+  .tm-chart-flat {
+    padding: 14px 12px;
+  }
+  .tm-fc-flatvalue {
+    font-size: 20px;
+    color: var(--tm-ms-text);
+  }
+  .tm-fc-flatnote {
+    padding-top: 2px;
+    font-size: 11px;
+    color: var(--tm-ms-text-muted);
+    max-width: 46em;
+  }
+  .tm-fc-readout {
+    padding: 3px 6px;
+    font-size: 11px;
+    color: var(--tm-ms-text-muted);
+    border-top: 1px solid var(--tm-ms-card-border);
+  }
+
+  /* Bill rows. Settled ones recede; overdue ones do not. */
+  .register-table tbody tr.tm-bill-done td {
+    color: var(--tm-ms-text-muted);
+  }
+  .register-table tbody tr.tm-bill-skipped td {
+    color: var(--tm-ms-text-muted);
+    text-decoration: line-through;
+  }
+  .register-table tbody tr.tm-bill-overdue td {
+    color: var(--tm-negative);
+  }
+
+  /* Stock Win32 sunken field. */
+  .aero-field {
+    background: var(--tm-ms-field-bg);
+    border: 1px solid var(--tm-ms-field-border-in);
+    border-top-color: var(--tm-ms-field-border-top);
+    border-bottom-color: var(--tm-ms-field-border-bot);
+    padding: 1px 4px;
+  }
+}
+
+/* Money formatting helpers */
+.money-neg {
+  color: var(--tm-negative);
+}
+.money-pos {
+  color: var(--tm-positive);
+}
+
+/* --- Account register grid ---------------------------------------------
+   Backs the register, the reconcile clearing view and the split dialog —
+   one grid, three uses. Neutral-gray hairlines on white/near-white rows are
+   what make it read as Money rather than as decoration.
+   Measured: reference/ms-money-02-account-register.png. See §6.1a, §6.1d. */
+.register-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--tm-font-size);
+  background: var(--tm-ms-row);
+  table-layout: fixed;
+}
+.register-table thead th {
+  /* §61: the header stays put while the register scrolls under it. */
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--tm-ms-grid-header); /* flat */
+  border-top: 1px solid var(--tm-ms-grid-header-rule);
+  border-bottom: 1px solid var(--tm-ms-grid-header-rule);
+  padding: 2px 6px;
+  font-weight: normal;
+  color: var(--tm-ms-text);
+  text-align: left;
+  white-space: nowrap;
+}
+.register-table thead th.num {
+  text-align: right;
+}
+.register-table thead th.mid {
+  text-align: center;
+}
+.register-table tbody td {
+  border-bottom: 1px solid var(--tm-ms-grid-line);
+  border-right: 1px solid var(--tm-ms-grid-line);
+  padding: 0 6px;
+  height: var(--tm-row-height);
+  color: var(--tm-ms-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.register-table tbody tr:nth-child(even) td {
+  background: var(--tm-ms-row-alt);
+}
+/* The active/selected row. Also the ground the entry form sits on (§6.1b). */
+.register-table tbody tr.active td,
+.register-table tbody tr.active:nth-child(even) td {
+  background: var(--tm-ms-row-active);
+}
+/* Group header band: Deposits / Checks / Other Withdrawals (§6.1d). */
+.register-table tbody tr.group td,
+.register-table tbody tr.group:nth-child(even) td {
+  background: var(--tm-ms-group-header);
+  border-bottom: 1px solid var(--tm-ms-group-header-rule);
+  border-right: none;
+  font-weight: bold;
+}
+/* Filler rows: Money draws empty rows to the bottom of the viewport. */
+.register-table tbody tr.filler td {
+  color: transparent;
+}
+.register-table td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.register-table td.mid {
+  text-align: center;
+}
+.register-table td.balance {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+/* `.register-table tbody td` sets a color at specificity (0,1,2), which beat
+   the bare `.money-neg` / `.money-pos` helpers at (0,1,0) — so a negative
+   running balance, and every other money cell in the register, silently
+   rendered in the ordinary text color. Match on the cell to win. */
+.register-table tbody td.money-neg {
+  color: var(--tm-negative);
+}
+.register-table tbody td.money-pos {
+  color: var(--tm-positive);
+}
+
+/* Footer strip under the register: Balanced on … Ending Balance (§6.1a #9). */
+.register-footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 8px;
+  border-top: 1px solid var(--tm-ms-card-border);
+  background: var(--tm-ms-card-body);
+}
+
+/* --- Vista-era modal dialogs (§6.1c, §6.1e) ----------------------------- */
+.tm-dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 50;
+  min-width: 640px;
+  background: var(--tm-ms-dialog-bg);
+  border: 1px solid var(--tm-ms-dialog-field-border);
+  box-shadow: 0 4px 20px rgba(20, 50, 90, 0.35);
+}
+.tm-dialog-title {
+  background: var(--tm-ms-dialog-title);
+  border-bottom: 1px solid var(--tm-ms-dialog-rule);
+  padding: 5px 10px;
+  font-weight: bold;
+}
+.tm-dialog-body {
+  padding: 10px;
+}
+/* §133 — the direction of a category merge, drawn.
+   The two sides are deliberately NOT symmetrical: the one being deleted is
+   struck through and dimmed, the survivor is solid. A person who reads only
+   the two names still gets the answer. */
+.tm-merge-flow {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  margin: 6px 0 2px;
+}
+.tm-merge-side {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--tm-ms-dialog-field-border);
+  background: var(--tm-ms-field-bg);
+}
+.tm-merge-name {
+  font-weight: bold;
+  word-break: break-word;
+}
+.tm-merge-fate {
+  font-size: 11px;
+  opacity: 0.75;
+}
+/* §151 — a merge that cannot be done. Uses the error box §144 added, so a
+   refusal here looks like a refusal anywhere else in the app. */
+.tm-merge-blocked {
+  border: 1px solid var(--tm-ms-error-border);
+  background: var(--tm-ms-error-bg);
+  color: var(--tm-ms-error-text);
+  padding: 8px 10px;
+  margin: 6px 0;
+}
+.tm-merge-blocked-head {
+  font-weight: bold;
+  margin-bottom: 2px;
+}
+.tm-merge-blocked p {
+  margin: 2px 0 0;
+}
+
+/* §181 — one notice strip, two tones. A refusal from the backend used to
+   arrive in the same cream bar as "added to favorites", and a message that
+   says NO looked exactly like one that says done:
+   > "the warning should probably be a light red to highlight the message"
+   The error tone is the §142 error box again (every look sets or inherits
+   --tm-ms-error-*, and theme.test.ts holds each pair to a readable contrast),
+   with a ⚠ so the difference is not carried by hue alone. The info tone is
+   the register's old cream strip, unchanged. `Notice.tsx` draws both. */
+.tm-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 12px;
+  border: 1px solid transparent;
+  color: var(--tm-ms-text);
+  background: var(--tm-ms-row-active);
+}
+.tm-notice-error {
+  background: var(--tm-ms-error-bg);
+  border-color: var(--tm-ms-error-border);
+  color: var(--tm-ms-error-text);
+}
+.tm-notice-icon {
+  flex: none;
+  font-weight: bold;
+  line-height: 1;
+}
+.tm-notice-text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+/* Inside a dialog or a form the strip is a box among other boxes, so it gets
+   the dialog's rounding and a little air rather than running edge to edge. */
+.tm-notice-boxed {
+  border-radius: var(--tm-radius-sm);
+  padding: 6px 8px;
+  margin: 4px 0;
+}
+/* A boxed info note sits on the entry form's own cream ground (the far row's
+   "belongs to the payment in …"), where the strip's cream would vanish; it
+   takes the field ground and border instead, so it reads as a note. */
+.tm-notice-boxed:not(.tm-notice-error) {
+  background: var(--tm-ms-field-bg);
+  border-color: var(--tm-ms-dialog-field-border);
+}
+
+/* §149 — the side that is about to be deleted.
+   > "along with the strikethrough maybe making the removed category red with
+   >  being mostly opaque"
+   The strikethrough alone was carrying the whole message, and a strikethrough
+   is easy to miss on one word. Red AND faded AND struck through: three
+   signals for a thing that cannot be undone without Ctrl+Z. */
+.tm-merge-from {
+  border-color: var(--tm-negative);
+  background: var(--tm-ms-error-bg);
+  opacity: 0.85;
+}
+.tm-merge-from .tm-merge-name {
+  text-decoration: line-through;
+  color: var(--tm-negative);
+  opacity: 0.8;
+}
+.tm-merge-from .tm-merge-fate {
+  color: var(--tm-negative);
+  opacity: 0.9;
+}
+.tm-merge-into {
+  border-color: var(--tm-ms-row-active);
+  box-shadow: inset 0 0 0 1px var(--tm-ms-row-active);
+}
+.tm-merge-arrow {
+  align-self: center;
+  font-size: 18px;
+  line-height: 1;
+  opacity: 0.8;
+}
+@media (max-width: 420px) {
+  .tm-merge-flow {
+    flex-direction: column;
+  }
+  .tm-merge-arrow {
+    transform: rotate(90deg);
+  }
+}
+
+/* §134 — "this computer has no key for that file", said on the row rather
+   than after the click. Deliberately a quiet badge and not a red error: the
+   file is fine and openable, it just needs one paste. */
+.tm-needs-key {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 5px;
+  font-size: 10px;
+  font-weight: normal;
+  line-height: 15px;
+  vertical-align: 1px;
+  border: 1px solid var(--tm-ms-dialog-field-border);
+  border-radius: 7px;
+  background: var(--tm-ms-field-bg);
+  opacity: 0.85;
+}
+
+.tm-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+/* Right-click menu on a register row. */
+.tm-context-menu {
+  position: fixed;
+  z-index: 60;
+  min-width: 170px;
+  background: var(--tm-ms-field-bg);
+  border: 1px solid var(--tm-ms-field-border-in);
+  box-shadow: 0 2px 8px rgba(20, 50, 90, 0.3);
+  padding: 2px;
+}
+.tm-context-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 3px 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--tm-ms-text);
+}
+.tm-context-menu button:hover {
+  background: var(--tm-ms-group-header);
+}
+
+/* A voided transaction (§6.1h): still legible, visibly not counting. The
+   amount stays on screen — the record of what the charge was is the point. */
+.register-table tbody tr.voided td {
+  color: var(--tm-ms-text-muted);
+  text-decoration: line-through;
+}
+.register-table tbody tr.voided td.balance {
+  text-decoration: none;
+}
+.void-tag {
+  text-decoration: none;
+  font-weight: bold;
+  color: var(--tm-negative);
+  font-size: 0.9em;
+}
+
+/* --- Type-ahead category field (§17) ------------------------------------ */
+.tm-combo-list {
+  /* Positioned inline by CategoryCombo (portaled to <body> so no ancestor's
+     overflow can clip it — see §19). Only the look lives here. */
+  z-index: 200;
+  overflow-y: auto;
+  margin: 0;
+  padding: 2px 0;
+  list-style: none;
+  background: var(--tm-ms-field-bg);
+  border: 1px solid var(--tm-ms-field-border-in);
+  box-shadow: 0 2px 8px rgba(20, 50, 90, 0.3);
+}
+.tm-combo-list [role="option"],
+.tm-combo-empty {
+  padding: 2px 8px;
+  cursor: default;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tm-combo-option.active,
+.tm-combo-list > [role="option"].active {
+  background: var(--tm-ms-row-active);
+}
+.tm-combo-group {
+  padding: 3px 8px 1px;
+  font-weight: bold;
+  color: var(--tm-ms-text-muted);
+  border-top: 1px solid var(--tm-ms-grid-line);
+}
+.tm-combo-group:first-child {
+  border-top: none;
+}
+.tm-combo-empty {
+  color: var(--tm-ms-text-muted);
+  font-style: italic;
+}
+.tm-combo-add {
+  border-top: 1px solid var(--tm-ms-grid-line);
+  font-style: italic;
+}
+
+/* --- Reports (§39) --------------------------------------------------------
+   Money's report page: a "Common tasks" rail on the left, a large navy title,
+   the date-range line beneath it, then the table or chart. Section headers in
+   a report table reuse the register's group band. */
+.tm-report-tasks {
+  width: 190px;
+  flex: none;
+  font-size: var(--tm-font-size);
+}
+.tm-report-tasks .tm-rail-head {
+  color: var(--tm-ms-text-railhead);
+  font-weight: bold;
+  padding: 4px 0 2px;
+  border-bottom: 1px solid var(--tm-ms-rail-divider);
+  margin-bottom: 4px;
+}
+.tm-report-tasks .tm-rail-link {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 2px 0;
+  color: var(--tm-ms-text-link);
+  cursor: pointer;
+  font: inherit;
+}
+.tm-report-tasks .tm-rail-link:hover {
+  text-decoration: underline;
+}
+.tm-report-title {
+  font-size: 22px;
+  font-weight: normal;
+  color: var(--tm-ms-text-heading);
+  margin: 0 0 2px;
+}
+.tm-report-subtitle {
+  font-size: var(--tm-font-size);
+  color: var(--tm-ms-text);
+  margin-bottom: 10px;
+}
+.tm-text-muted {
+  color: var(--tm-ms-text-muted);
+}
+/* §118 — the report's period, at the top where it can be found, on its own
+   band so it reads as the report's setting rather than part of the table. */
+.tm-report-range {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--tm-font-size);
+  padding: 4px 6px;
+  margin-bottom: 8px;
+  border: 1px solid var(--tm-ms-border);
+  border-radius: 3px;
+  background: var(--tm-ms-panel, #f3f6fb);
+}
+/* §118 — Customize's way out: Apply / Cancel / Reset on a footer band. */
+.tm-customize-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px 10px;
+  font-size: var(--tm-font-size);
+}
+/* §118 — what a valued asset's register is for, said at the top of it. */
+.tm-asset-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  margin: 0 2px 4px;
+  font-size: var(--tm-font-size);
+  border: 1px solid var(--tm-ms-border);
+  border-radius: 3px;
+  background: var(--tm-ms-panel, #f3f6fb);
+}
+/* §118 — a checkbox list in place of a Ctrl-click multi-select. */
+.tm-picklist-box {
+  border: 1px solid var(--tm-ms-border);
+  border-radius: 3px;
+  background: #fff;
+  overflow-y: auto;
+}
+.tm-picklist-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.tm-picklist-row:hover {
+  background: var(--tm-ms-row-hover, #eaf2fb);
+}
+.tm-picklist-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tm-picklist-hint {
+  color: var(--tm-ms-text-muted);
+}
+/* Money's report table (as in its Monthly Income and Expenses report):
+   a light-blue header band, then NO gridlines — plain rows, sections in bold
+   with a hairline beneath, parents bold, "Total X" in link blue, and the
+   final line bold with a rule above. Numbers are bare, right-aligned. */
+.tm-report-table {
+  table-layout: auto;
+  width: auto;
+  min-width: 480px;
+}
+.tm-report-table thead th {
+  border: 1px solid var(--tm-ms-grid-header-rule);
+  border-left: none;
+}
+.tm-report-table thead th:first-child {
+  border-left: 1px solid var(--tm-ms-grid-header-rule);
+}
+.tm-report-table tbody td {
+  border: none;
+  height: 19px;
+  padding: 0 10px 0 6px;
+}
+.tm-report-table tbody tr:nth-child(even) td {
+  background: var(--tm-ms-row);
+}
+.tm-report-table tbody td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  min-width: 90px;
+}
+.tm-report-table tbody tr.tm-report-section td {
+  font-weight: bold;
+  border-bottom: 1px solid var(--tm-ms-grid-header-rule);
+  padding-top: 8px;
+  height: 27px;
+}
+.tm-report-table tbody tr.tm-report-group td,
+.tm-report-table tbody tr.tm-report-bold td {
+  font-weight: bold;
+}
+.tm-report-table tbody tr.tm-report-subtotal td {
+  color: var(--tm-ms-text-link);
+}
+.tm-report-table tbody tr.tm-report-total td {
+  font-weight: bold;
+  border-top: 1px solid var(--tm-ms-grid-header-rule);
+  padding-top: 4px;
+  height: 25px;
+}
+.tm-report-table tbody tr.tm-report-link {
+  cursor: pointer;
+}
+.tm-report-table tbody tr.tm-report-link:hover td:first-child {
+  text-decoration: underline;
+  color: var(--tm-ms-text-link);
+}
+.tm-report-gallery {
+  columns: 2;
+  column-gap: 16px;
+}
+.tm-report-gallery .aero-card {
+  break-inside: avoid;
+  margin-bottom: 16px;
+}
+.tm-report-gallery ul {
+  list-style: square inside;
+  padding: 6px 10px;
+  font-size: var(--tm-font-size);
+}
+.tm-report-gallery li {
+  padding: 2px 0;
+}
+.tm-report-gallery li button {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--tm-ms-text-link);
+  cursor: pointer;
+  font: inherit;
+}
+.tm-report-gallery li button:hover {
+  text-decoration: underline;
+}
+.tm-chart-legend {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: var(--tm-font-size);
+}
+.tm-chart-legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 0;
+}
+.tm-chart-legend.horizontal {
+  display: flex;
+  gap: 16px;
+  padding-top: 4px;
+}
+.tm-chart-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--tm-chart-axis);
+}
+/* Printing (§85). Chrome and the rail go; the content area is the page;
+   scroll boxes open out so every row prints; buttons, forms, dialogs and
+   the entry line are not paper. Row stripes and red amounts are kept
+   (print-color-adjust). A print-only line at the top of a register or a
+   report names what it is and when it was printed. */
+.tm-print-only {
+  display: none;
+}
+@media print {
+  .tm-report-tasks,
+  .aero-header,
+  .tm-rail-grip,
+  .tm-dialog-backdrop,
+  .tm-dialog,
+  .tm-no-print,
+  .aero-btn,
+  .tm-entry-row,
+  .tm-reconcile-bar,
+  aside[aria-label="Money navigation"] {
+    display: none !important;
+  }
+  .tm-print-only {
+    display: block;
+    font-size: 12px;
+    margin: 0 0 6px 0;
+  }
+  /* The line's text rides in data-print so it is not on screen, not in the
+     accessibility tree, and not in any test's way. */
+  .tm-print-only::before {
+    content: attr(data-print);
+    font-weight: bold;
+  }
+  html,
+  body,
+  main {
+    background: #fff !important;
+    color: #000 !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+  main {
+    padding: 0 !important;
+  }
+  .tm-print-open {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  .register-table thead th {
+    position: static !important;
+  }
+  .aero-card {
+    box-shadow: none !important;
+    border: 1px solid #999 !important;
+    break-inside: avoid;
+  }
+  table {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  tr {
+    break-inside: avoid;
+  }
+  thead {
+    display: table-header-group;
+  }
+  @page {
+    margin: 12mm;
+  }
+}
+
+/* Lots (§41): the picker in the sell form and the detail under a holding. */
+.tm-lot-table {
+  border-collapse: collapse;
+  font-size: 11px;
+  margin: 4px 0 2px 90px;
+}
+.tm-lot-table th,
+.tm-lot-table td {
+  padding: 2px 8px;
+  border-bottom: 1px solid var(--tm-ms-grid, #e3e6ea);
+  text-align: left;
+}
+.tm-lot-table th.num,
+.tm-lot-table td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.tm-lot-table tfoot td {
+  border-bottom: none;
+}
+.tm-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-decoration: underline dotted;
+}
+
+/* The rail's drag edge (§42). */
+.tm-rail-grip {
+  width: 5px;
+  flex: 0 0 5px;
+  cursor: col-resize;
+  background: transparent;
+  border-right: 1px solid var(--tm-ms-rail-divider);
+  touch-action: none;
+}
+.tm-rail-grip:hover,
+.tm-rail-grip:focus-visible {
+  background: var(--tm-ms-row-active, #cfe0f5);
+  outline: none;
+}
+
+/* A row tagged for a savings goal (§46). */
+.tm-goal-tag {
+  font-size: 10px;
+  color: var(--tm-ms-text-muted, #5a6b80);
+}
+
+/* Bill calendar (§52): the month grid on the Bills page. */
+.tm-calendar-grid {
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 11px;
+}
+.tm-calendar-grid th {
+  text-align: center;
+  font-weight: normal;
+  color: var(--tm-ms-text-muted, #5a6a7a);
+  padding: 2px 0;
+  border-bottom: 1px solid var(--tm-ms-grid, #e3e6ea);
+}
+.tm-calendar-grid td {
+  vertical-align: top;
+  height: 64px;
+  padding: 2px;
+  border: 1px solid var(--tm-ms-grid, #e3e6ea);
+  background: #fff;
+}
+.tm-calendar-grid td.tm-cal-empty {
+  background: transparent;
+}
+.tm-calendar-grid td.tm-cal-past {
+  background: #f6f7f9;
+}
+.tm-calendar-grid td.tm-cal-today {
+  outline: 2px solid var(--tm-ms-accent, #3b7dd8);
+  outline-offset: -2px;
+}
+.tm-cal-num {
+  text-align: right;
+  color: var(--tm-ms-text-muted, #5a6a7a);
+  padding-right: 2px;
+}
+.tm-cal-today .tm-cal-num {
+  font-weight: bold;
+  color: var(--tm-ms-accent, #3b7dd8);
+}
+.tm-cal-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+  width: 100%;
+  margin: 1px 0;
+  padding: 0 3px;
+  border: 1px solid #c9d6e8;
+  border-radius: 3px;
+  background: #e8f0fb;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  line-height: 15px;
+}
+.tm-cal-item:hover {
+  background: #d7e5f8;
+}
+.tm-cal-item.tm-cal-in {
+  background: #e6f5e6;
+  border-color: #b9dbb9;
+}
+.tm-cal-item.tm-bill-done {
+  color: var(--tm-ms-text-muted, #5a6a7a);
+  text-decoration: line-through;
+}
+.tm-cal-item.tm-bill-skipped {
+  color: var(--tm-ms-text-muted, #5a6a7a);
+  opacity: 0.7;
+}
+.tm-cal-item.tm-bill-overdue {
+  background: #fbe9e7;
+  border-color: #e8b4ad;
+  color: #a12b1e;
+}
+.tm-cal-payee {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tm-cal-amt {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Home's Spending Tracker lines open the report behind them (§58). */
+.tm-tracker-row {
+  border-radius: 4px;
+  padding: 2px 4px;
+  margin: 0 -4px;
+  width: calc(100% + 8px);
+  cursor: pointer;
+}
+.tm-tracker-row:hover:not(:disabled) {
+  background: var(--tm-ms-row-active);
+}
+.tm-tracker-row:disabled {
+  cursor: default;
+}
+
+/* The report chart's style bar (§59). */
+.tm-chart-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 0 6px;
+  font-size: var(--tm-font-size);
+}
+.tm-chart-bar .tm-chart-bar-on {
+  background: var(--tm-ms-subnav-selected);
+  font-weight: 700;
+}
+
+/* Home's Subscriptions card (§60). */
+.tm-subs td,
+.tm-subs th {
+  padding: 2px 4px;
+}
+.tm-subs tbody tr:nth-child(even) {
+  background: var(--tm-ms-row-alt);
+}
+.tm-subs-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--tm-ms-text-link);
+  cursor: pointer;
+  font: inherit;
+}
+.tm-subs-link:hover {
+  text-decoration: underline;
+}
+/* §76: the small × that puts a charge on the ignore list. Faint until the
+   row is hovered, so the card reads as a list and not a row of buttons. */
+.tm-subs-ignore {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  padding: 0 4px;
+  color: var(--tm-ms-text-muted);
+  cursor: pointer;
+  font: inherit;
+  line-height: 1.1;
+  opacity: 0.35;
+}
+tr:hover .tm-subs-ignore,
+li:hover .tm-subs-ignore,
+.tm-subs-ignore:focus-visible {
+  opacity: 1;
+}
+.tm-subs-ignore:hover {
+  border-color: var(--tm-ms-card-border);
+  color: var(--tm-ms-text);
+}
+
+/* §61: the always-open entry line at the foot of the register. */
+.register-table tbody tr.tm-entry-row {
+  cursor: text;
+}
+.register-table tbody tr.tm-entry-row td {
+  background: var(--tm-ms-row-active);
+  border-top: 1px solid var(--tm-ms-grid-header-rule);
+}
+.register-table tbody tr.tm-entry-row .tm-entry-hint {
+  color: var(--tm-ms-text-muted);
+  font-style: italic;
+}
+.register-table tbody tr.tm-entry-row:hover td,
+.register-table tbody tr.tm-entry-row:focus td {
+  outline: none;
+  filter: brightness(0.97);
+}
+
+/* The Help tab (§62). */
+.tm-help {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  min-height: 60vh;
+}
+.tm-help-nav {
+  width: 260px;
+  flex: none;
+  position: sticky;
+  top: 0;
+}
+.tm-help-nav .tm-rail-head {
+  font-weight: 700;
+  color: var(--tm-ms-text-link);
+  border-bottom: 1px solid var(--tm-ms-rail-divider);
+  margin: 8px 0 2px;
+  padding-bottom: 2px;
+}
+.tm-help-nav ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.tm-help-item,
+.tm-help-hit {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 2px 6px;
+  color: var(--tm-ms-text-link);
+  cursor: pointer;
+  font: inherit;
+  border-radius: 3px;
+}
+.tm-help-item:hover,
+.tm-help-hit:hover {
+  text-decoration: underline;
+}
+.tm-help-item.active,
+.tm-help-hit.active {
+  background: var(--tm-ms-row-active);
+  color: var(--tm-ms-text);
+  font-weight: 700;
+}
+.tm-help-hit {
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--tm-ms-grid-line);
+}
+.tm-help-hit-title {
+  display: block;
+  font-weight: 700;
+}
+.tm-help-hit-group {
+  display: block;
+  font-size: 10px;
+  color: var(--tm-ms-text-muted);
+}
+.tm-help-hit-snippet {
+  display: block;
+  font-size: 11px;
+  color: var(--tm-ms-text);
+  font-weight: normal;
+}
+.tm-help-article {
+  flex: 1;
+  min-width: 0;
+  max-width: 820px;
+  background: var(--tm-ms-row);
+  border: 1px solid var(--tm-ms-field-border-in);
+  padding: 12px 20px 20px;
+  line-height: 1.45;
+}
+.tm-help-crumbs {
+  font-size: 11px;
+  color: var(--tm-ms-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.tm-help-blurb {
+  color: var(--tm-ms-text-muted);
+  margin: 0 0 10px;
+}
+.tm-help-body h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--tm-ms-text-link);
+  margin: 16px 0 4px;
+  border-bottom: 1px solid var(--tm-ms-rail-divider);
+}
+.tm-help-body h4 {
+  font-size: 13px;
+  font-weight: 700;
+  margin: 12px 0 2px;
+}
+.tm-help-body p {
+  margin: 6px 0;
+}
+.tm-help-body ul {
+  margin: 4px 0 8px;
+  padding-left: 22px;
+  list-style: disc;
+}
+.tm-help-body li {
+  margin: 3px 0;
+}
+.tm-help-body code {
+  font-family: Consolas, "Courier New", monospace;
+  background: var(--tm-ms-row-alt);
+  border: 1px solid var(--tm-ms-grid-line);
+  padding: 0 3px;
+  border-radius: 2px;
+}
+.tm-help-tip {
+  background: var(--tm-ms-row-active);
+  border-left: 3px solid var(--tm-ms-subnav-selected);
+  padding: 6px 10px;
+  margin: 8px 0;
+}
+.tm-help-link {
+  color: var(--tm-ms-text-link);
+  text-decoration: underline;
+}
+.tm-help-seealso {
+  margin-top: 16px;
+  padding-top: 8px;
+  border-top: 1px solid var(--tm-ms-grid-line);
+}
+
+/* Settings → Theme (§63). */
+.tm-theme-grid {
+  display: grid;
+  /* §99: half the width they were. Ten themes and ten looks do not fit at
+     236px, and the point of a swatch is to be recognized, not read. */
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  gap: 8px;
+}
+.tm-theme-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  background: var(--tm-ms-row);
+}
+.tm-theme-choice:hover {
+  border-color: var(--tm-ms-card-border);
+}
+.tm-theme-choice.active {
+  border-color: var(--tm-ms-subnav-selected);
+  background: var(--tm-ms-row-active);
+}
+.tm-theme-choice input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.tm-theme-label {
+  font-weight: 700;
+  font-size: 11.5px;
+}
+.tm-theme-blurb {
+  color: var(--tm-ms-text-muted);
+  font-size: 11px;
+}
+
+/* The report's quick look at a row's transactions (§68). */
+.tm-peek {
+  width: min(900px, 92vw);
+  min-width: 0;
+}
+.tm-peek-body {
+  max-height: 70vh;
+  overflow: auto;
+}
+.tm-peek .tm-report-link {
+  cursor: pointer;
+}
+.tm-peek .tm-report-link:hover td {
+  background: var(--tm-ms-row-active);
+}
+
+/* Home's cards stay a screen tall (§68): about twenty rows, then scroll. */
+.tm-home-scroll {
+  max-height: min(60vh, 520px);
+  overflow-y: auto;
+}
+
+/* §69: balancing as a strip above the register, and the C toggle on an open row. */
+.tm-reconcile-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 5px 10px;
+  margin: 0 0 2px;
+  background: var(--tm-ms-dialog-bg);
+  border: 1px solid var(--tm-ms-dialog-field-border);
+  border-radius: var(--tm-radius-sm);
+  font-size: var(--tm-font-size);
+}
+.tm-clear-toggle {
+  width: 100%;
+  min-width: 18px;
+  background: var(--tm-ms-field-bg);
+  border: 1px solid var(--tm-ms-field-border-in);
+  border-radius: 2px;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  color: var(--tm-ms-text);
+}
+.tm-clear-toggle:hover {
+  background: var(--tm-ms-row-active);
+}
+
+/* §71: the typed date field, with a calendar button that opens the native picker. */
+.tm-datefield {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+}
+.tm-datefield input[type="text"] {
+  flex: 1;
+  min-width: 0;
+  padding-right: 16px;
+}
+.tm-datefield .tm-datefield-bad {
+  border-color: var(--tm-negative);
+  color: var(--tm-negative);
+}
+.tm-datefield-picker {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.tm-datefield-btn {
+  position: absolute;
+  right: 1px;
+  top: 1px;
+  bottom: 1px;
+  width: 14px;
+  border: none;
+  background: transparent;
+  color: var(--tm-ms-text-muted);
+  cursor: pointer;
+  font-size: 9px;
+  padding: 0;
+}
+.tm-datefield-btn:hover {
+  color: var(--tm-ms-text);
+}
+
+/* §73: category and memo alongside the payee. */
+.register-table .tm-row-sub {
+  color: var(--tm-ms-text-muted);
+  font-size: 0.92em;
+}
+
+/* §96: a fold-away note. Used for anything that must be visible but is not
+   news after the first read — the share ledger's unhonored rows, for one.
+   Hiding such a thing outright would be dishonest; leaving it open costs the
+   user the top of every screen it appears on. */
+.tm-notes {
+  border: 1px solid var(--tm-border);
+  background: var(--tm-ms-row);
+  border-radius: 3px;
+  margin: 4px 2px 8px;
+  font-size: 12px;
+}
+.tm-notes > summary {
+  cursor: pointer;
+  padding: 4px 8px;
+  user-select: none;
+}
+.tm-notes > summary:hover {
+  text-decoration: underline;
+}
+.tm-notes[open] > summary {
+  border-bottom: 1px solid var(--tm-border);
+}
+.tm-notes-body {
+  padding: 4px 8px 6px;
+}
+
+/* §96: the header's search box. Tokens, so it follows the theme — it used to
+   carry a literal near-white ground with no color of its own, which meant
+   white-on-white typing under Evening. */
+.tm-header-search {
+  background: var(--tm-ms-field-bg);
+  color: var(--tm-ms-text);
+  border: 1px solid var(--tm-ms-field-border-in);
+  border-right: none;
+}
+.tm-header-search::placeholder {
+  color: var(--tm-ms-text-muted);
+}
+.tm-header-search-go {
+  background: var(--tm-ms-button-face);
+  color: var(--tm-ms-text);
+  border: 1px solid var(--tm-ms-field-border-in);
+}
+.tm-header-search-go:hover {
+  background: var(--tm-ms-grid-header);
+}
+
+/* §96: a sortable register column header. The button fills the cell so the
+   whole header is the target, not just the word. */
+.tm-sort-th {
+  display: flex;
+  align-items: center;
+  justify-content: inherit;
+  gap: 3px;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: inherit;
+}
+.register-table thead th.num .tm-sort-th {
+  justify-content: flex-end;
+}
+.tm-sort-th:hover > span:first-child {
+  text-decoration: underline;
+}
+.tm-sort-mark {
+  font-size: 8px;
+  line-height: 1;
+  min-width: 8px;
+}
+
+/* §96: the Favorite Accounts watermark. Everything about how loud it is
+   lives here, not in the component — which is what lets a dark theme carry it
+   at a different weight without the drawing knowing about themes.
+   `isolation: isolate` keeps the negative z-index behind the card's own
+   content but in front of the card's background, rather than escaping to
+   whatever is underneath the card. */
+.tm-watermarked {
+  position: relative;
+  isolation: isolate;
+  /* §109 — the field runs to the card's edges, so the card has to clip it.
+     Without this it spills past the rounded corners the Card and Rounded
+     looks give it. */
+  overflow: hidden;
+}
+.tm-watermarked > *:not(.tm-watermark) {
+  position: relative;
+}
+.tm-watermark {
+  position: absolute;
+  /* §107 — the whole card, not a centered motif. It is a FIELD now: a dozen
+     icons spread across the card, so it wants the whole area and lets the
+     card's edges crop it. `slice` on the SVG keeps the spacing right whatever
+     height the card is, which changes with how many accounts are starred. */
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  pointer-events: none;
+  color: var(--tm-ms-text-link);
+  /* Checked against a full card of balances in both themes: readable at a
+     glance with the watermark plainly there, which is the whole brief. */
+  opacity: 0.11;
+}
+:root[data-theme="dark"] .tm-watermark {
+  /* Light ink on a dark ground reads louder at the same alpha. */
+  opacity: 0.15;
+}
+/* §107 — the icons the watermark is made of. All three inks become the text
+   color, and the knockout becomes the card's own body — which is what keeps
+   the $ inside the bag and the slice inside the pie, instead of flattening
+   every icon into a silhouette. */
+.tm-watermark {
+  --tm-icon-primary: currentColor;
+  --tm-icon-secondary: currentColor;
+  --tm-icon-accent: currentColor;
+  --tm-icon-knockout: var(--tm-ms-card-body);
+}
+
+/* §97: the menu bar. Money's proportions — a 20px strip, 12px labels, a
+   dropdown with a hairline border and a highlight that fills the row. */
+.tm-menubar {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  background: var(--tm-ms-menubar-bg, var(--tm-ms-button-face));
+  border-bottom: 1px solid var(--tm-ms-card-border);
+  font-size: 12px;
+  user-select: none;
+  position: relative;
+  z-index: 40;
+}
+.tm-menubar-slot {
+  position: relative;
+}
+.tm-menubar-title {
+  padding: 3px 9px;
+  border: none;
+  background: none;
+  color: var(--tm-ms-text);
+  cursor: default;
+  font: inherit;
+  line-height: 16px;
+}
+.tm-menubar-title:hover,
+.tm-menubar-title.open {
+  background: var(--tm-ms-chrome-sel);
+  color: var(--tm-ms-chrome-sel-text);
+}
+.tm-menubar-title u {
+  text-decoration: underline;
+}
+
+.tm-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 210px;
+  padding: 2px;
+  background: var(--tm-ms-dialog-bg);
+  border: 1px solid var(--tm-ms-card-border);
+  box-shadow: 2px 3px 8px rgba(0, 0, 0, 0.28);
+  z-index: 41;
+}
+/* A submenu opens beside its parent row, not below it. */
+.tm-menu .tm-menu {
+  top: 0;
+  left: 100%;
+}
+.tm-menu-slot {
+  position: relative;
+}
+.tm-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 3px 8px 3px 18px;
+  border: none;
+  background: none;
+  color: var(--tm-ms-text);
+  font: inherit;
+  text-align: left;
+  cursor: default;
+  line-height: 18px;
+}
+.tm-menu-item:hover:not(.disabled),
+.tm-menu-item.open {
+  background: var(--tm-ms-chrome-sel);
+  color: var(--tm-ms-chrome-sel-text);
+}
+.tm-menu-item.disabled {
+  color: var(--tm-ms-text-muted);
+  opacity: 0.65;
+}
+.tm-menu-label {
+  flex: 1;
+  white-space: nowrap;
+}
+.tm-menu-accel {
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.tm-menu-arrow {
+  font-size: 9px;
+  margin-left: -6px;
+}
+.tm-menu-sep {
+  height: 1px;
+  margin: 3px 6px;
+  background: var(--tm-ms-dialog-rule);
+}
+
+/* ==========================================================================
+   §99 — LOOKS
+   ==========================================================================
+   A look is the SHAPE; the theme is the colors. Nothing below sets a color
+   that is not a token, so any look works in any theme — which is what stops
+   ten looks times ten themes from being a hundred things to check.
+
+   `data-look` names the look; `data-structure` names how the shell arranged
+   the chrome, so several looks can share one arrangement and differ only
+   here (Compact, Card, Terminal and Focus are all `classic`).
+   ========================================================================== */
+
+/* --- Compact: the same shape, tightened ---------------------------------
+   Rows go 21px → 16px and the chrome loses its padding. On a 1080p screen
+   that is roughly sixty percent more transactions in view at once, which is
+   the entire point — everything else about Money Classic is kept. */
+:root[data-look="compact"] {
+  font-size: 11.5px;
+}
+[data-look="compact"] .register-table tbody td,
+[data-look="compact"] .tm-report-table tbody td {
+  height: 16px;
+  padding: 0 5px;
+  font-size: 11.5px;
+}
+[data-look="compact"] .register-table thead th,
+[data-look="compact"] .tm-report-table thead th {
+  padding: 0 5px;
+  font-size: 10.5px;
+}
+[data-look="compact"] .aero-card {
+  margin-bottom: 6px;
+}
+[data-look="compact"] .aero-card-title {
+  padding: 2px 6px;
+  font-size: 11px;
+}
+[data-look="compact"] .aero-header {
+  padding-top: 3px;
+}
+[data-look="compact"] .aero-tab {
+  padding: 3px 9px;
+  font-size: 11px;
+}
+[data-look="compact"] .aero-side-item {
+  padding-top: 1px;
+  padding-bottom: 1px;
+}
+[data-look="compact"] .aero-btn {
+  padding: 1px 7px;
+}
+
+/* --- Card: rounded panels, no gridlines ---------------------------------
+   The furthest from Money without changing where anything is. Gridlines go
+   entirely: rows are separated by space and a hairline, which is what makes
+   it read as roomy rather than merely padded. */
+[data-look="card"] .aero-card {
+  border-radius: 14px;
+  border-color: transparent;
+  box-shadow: 0 2px 10px rgb(0 0 0 / 8%);
+  overflow: hidden;
+}
+[data-look="card"] .aero-card-title {
+  background: var(--tm-ms-card-body);
+  color: var(--tm-ms-text-heading);
+  border-bottom: 1px solid var(--tm-ms-grid-header);
+  padding: 11px 16px;
+  font-size: 13px;
+}
+[data-look="card"] .register-table thead th,
+[data-look="card"] .tm-report-table thead th {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--tm-ms-grid-header-rule);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  font-size: 10.5px;
+  color: var(--tm-ms-text-muted);
+  padding: 8px 14px;
+}
+[data-look="card"] .register-table tbody td,
+[data-look="card"] .tm-report-table tbody td {
+  border: none;
+  border-bottom: 1px solid var(--tm-ms-grid-header);
+  height: 30px;
+  padding: 0 14px;
+}
+[data-look="card"] .register-table tbody tr:nth-child(even) td,
+[data-look="card"] .tm-report-table tbody tr:nth-child(even) td {
+  background: transparent;
+}
+[data-look="card"] .aero-btn {
+  border-radius: 7px;
+  padding: 4px 11px;
+}
+[data-look="card"] .aero-tab {
+  border-radius: 999px;
+}
+[data-look="card"] .tm-dialog {
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+/* --- Focus: one column, wide margins ------------------------------------
+   For reading a register rather than typing into one. The rail goes, the
+   content is centered at a readable measure, and every rule but the row
+   separator goes with it. */
+[data-look="focus"] .aero-sidebar,
+[data-look="focus"] .tm-rail-grip {
+  display: none;
+}
+[data-look="focus"] main {
+  display: flex;
+  justify-content: center;
+}
+[data-look="focus"] main > * {
+  width: 100%;
+  max-width: 940px;
+}
+[data-look="focus"] .aero-card {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+[data-look="focus"] .aero-card-title {
+  background: transparent;
+  border: none;
+  color: var(--tm-ms-text-heading);
+  font-size: 19px;
+  font-weight: 400;
+  letter-spacing: -0.2px;
+  padding: 18px 4px 10px;
+}
+[data-look="focus"] .register-table thead th,
+[data-look="focus"] .tm-report-table thead th {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--tm-ms-grid-header-rule);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: var(--tm-ms-text-muted);
+  padding: 6px 10px;
+}
+[data-look="focus"] .register-table tbody td,
+[data-look="focus"] .tm-report-table tbody td {
+  border: none;
+  border-bottom: 1px solid var(--tm-ms-grid-header);
+  height: 34px;
+  padding: 0 10px;
+  font-size: 13.5px;
+}
+[data-look="focus"] .register-table tbody tr:nth-child(even) td,
+[data-look="focus"] .tm-report-table tbody tr:nth-child(even) td {
+  background: transparent;
+}
+
+/* --- Terminal: dense monospace ------------------------------------------
+   Every column aligns because every glyph is the same width, which is the
+   one thing a proportional font cannot give a page of figures. Pairs with
+   Midnight; it works in any theme, it just means the most in that one. */
+[data-look="terminal"] .register-table,
+[data-look="terminal"] .tm-report-table,
+[data-look="terminal"] .tm-lot-table {
+  font-family: "Cascadia Mono", Consolas, "DejaVu Sans Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+[data-look="terminal"] .register-table tbody td,
+[data-look="terminal"] .tm-report-table tbody td {
+  height: 17px;
+  padding: 0 8px;
+  font-size: 11.5px;
+  border-bottom: 1px solid var(--tm-ms-grid-line);
+}
+[data-look="terminal"] .register-table tbody tr:nth-child(even) td,
+[data-look="terminal"] .tm-report-table tbody tr:nth-child(even) td {
+  background: transparent;
+}
+[data-look="terminal"] .register-table thead th,
+[data-look="terminal"] .tm-report-table thead th {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--tm-ms-grid-header-rule);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 10.5px;
+  font-weight: 400;
+  color: var(--tm-ms-text-muted);
+  padding: 1px 8px;
+}
+[data-look="terminal"] .aero-card {
+  border-radius: 0;
+}
+[data-look="terminal"] .aero-card-title {
+  font-family: "Cascadia Mono", Consolas, ui-monospace, monospace;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 11px;
+  padding: 3px 8px;
+}
+[data-look="terminal"] .aero-tab {
+  font-family: "Cascadia Mono", Consolas, ui-monospace, monospace;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 10.5px;
+  border-radius: 0;
+}
+
+/* §99: the Look picker's wireframe. Half the height of a theme swatch —
+   ten looks and ten themes have to fit on one screen. */
+.tm-look-preview {
+  position: relative;
+  height: 38px;
+  width: 100%;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+/* §99 — the Ribbon look. Tokens only: it inherits whatever theme is on. */
+.tm-ribbon {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  padding: 6px 8px 2px;
+  background: var(--tm-ms-content-bg);
+  border-bottom: 1px solid var(--tm-ms-card-border);
+  overflow-x: auto;
+}
+.tm-ribbon-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 10px;
+  border-right: 1px solid var(--tm-ms-grid-header-rule);
+}
+.tm-ribbon-group:last-child {
+  border-right: none;
+}
+.tm-ribbon-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  flex: 1;
+}
+.tm-ribbon-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  justify-content: center;
+}
+.tm-ribbon-name {
+  font-size: 10px;
+  color: var(--tm-ms-text-muted);
+  padding-top: 3px;
+}
+.tm-ribbon-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: none;
+  color: var(--tm-ms-text);
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.tm-ribbon-btn.big {
+  flex-direction: column;
+  gap: 3px;
+  width: 66px;
+  padding: 4px 2px;
+  font-size: 11px;
+  text-align: center;
+}
+.tm-ribbon-btn.small {
+  padding: 1px 6px 1px 3px;
+  font-size: 11.5px;
+}
+.tm-ribbon-btn:hover:not(.disabled) {
+  background: var(--tm-ms-grid-header);
+  border-color: var(--tm-ms-grid-header-rule);
+}
+.tm-ribbon-btn.disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.tm-ribbon-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--tm-ms-grid-header-rule);
+  flex: none;
+}
+
+/* §125 — collapsed: one strip of live icons, and the chevron that undoes it.
+   The group rules stay, so the commands keep the shape you learned them in. */
+.tm-ribbon.collapsed {
+  align-items: center;
+  padding: 2px 8px;
+}
+.tm-ribbon.collapsed .tm-ribbon-group {
+  flex-direction: row;
+  align-items: center;
+  gap: 2px;
+  padding: 0 6px;
+}
+.tm-ribbon-btn.icon {
+  padding: 4px;
+  border-radius: 4px;
+}
+/* §127 — a button with a word on it, not a chevron you have to already know. */
+.tm-ribbon-toggle {
+  margin-left: auto;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--tm-ms-card-border);
+  border-radius: 4px;
+  background: var(--tm-ms-card-body);
+  color: var(--tm-ms-text);
+  font: inherit;
+  font-size: 11.5px;
+  line-height: 1;
+  padding: 5px 10px;
+  cursor: pointer;
+  flex: none;
+  white-space: nowrap;
+}
+.tm-ribbon-toggle-arrow {
+  font-size: 9px;
+  color: var(--tm-ms-text-muted);
+}
+.tm-ribbon-toggle:hover {
+  background: var(--tm-ms-grid-header);
+  border-color: var(--tm-ms-tab-active-bot);
+}
+.tm-ribbon-toggle:hover .tm-ribbon-toggle-arrow {
+  color: var(--tm-ms-text);
+}
+
+/* §99 — Document tabs. A register per tab, the way a browser does it. */
+.tm-doctabs {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  padding: 5px 8px 0;
+  background: var(--tm-ms-content-bg);
+  border-bottom: 1px solid var(--tm-ms-card-border);
+  overflow-x: auto;
+}
+.tm-doctab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 230px;
+  padding: 5px 10px 6px;
+  border: 1px solid var(--tm-ms-card-border);
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  background: var(--tm-ms-grid-header);
+  color: var(--tm-ms-text);
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.tm-doctab.active {
+  background: var(--tm-ms-row);
+  font-weight: 650;
+  box-shadow: inset 0 -2px 0 var(--tm-ms-tab-active-bot);
+}
+.tm-doctab-x {
+  color: var(--tm-ms-text-muted);
+  font-size: 13px;
+  line-height: 1;
+}
+.tm-doctab-x:hover {
+  color: var(--tm-negative);
+}
+
+/* §99 — Three-pane: the middle column of accounts and their balances. */
+.tm-accounts-pane {
+  width: 250px;
+  flex: none;
+  overflow-y: auto;
+  border-right: 1px solid var(--tm-ms-card-border);
+  background: var(--tm-ms-row-alt);
+}
+.tm-accounts-group {
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--tm-ms-text-muted);
+  padding: 9px 12px 3px;
+  font-weight: 600;
+}
+.tm-accounts-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 7px 12px;
+  border: none;
+  border-bottom: 1px solid var(--tm-ms-grid-header);
+  background: none;
+  color: var(--tm-ms-text);
+  cursor: pointer;
+  font: inherit;
+}
+.tm-accounts-item:hover {
+  background: var(--tm-ms-grid-header);
+}
+.tm-accounts-item.active {
+  background: var(--tm-ms-row-active);
+  box-shadow: inset 3px 0 0 var(--tm-ms-tab-active-bot);
+}
+.tm-accounts-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.tm-accounts-sub {
+  font-size: 11px;
+  color: var(--tm-ms-text-muted);
+  margin-top: 1px;
+}
+
+/* §126 — Two-up. The watched register beside the worked one: narrower,
+   quieter, and its own scroller so the two never fight for the page. */
+.tm-watch-pane {
+  display: flex;
+  flex-direction: column;
+  width: 38%;
+  min-width: 300px;
+  max-width: 620px;
+  border-left: 1px solid var(--tm-ms-card-border);
+  background: var(--tm-ms-content-bg);
+  overflow: hidden;
+}
+.tm-watch-head {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--tm-ms-card-border);
+}
+.tm-watch-head select {
+  flex: 1;
+  min-width: 0;
+}
+.tm-watch-balance {
+  padding: 5px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--tm-ms-grid-header-rule);
+}
+.tm-watch-grid {
+  flex: 1;
+  overflow: auto;
+}
+.tm-watch-empty {
+  padding: 14px 12px;
+  font-size: 12px;
+  color: var(--tm-ms-text-muted);
+}
+
+/* §99 — the Sidebar look's tabs, at the top of the rail. */
+.tm-rail-tabs {
+  padding-bottom: 4px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--tm-ms-rail-divider);
+}
+.tm-rail-tabs .aero-side-item {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  font: inherit;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+/* §100 — Settings, as a pop-up with two levels of tab.
+   The top strip is the KIND of thing; the strip under it is the thing. */
+.tm-settings {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.tm-settings-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 0 10px;
+  background: var(--tm-ms-tabstrip-bot);
+  flex: none;
+}
+.tm-settings-tab {
+  padding: 6px 15px;
+  border: none;
+  border-radius: 4px 4px 0 0;
+  background: var(--tm-ms-tab-inactive-bot);
+  color: var(--tm-sky-tint);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.tm-settings-tab.active {
+  background: var(--tm-ms-subnav);
+  color: var(--tm-ms-chrome-sel-text);
+  font-weight: 650;
+}
+.tm-settings-subtabs {
+  display: flex;
+  gap: 16px;
+  padding: 5px 16px 4px;
+  background: var(--tm-ms-subnav);
+  flex: none;
+}
+.tm-settings-subtab {
+  border: none;
+  background: none;
+  color: var(--tm-sky-tint);
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+  padding: 1px 0 2px;
+}
+.tm-settings-subtab.active {
+  color: var(--tm-ms-subnav-selected);
+  font-weight: 700;
+  box-shadow: inset 0 -2px 0 var(--tm-ms-subnav-selected);
+}
+.tm-settings-body {
+  padding: 12px;
+  overflow-y: auto;
+  min-height: 0;
+  background: var(--tm-ms-content-bg);
+}
+
+/* The dialog that holds it. Sized so the ten-swatch pickers fit without
+   the body scrolling on a normal window. */
+.tm-settings-dialog {
+  /* .tm-dialog sets min-width: 640px, which would stop 94vw shrinking on a
+     narrow window — the one case where this dialog most needs to. */
+  min-width: 0;
+  width: min(940px, 94vw);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+.tm-settings-dialog .tm-dialog-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.tm-settings-close {
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+}
+
+/* §102 — `hidden` must actually hide.
+   Tailwind's utilities set `display` from a class, and a class beats the
+   `[hidden]` attribute rule in the UA sheet. So `hidden={!showTabs}` on an
+   element that also carries `flex` did NOTHING: the Sidebar look, whose whole
+   idea is "no tab strip", drew its tab strip in every real browser while the
+   jsdom tests passed, because testing-library honors the attribute. Found by
+   screenshotting the looks rather than by any test. */
+[hidden] {
+  display: none !important;
+}
+
+/* §102 — the crash screen. Deliberately plain and token-free where it can be:
+   the thing that just failed might be the theme. */
+.tm-crash {
+  max-width: 720px;
+  margin: 48px auto;
+  padding: 20px 24px;
+  font: 13px/1.5 "Segoe UI", system-ui, sans-serif;
+  color: #1b2430;
+  background: #fff;
+  border: 1px solid #c9d4e2;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+.tm-crash h1 {
+  font-size: 17px;
+  font-weight: 700;
+  margin: 0 0 10px;
+}
+.tm-crash p { margin: 0 0 10px; }
+.tm-crash-reload {
+  font: inherit;
+  padding: 5px 14px;
+  border-radius: 4px;
+  border: 1px solid #7d97b5;
+  background: linear-gradient(#fdfefe, #dfe9f4);
+  cursor: pointer;
+}
+.tm-crash-reload:hover { background: linear-gradient(#fff, #eaf2fa); }
+.tm-crash-hint { margin-top: 16px; color: #55637a; }
+.tm-crash-detail {
+  max-height: 40vh;
+  overflow: auto;
+  padding: 10px;
+  background: #f4f7fa;
+  border: 1px solid #dde5ee;
+  border-radius: 4px;
+  font: 11px/1.45 ui-monospace, Consolas, monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* §102 — the file banner: why you are not on the file you expected. */
+.tm-file-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 10px;
+  font-size: 12px;
+  background: var(--tm-ms-warn-bg, #fff4c2);
+  color: var(--tm-ms-text);
+  border-bottom: 1px solid var(--tm-ms-warn-border, #d9b64a);
+}
+.tm-file-banner span { flex: 1; }
+.tm-file-banner button {
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  padding: 0 2px;
+}
+
+/* --- §117: the start screen, when no file is open ------------------------
+   One card, centered, on the same content ground every tab uses — so a closed
+   file looks like the app with nothing in it, not like a crash. */
+.tm-start {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow-y: auto;
+  padding: 48px 16px;
+  background: var(--tm-ms-content-bg);
+}
+.tm-start-card { width: 100%; max-width: 560px; }
+.tm-start-recents { display: flex; flex-direction: column; gap: 2px; }
+.tm-start-recents li { display: flex; align-items: center; gap: 4px; }
+.tm-start-recent {
+  flex: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 6px;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  color: inherit;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.tm-start-recent:hover:not(:disabled) { background: var(--tm-ms-row-hover, rgba(0, 0, 0, 0.05)); }
+.tm-start-recent:disabled { opacity: 0.55; cursor: default; }
+.tm-start-recent-name { font-weight: bold; }
+.tm-start-recent-path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--tm-ms-text-muted, #666);
+}
+.tm-start-forget {
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  padding: 0 4px;
+  opacity: 0.6;
+}
+.tm-start-forget:hover { opacity: 1; }
+
+/* --- Rounded: the same shape with every corner taken off ------------------
+   §102, asked for by name. Tabs detach from the strip and become pills, and
+   nothing in the chrome has a square corner. It is Money Classic's layout —
+   the tab strip, the rail, the register — so nothing has to be relearned;
+   only the edges change. */
+[data-look="rounded"] .aero-tab {
+  border-radius: 999px;
+  margin: 0 2px 3px;
+  padding: 4px 14px;
+}
+[data-look="rounded"] .aero-tab.active {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+[data-look="rounded"] .aero-card {
+  border-radius: 12px;
+  overflow: hidden;
+}
+[data-look="rounded"] .aero-card-title {
+  border-radius: 12px 12px 0 0;
+}
+[data-look="rounded"] .aero-field,
+[data-look="rounded"] .aero-btn,
+[data-look="rounded"] .tm-header-search {
+  border-radius: 999px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+[data-look="rounded"] .tm-header-search-go {
+  border-radius: 0 999px 999px 0;
+}
+[data-look="rounded"] .aero-side-item {
+  border-radius: 999px;
+  padding-left: 12px;
+}
+[data-look="rounded"] .tm-dialog,
+[data-look="rounded"] .tm-menu {
+  border-radius: 10px;
+}
+[data-look="rounded"] .register-table tbody tr.selected td:first-child {
+  border-radius: 8px 0 0 8px;
+}
+[data-look="rounded"] .register-table tbody tr.selected td:last-child {
+  border-radius: 0 8px 8px 0;
+}
+
+/* --- Ledger: accounting paper --------------------------------------------
+   Banded rows and hairline rules, the way a paper ledger is ruled, with a
+   serif for headings and text and tabular figures for everything numeric.
+   The banding is the point: on a wide register your eye tracks a row across
+   the page without a ruler. Pairs with Sepia, which it suggests. */
+[data-look="ledger"] {
+  font-family: "Georgia", "Iowan Old Style", "Times New Roman", serif;
+}
+[data-look="ledger"] .register-table,
+[data-look="ledger"] .tm-report-table,
+[data-look="ledger"] .tm-lot-table {
+  font-family: "Georgia", "Iowan Old Style", "Times New Roman", serif;
+  font-variant-numeric: tabular-nums lining-nums;
+  border-collapse: collapse;
+}
+[data-look="ledger"] .register-table tbody td,
+[data-look="ledger"] .tm-report-table tbody td {
+  height: 22px;
+  border-bottom: 1px solid var(--tm-ms-grid-line);
+  border-right: none;
+}
+/* Every other row banded, and a heavier rule every fifth — a ledger's
+   five-line rule, which is what makes counting down a column possible. */
+[data-look="ledger"] .register-table tbody tr:nth-child(even) td,
+[data-look="ledger"] .tm-report-table tbody tr:nth-child(even) td {
+  background: var(--tm-ms-row-alt);
+}
+[data-look="ledger"] .register-table tbody tr:nth-child(5n) td,
+[data-look="ledger"] .tm-report-table tbody tr:nth-child(5n) td {
+  border-bottom: 1px solid var(--tm-ms-grid-header-rule);
+}
+[data-look="ledger"] .register-table thead th,
+[data-look="ledger"] .tm-report-table thead th {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid var(--tm-ms-text);
+  font-variant: small-caps;
+  letter-spacing: 0.4px;
+  font-weight: 600;
+}
+[data-look="ledger"] .aero-card {
+  border-radius: 0;
+  box-shadow: none;
+  border: 1px solid var(--tm-ms-card-border);
+}
+[data-look="ledger"] .aero-card-title {
+  background: transparent;
+  border-bottom: 2px solid var(--tm-ms-card-border);
+  font-variant: small-caps;
+  letter-spacing: 0.6px;
+}
+[data-look="ledger"] .aero-tab {
+  border-radius: 0;
+}
+
+/* --- Workbench: three-pane, mirrored -------------------------------------
+   The same three panes, the other way round: the register takes the left and
+   the account column sits on the right, under the hand that is already on the
+   mouse. Nothing about the panes changes — only their order — which is why
+   this is a stylesheet rule and not a second layout in the shell. */
+[data-look="workbench"] .tm-shell-row {
+  flex-direction: row-reverse;
+}
+[data-look="workbench"] .tm-accounts-pane {
+  border-left: 1px solid var(--tm-ms-rail-divider);
+  border-right: none;
+}
+[data-look="workbench"] .aero-sidebar {
+  border-left: 1px solid var(--tm-ms-rail-divider);
+  border-right: none;
+}
+
+/* --- Wide: edge to edge ---------------------------------------------------
+   For a large monitor. The content area loses its padding, cards lose their
+   frames, and tables run the full width of the window — on a 32-inch screen
+   Money's 4px card margins waste an inch of register. Sidebar navigation,
+   because a tab strip at that width is mostly empty. */
+[data-look="wide"] main {
+  padding: 0 !important;
+}
+[data-look="wide"] .aero-card {
+  border-left: none;
+  border-right: none;
+  border-radius: 0;
+  box-shadow: none;
+  max-width: none !important;
+}
+[data-look="wide"] .register-table,
+[data-look="wide"] .tm-report-table {
+  width: 100%;
+}
+[data-look="wide"] .aero-card-title {
+  padding-left: 14px;
+}
+[data-look="wide"] .grid {
+  gap: 0;
+}
+
+/* §102 — the calculator's tape and the favorites list. Both are plain
+   scrolling lists inside a dialog; the only thing worth styling is that the
+   numbers line up, which is what makes a tape checkable. */
+.tm-tape {
+  height: 118px;
+  overflow-y: auto;
+  padding: 6px 8px;
+  background: var(--tm-ms-field-bg, #fff);
+  border: 1px solid var(--tm-ms-dialog-field-border);
+  font-size: 12px;
+}
+.tm-tape-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  line-height: 18px;
+}
+
+/* §104 — the keypad. Four columns to match the tape's width, operators
+   marked so the hand finds them without reading. */
+.tm-calc-keys {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  padding-top: 8px;
+}
+.tm-calc-key {
+  padding: 6px 0;
+  font-size: 14px;
+  text-align: center;
+}
+.tm-calc-key.op {
+  font-weight: 700;
+  color: var(--tm-ms-text-link);
+}
+.tm-calc-key.wide {
+  grid-column: span 2;
+}
+.tm-tape-total {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 8px 0;
+  border-top: 2px solid var(--tm-ms-text);
+  margin-top: 6px;
+  font-size: 13px;
+}
+.tm-fav-list {
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid var(--tm-ms-card-border);
+}
+.tm-fav-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.tm-fav-row:nth-child(even) {
+  background: var(--tm-ms-row-alt);
+}
+.tm-fav-row:hover {
+  background: var(--tm-ms-row-active);
+}
+
+/* §104 — text size, one line above the looks it belongs with. A row rather
+   than a card: it is a single choice, and a card gave it a third of the pane
+   while squeezing the looks into a column half the width they want. */
+.tm-size-strip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--tm-ms-card-border);
+}
+
+/* §129 — the Budget screen. Tokens only, like every other look-aware part. */
+.tm-budget-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: baseline;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--tm-ms-card-border);
+  background: var(--tm-ms-grid-header);
+  font-size: 12px;
+}
+.tm-budget-note {
+  color: var(--tm-ms-text-muted);
+  font-size: 11px;
+}
+.tm-budget-empty {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--tm-ms-card-border);
+  font-size: 12px;
+  max-width: 62ch;
+}
+.tm-budget-table th {
+  text-align: left;
+  color: var(--tm-ms-text-muted);
+  font-weight: 600;
+  border-bottom: 1px solid var(--tm-ms-grid-header-rule);
+  padding: 3px 4px;
+}
+.tm-budget-table th.num,
+.tm-budget-table td.num {
+  text-align: right;
+}
+.tm-budget-table td {
+  padding: 1px 4px;
+  border-bottom: 1px solid var(--tm-ms-grid-line);
+  vertical-align: middle;
+}
+/* A parent is the line most people budget, so it reads as the heavier one. */
+.tm-budget-parent > td {
+  font-weight: 600;
+}
+.tm-budget-child > td:first-child {
+  padding-left: 26px;
+  font-weight: 400;
+}
+.tm-budget-name {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.tm-budget-twisty {
+  display: inline-block;
+  width: 14px;
+  flex: none;
+  border: none;
+  background: none;
+  color: var(--tm-ms-text-muted);
+  font: inherit;
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+}
+.tm-budget-twisty:hover {
+  color: var(--tm-ms-text);
+}
+/* The amount is an input sitting IN the row — no border until you are in it,
+   so eighty rows do not read as eighty boxes (§129). */
+/* §143 — these used to be `border-color: transparent; background:
+   transparent`, invisible until the pointer happened to cross them.
+   Reported as *"it is still difficult to ascertain exactly where you're
+   supposed to click into the field for Annual or monthly"*, which is the
+   whole complaint: there was nothing to aim at.
+
+   A resting border and a field ground, so a typed figure lives in a box the
+   way it does everywhere else in this app. Hover and focus still escalate —
+   the field is quiet, not hidden. */
+.tm-budget-amount {
+  width: 92px;
+  border-color: var(--tm-ms-field-border-in);
+  background: var(--tm-ms-field-bg);
+}
+.tm-budget-amount:hover:not(:disabled) {
+  border-color: var(--tm-ms-grid-header-rule);
+}
+/* An unplanned line still shows its two boxes — empty, quiet, and CLICKABLE.
+   The placeholder is the same tic the empty month cells use, so "nothing
+   here" looks the same wherever it appears on this grid. */
+.tm-budget-amount::placeholder {
+  color: var(--tm-ms-text-muted);
+  opacity: 0.65;
+}
+.tm-budget-amount:disabled {
+  border-color: var(--tm-ms-field-border-bot);
+  background: transparent;
+}
+.tm-budget-amount:focus {
+  border-color: var(--tm-ms-tab-active-bot);
+  background: var(--tm-ms-row);
+}
+.tm-budget-barcell {
+  width: 90px;
+}
+.tm-budget-bar {
+  display: block;
+  height: 6px;
+  width: 80px;
+  border-radius: 3px;
+  background: var(--tm-ms-grid-header-rule);
+  overflow: hidden;
+}
+.tm-budget-bar .fill {
+  display: block;
+  height: 100%;
+  background: var(--tm-ms-tab-active-bot);
+}
+.tm-budget-bar .fill.over {
+  background: var(--tm-ms-neg, #b00020);
+}
+
+/* §130 — the row you are working on. The register already uses `.active` for
+   this; the budget table uses its own class because its rows carry an input
+   whose focus ring must still read as the thing with the caret in it. */
+.tm-budget-parent.selected > td,
+.tm-budget-child.selected > td {
+  background: var(--tm-ms-row-active);
+}
+.tm-budget-parent.selected > td:first-child,
+.tm-budget-child.selected > td:first-child {
+  box-shadow: inset 3px 0 0 var(--tm-ms-tab-active-bot);
+}
+
+/* §131 — the monthly/yearly picker, and what a yearly line comes to. */
+.tm-budget-percell {
+  white-space: nowrap;
+  width: 96px;
+}
+.tm-budget-period {
+  width: 52px;
+  padding: 0 2px;
+  font-size: 11px;
+  border-color: transparent;
+  background: transparent;
+}
+.tm-budget-period:hover:not(:disabled),
+.tm-budget-period:focus {
+  border-color: var(--tm-ms-grid-header-rule);
+  background: var(--tm-ms-row);
+}
+
+/* §139 — the year plan. Same table furniture as the month screen (§129), plus
+   the three things a year grid needs that a month grid does not: a band that
+   separates income from expenses, total rows that read as sums rather than as
+   more categories, and twelve narrow month columns. */
+.tm-plan-table td,
+.tm-plan-table th {
+  white-space: nowrap;
+}
+.tm-plan-band > td {
+  background: var(--tm-ms-group-header);
+  border-top: 1px solid var(--tm-ms-group-header-rule);
+  border-bottom: 1px solid var(--tm-ms-group-header-rule);
+  color: var(--tm-ms-text-heading);
+  font-weight: bold;
+  padding: 4px 8px;
+}
+.tm-plan-total > td {
+  background: var(--tm-ms-group-header);
+  border-top: 2px solid var(--tm-ms-grid-header-rule);
+  color: var(--tm-ms-text-heading);
+  font-weight: bold;
+  padding: 4px;
+}
+/* The year so far is the figure the eye goes to after the twelve columns, so
+   it gets the one heavy rule on the row. */
+.tm-plan-sofar {
+  border-left: 2px solid var(--tm-ms-grid-header-rule);
+}
+/* §159 — the CSV importer's "How they read" table: content-sized, with the
+   payee capped so one long bank description cannot push the amounts off to
+   the right again. */
+.tm-csv-reads td.tm-csv-payee {
+  max-width: 340px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* §154 — "saved" / "short" beside a set-aside line's balance. Small and
+   muted so the figure still reads first; the word says what KIND of figure
+   it is, which the column header cannot, since it is a variance on every
+   other row. */
+.tm-plan-word {
+  margin-left: 4px;
+  font-size: 10px;
+  color: var(--tm-ms-text-muted);
+}
+/* §143 — the AUTHORED block: Annual, Monthly, Spread over. §140 ruled
+   between the twelve month columns and left this side open, which is why the
+   three things you actually TYPE were the three hardest to aim at. Solid
+   rules here rather than the months' dashed ones: this is a real boundary
+   between what you author and what is read back to you, and there are only
+   three of them so they do not read as separate tables. */
+.tm-plan-table th.tm-plan-authored,
+.tm-plan-table td.tm-plan-authored {
+  border-left: 1px solid var(--tm-ms-grid-line);
+}
+.tm-plan-table th.tm-plan-authored-end,
+.tm-plan-table td.tm-plan-authored-end {
+  border-right: 2px solid var(--tm-ms-grid-header-rule);
+}
+/* A month with nothing in it should not shout: a dash for a month the line
+   does not run, a dot for one that has not happened. */
+.tm-plan-quiet {
+  color: var(--tm-ms-text-muted);
+}
+/* "Spread over" is a value you can press, not a button — it reads as text
+   until you go near it, the same way the amounts do. */
+.tm-plan-when {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--tm-ms-text-link);
+  padding: 1px 4px;
+  cursor: pointer;
+}
+.tm-plan-when:hover:not(:disabled) {
+  border-color: var(--tm-ms-grid-header-rule);
+}
+.tm-plan-when:disabled {
+  color: var(--tm-ms-text-muted);
+  cursor: default;
+}
+
+/* §140 — reading across a nineteen-column grid.
+ *
+ * > *"its difficult to see what column I'm in"*
+ *
+ * Three cheap things, in the order they help: the row you are on shades, the
+ * month columns are separated by a hairline, and the month you are actually
+ * living in is tinted so the eye has somewhere to land. None of it is
+ * decoration — a grid this wide is unreadable without a horizontal and a
+ * vertical anchor. */
+.tm-plan-table tbody tr.tm-plan-alt > td {
+  background: var(--tm-ms-row-alt);
+}
+/* Hover is the third anchor: the pointer says which row without a click. */
+.tm-plan-table tbody tr.tm-budget-parent:hover > td,
+.tm-plan-table tbody tr.tm-budget-child:hover > td {
+  background: var(--tm-ms-group-header);
+}
+/* Dashed, not solid: twelve solid rules would read as twelve tables. The
+   separation only has to be enough to keep a figure in its own column. */
+.tm-plan-table th.tm-plan-month,
+.tm-plan-table td.tm-plan-month {
+  border-left: 1px dashed var(--tm-ms-grid-line);
+  padding-left: 6px;
+  padding-right: 6px;
+}
+/* The month in progress. Same amber the register uses for the row you are
+   working in, so it means the same thing here as it does there. */
+.tm-plan-table th.tm-plan-now,
+.tm-plan-table td.tm-plan-now {
+  background: var(--tm-ms-row-active);
+  border-left: 1px solid var(--tm-ms-grid-header-rule);
+  border-right: 1px solid var(--tm-ms-grid-header-rule);
+}
+/* The tint has to survive the row shading and the hover, or the column
+   disappears exactly when the pointer is near it. */
+.tm-plan-table tbody tr.tm-plan-alt > td.tm-plan-now,
+.tm-plan-table tbody tr:hover > td.tm-plan-now {
+  background: var(--tm-ms-row-active);
+}
+
+/* §144 — a month that has not happened yet, showing what it is PLANNED to
+   be rather than a dot.
+
+   > "This would give every future month an estimate (or budgeted) look which
+   >  is what I want because generally I'm budgeting to that amount even if it
+   >  ends up actually higher or lower."
+
+   It MUST NOT read as a fact. A projected figure and a recorded one sitting
+   in the same column at the same weight would make the grid say things that
+   have not happened -- so this is muted and italic, and the real figures are
+   the only ones at full strength. The user's rule: "there's never live data in there
+   until it's actually been paid from an account." */
+.tm-plan-table td.tm-plan-projected {
+  color: var(--tm-ms-text-muted);
+  font-style: italic;
+}
+
+/* §143 — the month an ASIDE bill is DUE. Not a background tint: the
+   current-month column already owns that, and two tints in one cell is a
+   color puzzle. A rule under the figure instead, in the link blue the
+   Spread over value uses, so the marker and the words that explain it match.
+
+   It marks the month the money LEAVES on a line whose monthly figure is what
+   goes in — which is the whole of what was being asked for. */
+.tm-plan-table td.tm-plan-due {
+  border-bottom: 2px solid var(--tm-ms-text-link);
+}
+
+/* §141 — Build from history. A line that stopped is still readable: it is
+   proposed, just not ticked, so it recedes rather than disappearing. */
+.tm-build-ended > td {
+  color: var(--tm-ms-text-muted);
+}
+.tm-build-warn {
+  color: var(--tm-negative);
+}
+/* The proposal table is six columns of prose and money; the ordinary dialog
+   width squeezes it into a column of wrapped words. */
+.tm-dialog-wide {
+  max-width: min(1100px, 94vw);
+  width: min(1100px, 94vw);
+}

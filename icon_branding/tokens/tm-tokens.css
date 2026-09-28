@@ -1,0 +1,61 @@
+/* T-Money design tokens - Concept 3 (blue & silver) */
+:root {
+  --tm-ms-money-blue: #1B4B9C;
+  --tm-deep-navy: #0C2557;
+  --tm-royal-blue: #2E6FD9;
+  --tm-aero-sky: #7FB2EE;
+  --tm-sky-tint: #D9E9FC;
+  --tm-pure-white: #FFFFFF;
+  --tm-steel-silver: #A9B4C0;
+  --tm-silver-tint: #E3E8ED;
+  --tm-ink: #0B1B33;
+  --tm-positive: #1F9D6B;
+  --tm-negative: #D0453B;
+
+  /* icon tones - override these to retheme every icon at once */
+  --tm-icon-primary:   var(--tm-ms-money-blue);
+  --tm-icon-secondary: var(--tm-aero-sky);
+  --tm-icon-accent:    var(--tm-steel-silver);
+  --tm-icon-knockout:  var(--tm-pure-white);
+
+  --tm-font-display: Montserrat, 'Segoe UI Semibold', 'Segoe UI', Roboto, Arial, sans-serif;
+  --tm-font-body: 'Open Sans', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+
+  --tm-radius-sm: 6px;  --tm-radius-md: 10px;
+  --tm-radius-lg: 16px; --tm-radius-pill: 999px;
+
+  --tm-shadow-card: 0 1px 2px rgba(11,27,51,.06), 0 8px 24px rgba(11,27,51,.08);
+  --tm-shadow-raised: 0 2px 6px rgba(11,27,51,.10), 0 18px 40px rgba(27,75,156,.18);
+
+  --tm-surface: #FFFFFF;
+  --tm-surface-alt: #F4F7FB;
+  --tm-text: var(--tm-ink);
+  --tm-text-muted: #5A6B80;
+  --tm-border: var(--tm-silver-tint);
+}
+
+/* Dark theme: lift the blues so icons stay legible on dark surfaces */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --tm-icon-primary:   #7FB2EE;
+    --tm-icon-secondary: #3A7BE0;
+    --tm-icon-accent:    #8792A0;
+    --tm-icon-knockout:  #0C1A2E;
+    --tm-surface: #0E1726;
+    --tm-surface-alt: #16223A;
+    --tm-text: #E7EDF5;
+    --tm-text-muted: #94A3B8;
+    --tm-border: #23324D;
+  }
+}
+:root[data-theme="dark"] {
+  --tm-icon-primary:   #7FB2EE;
+  --tm-icon-secondary: #3A7BE0;
+  --tm-icon-accent:    #8792A0;
+  --tm-icon-knockout:  #0C1A2E;
+  --tm-surface: #0E1726;
+  --tm-surface-alt: #16223A;
+  --tm-text: #E7EDF5;
+  --tm-text-muted: #94A3B8;
+  --tm-border: #23324D;
+}

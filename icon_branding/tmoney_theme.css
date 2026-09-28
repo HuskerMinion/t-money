@@ -1,0 +1,51 @@
+/* 
+ * T-Money Master Stylesheet
+ * Brand colors and typography extracted from Microsoft Money Plus aesthetic
+ */
+
+:root {
+    /* Main Brand Colors */
+    --tmoney-primary: #153c7a;       /* Deep MS Money Blue */
+    --tmoney-secondary: #488bc7;     /* Classic Toolbar Blue */
+    --tmoney-aero: #88c0e6;          /* Aero Sky Light Blue */
+    --tmoney-silver: #b5bcc2;        /* Steel Silver / Gray */
+    --tmoney-bg: #f4f7f9;            /* App Background Off-White */
+    --tmoney-white: #ffffff;         /* Pure White */
+
+    /* UI Accents (from Spending Tracker/Alerts) */
+    --tmoney-accent-gold: #fcc24c;   /* Progress/Warning Yellow */
+    --tmoney-accent-red: #cc0000;    /* Over-budget Red */
+
+    /* Typography */
+    --font-primary: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --font-secondary: 'Open Sans', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Base Body Application */
+body {
+    background-color: var(--tmoney-bg);
+    color: var(--tmoney-primary);
+    font-family: var(--font-secondary);
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-primary);
+    font-weight: 700;
+    color: var(--tmoney-primary);
+}
+
+/* Example UI Panel */
+.tmoney-panel {
+    background-color: var(--tmoney-white);
+    border: 1px solid var(--tmoney-silver);
+    border-radius: 4px;
+    padding: 16px;
+    box-shadow: 0 2px 4px rgba(21, 60, 122, 0.1);
+}
+
+.tmoney-header {
+    background: linear-gradient(to bottom, var(--tmoney-secondary), var(--tmoney-primary));
+    color: var(--tmoney-white);
+    padding: 10px 15px;
+    border-radius: 4px 4px 0 0;
+}

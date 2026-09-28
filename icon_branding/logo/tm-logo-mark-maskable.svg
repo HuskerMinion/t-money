@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="T-Money"><defs>
+<radialGradient id="face" cx="0" cy="0" r="1"
+  gradientTransform="translate(34 40) rotate(48) scale(96 92)" gradientUnits="userSpaceOnUse">
+<stop offset="0" stop-color="#2F5893"/><stop offset=".40" stop-color="#142F68"/>
+<stop offset=".76" stop-color="#091B41"/><stop offset="1" stop-color="#050F26"/></radialGradient>
+<linearGradient id="rim" x1="18" y1="16" x2="98" y2="122" gradientUnits="userSpaceOnUse">
+<stop offset="0" stop-color="#2C5AA6"/><stop offset=".45" stop-color="#0C2050"/>
+<stop offset="1" stop-color="#050F2A"/></linearGradient>
+<linearGradient id="rimlight" x1="22" y1="18" x2="86" y2="112" gradientUnits="userSpaceOnUse">
+<stop offset="0" stop-color="#9CC4F2" stop-opacity=".85"/><stop offset=".42" stop-color="#9CC4F2" stop-opacity="0"/>
+<stop offset="1" stop-color="#9CC4F2" stop-opacity=".18"/></linearGradient>
+<linearGradient id="gloss" x1="26" y1="18" x2="72" y2="86" gradientUnits="userSpaceOnUse">
+<stop offset="0" stop-color="#BBD8F8" stop-opacity=".34"/><stop offset="1" stop-color="#BBD8F8" stop-opacity="0"/></linearGradient>
+
+<linearGradient id="tee" x1="22" y1="34" x2="84" y2="60" gradientUnits="userSpaceOnUse">
+<stop offset="0" stop-color="#5A95EA"/><stop offset=".38" stop-color="#3163C6"/>
+<stop offset=".74" stop-color="#22499E"/><stop offset="1" stop-color="#16357C"/></linearGradient>
+<linearGradient id="teeBev" x1="20" y1="30" x2="76" y2="104" gradientUnits="userSpaceOnUse">
+<stop offset="0" stop-color="#FFFFFF"/><stop offset=".55" stop-color="#E4EFFC" stop-opacity=".95"/>
+<stop offset=".88" stop-color="#A8CCF4" stop-opacity=".55"/><stop offset="1" stop-color="#A8CCF4" stop-opacity=".3"/></linearGradient>
+
+<linearGradient id="bar" x1="0" y1="0" x2="1" y2="0.28">
+<stop offset="0" stop-color="#EEF6FF"/><stop offset=".30" stop-color="#C3DCF8"/>
+<stop offset=".68" stop-color="#7DAFEA"/><stop offset="1" stop-color="#4C82D2"/></linearGradient>
+<linearGradient id="barBev" x1="0" y1="0" x2="1" y2="0.3">
+<stop offset="0" stop-color="#FFFFFF"/><stop offset=".45" stop-color="#FFFFFF" stop-opacity=".5"/>
+<stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></linearGradient>
+
+<linearGradient id="arw" x1="24" y1="106" x2="112" y2="22" gradientUnits="userSpaceOnUse">
+<stop offset="0" stop-color="#6EA2E4"/><stop offset=".40" stop-color="#A9CFF4"/>
+<stop offset=".76" stop-color="#B9D6F7"/><stop offset="1" stop-color="#CFE5FC"/></linearGradient>
+<linearGradient id="arwBev" x1="30" y1="100" x2="104" y2="26" gradientUnits="userSpaceOnUse">
+<stop offset="0" stop-color="#FFFFFF" stop-opacity=".9"/><stop offset="1" stop-color="#FFFFFF" stop-opacity=".22"/></linearGradient>
+
+<clipPath id="disc"><circle cx="57" cy="69" r="53"/></clipPath>
+<linearGradient id="teeCore" x1="0" y1="39" x2="0" y2="49" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#08163E" stop-opacity="0"/><stop offset=".55" stop-color="#0A1B49" stop-opacity=".55"/><stop offset="1" stop-color="#0B1D4E" stop-opacity=".72"/></linearGradient><linearGradient id="teeSheen" x1="0" y1="34" x2="0" y2="41" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#8FBEF4" stop-opacity=".85"/><stop offset="1" stop-color="#8FBEF4" stop-opacity="0"/></linearGradient><clipPath id="clipT"><path d="M27.5 33.5 81 35 82 41.5 62.5 54.5 62.5 132 45.5 132 45.5 54.2 21 52Z"/></clipPath>
+<clipPath id="clipHead"><path d="M116 21 106.2 47.9 103.3 33.7 89.2 30.9Z"/></clipPath>
+</defs><rect width="128" height="128" rx="0" fill="url(#rim)"/><g transform="translate(14.080,14.080) scale(0.7800)">
+<circle cx="57" cy="69" r="56.4" fill="url(#rim)"/>
+<circle cx="57" cy="69" r="56.4" fill="none" stroke="url(#rimlight)" stroke-width="1.8"/>
+<circle cx="57" cy="69" r="53" fill="url(#face)"/>
+<path d="M57 16a53 53 0 0 1 36.4 14.6A53 53 0 0 0 20.6 105.4 53 53 0 0 1 57 16z" fill="url(#gloss)"/><g clip-path="url(#disc)"><g transform="translate(57,69) scale(0.93) translate(-57,-69)"><g transform="translate(3,1.5) translate(54,45) scale(0.95) translate(-54,-45)"><path d="M27.5 33.5 81 35 82 41.5 62.5 54.5 62.5 132 45.5 132 45.5 54.2 21 52Z" fill="url(#tee)" stroke="#071634" stroke-width="2.9" stroke-linejoin="miter"/><g clip-path="url(#clipT)"><rect x="0" y="30" width="128" height="26" fill="url(#teeCore)"/><rect x="0" y="32" width="128" height="10" fill="url(#teeSheen)"/><path d="M27.5 33.5 81 35 82 41.5 62.5 54.5 62.5 132 45.5 132 45.5 54.2 21 52Z" fill="none" stroke="url(#teeBev)" stroke-width="3.2" stroke-linejoin="miter"/></g></g><path d="M31.0 100.8 34.8 97.0 41.0 97.0 41.0 126 31.0 126Z" fill="url(#bar)" stroke="#081B42" stroke-width="2.50" stroke-linejoin="miter"/><clipPath id="cb0"><path d="M31.0 100.8 34.8 97.0 41.0 97.0 41.0 126 31.0 126Z"/></clipPath><g clip-path="url(#cb0)"><path d="M31.0 100.8 34.8 97.0 41.0 97.0 41.0 126 31.0 126Z" fill="none" stroke="url(#barBev)" stroke-width="2.60"/></g><path d="M45.0 91.5 48.5 88.0 54.5 88.0 54.5 126 45.0 126Z" fill="url(#bar)" stroke="#081B42" stroke-width="2.50" stroke-linejoin="miter"/><clipPath id="cb1"><path d="M45.0 91.5 48.5 88.0 54.5 88.0 54.5 126 45.0 126Z"/></clipPath><g clip-path="url(#cb1)"><path d="M45.0 91.5 48.5 88.0 54.5 88.0 54.5 126 45.0 126Z" fill="none" stroke="url(#barBev)" stroke-width="2.60"/></g><path d="M58.5 78.0 62.5 74.0 69.5 74.0 69.5 126 58.5 126Z" fill="url(#bar)" stroke="#081B42" stroke-width="2.50" stroke-linejoin="miter"/><clipPath id="cb2"><path d="M58.5 78.0 62.5 74.0 69.5 74.0 69.5 126 58.5 126Z"/></clipPath><g clip-path="url(#cb2)"><path d="M58.5 78.0 62.5 74.0 69.5 74.0 69.5 126 58.5 126Z" fill="none" stroke="url(#barBev)" stroke-width="2.60"/></g><path d="M74.5 65.8 78.3 62.0 85.0 62.0 85.0 126 74.5 126Z" fill="url(#bar)" stroke="#081B42" stroke-width="2.50" stroke-linejoin="miter"/><clipPath id="cb3"><path d="M74.5 65.8 78.3 62.0 85.0 62.0 85.0 126 74.5 126Z"/></clipPath><g clip-path="url(#cb3)"><path d="M74.5 65.8 78.3 62.0 85.0 62.0 85.0 126 74.5 126Z" fill="none" stroke="url(#barBev)" stroke-width="2.60"/></g><path d="M89.5 53.0 93.5 49.0 100.0 49.0 100.0 126 89.5 126Z" fill="url(#bar)" stroke="#081B42" stroke-width="2.50" stroke-linejoin="miter"/><clipPath id="cb4"><path d="M89.5 53.0 93.5 49.0 100.0 49.0 100.0 126 89.5 126Z"/></clipPath><g clip-path="url(#cb4)"><path d="M89.5 53.0 93.5 49.0 100.0 49.0 100.0 126 89.5 126Z" fill="none" stroke="url(#barBev)" stroke-width="2.60"/></g></g></g>
+<g transform="translate(57,69) scale(0.93) translate(-57,-69)" fill="none" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="6">
+  <path d="M17.5 101.5 33.7 74.7 42.2 86.3 58 65.8 68 80.5 98 39" stroke="#071634" stroke-width="13.6"/>
+  <path d="M17.5 101.5 33.7 74.7 42.2 86.3 58 65.8 68 80.5 98 39" stroke="url(#arw)" stroke-width="9.2"/>
+  <path d="M17.5 101.5 33.7 74.7 42.2 86.3 58 65.8 68 80.5 98 39" stroke="url(#arwBev)" stroke-width="2" transform="translate(-1.4,-1.5)" opacity=".8"/>
+</g>
+<g transform="translate(57,69) scale(0.93) translate(-57,-69)"><path d="M116 21 106.2 47.9 103.3 33.7 89.2 30.9Z" fill="url(#arw)" stroke="#071634" stroke-width="2.8" stroke-linejoin="miter"/>
+<g clip-path="url(#clipHead)"><path d="M116 21 106.2 47.9 103.3 33.7 89.2 30.9Z" fill="none" stroke="url(#arwBev)" stroke-width="2"/></g></g></g></svg>

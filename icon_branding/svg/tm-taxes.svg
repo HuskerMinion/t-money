@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" role="img" aria-label="Taxes"><style>
+.p{fill:var(--tm-icon-primary,#1B4B9C)}
+.s{fill:var(--tm-icon-secondary,#7FB2EE)}
+.a{fill:var(--tm-icon-accent,#A9B4C0)}
+.w{fill:var(--tm-icon-knockout,#FFFFFF)}
+.ps,.ss,.as,.ws{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ps{stroke:var(--tm-icon-primary,#1B4B9C)}
+.ss{stroke:var(--tm-icon-secondary,#7FB2EE)}
+.as{stroke:var(--tm-icon-accent,#A9B4C0)}
+.ws{stroke:var(--tm-icon-knockout,#FFFFFF);stroke-width:1.6}
+</style><path class="p" d="M5.1 2.4h8.2l7 7v11.4a1.9 1.9 0 0 1-1.9 1.9H5.1a1.9 1.9 0 0 1-1.9-1.9V4.3a1.9 1.9 0 0 1 1.9-1.9z"/>
+<path class="a" d="M13.3 2.4l7 7h-5.1a1.9 1.9 0 0 1-1.9-1.9z"/>
+<circle class="ws" cx="9.1" cy="13.3" r="1.55"/>
+<circle class="ws" cx="14.6" cy="18.1" r="1.55"/>
+<path class="ws" d="M15.5 12 8.2 19.4"/></svg>
