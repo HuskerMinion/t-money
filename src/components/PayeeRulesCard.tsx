@@ -1,6 +1,6 @@
-// Payee rename rules (§84) — Money's "when a downloaded payee contains X,
+// Payee rename rules — Money's "when a downloaded payee contains X,
 // call it Y and file it under Z". Banks write "NETFLIX.COM 866-579-7172 CA";
-// the register should say Netflix, and the subscriptions detector (§60)
+// the register should say Netflix, and the subscriptions detector
 // should see one Netflix, not two. Rules run on every import; **Apply to
 // existing transactions** runs them over what is already in the file.
 import { useEffect, useState } from "react";
@@ -17,7 +17,7 @@ interface Props {
   onApplied?: (changed: number) => Promise<void> | void;
 }
 
-/** §171 — "$5.00 to $20.00 · memo has "prime" · in Visa", or "" when a rule
+/** "$5.00 to $20.00 · memo has "prime" · in Visa", or "" when a rule
  *  looks only at the text. */
 export function describeConditions(r: PayeeRule): string {
   const parts: string[] = [];
@@ -36,7 +36,7 @@ export default function PayeeRulesCard({ categories, onApplied }: Props) {
   const [matchText, setMatchText] = useState("");
   const [payeeName, setPayeeName] = useState("");
   const [categoryId, setCategoryId] = useState("");
-  // §171 — the conditions beyond the text. Empty is "any".
+  // The conditions beyond the text. Empty is "any".
   const [minAmount, setMinAmount] = useState("");
   const [maxAmount, setMaxAmount] = useState("");
   const [memoContains, setMemoContains] = useState("");
@@ -60,7 +60,7 @@ export default function PayeeRulesCard({ categories, onApplied }: Props) {
   async function add() {
     setError(null);
     setMsg(null);
-    // §183 — an amount limit that does not read as an amount is refused, the
+    // An amount limit that does not read as an amount is refused, the
     // way every other amount field is. It used to become "any": type "5,OO"
     // (letter O) in "at least" and the rule was saved with no floor at all,
     // matching every Amazon order instead of the ones it was meant for.
@@ -114,7 +114,7 @@ export default function PayeeRulesCard({ categories, onApplied }: Props) {
     setMsg(null);
     try {
       const n = await api.applyPayeeRules();
-      // §183 — "rename payees" is an undo step; the Edit menu has to hear
+      // "rename payees" is an undo step; the Edit menu has to hear
       // about it, or Undo goes on naming the write before it.
       noteChanged();
       setMsg(n === 0 ? "Nothing in the file needed changing." : `Changed ${n} transaction${n === 1 ? "" : "s"}.`);
@@ -193,7 +193,7 @@ export default function PayeeRulesCard({ categories, onApplied }: Props) {
             Category (optional)
             <CategorySelect className="aero-field" label="Rule category" categories={categories} value={categoryId} onChange={setCategoryId} />
           </span>
-          {/* §171 — only when… Each is optional; a rule with a condition
+          {/* Only when… Each is optional; a rule with a condition
               outranks one without, so Amazon under $20 can be Books while
               Amazon is Household. */}
           <label className="flex flex-col text-[11px]">

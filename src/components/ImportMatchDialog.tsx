@@ -1,4 +1,4 @@
-// Import review (§89) — the step between reading a statement and writing it.
+// Import review — the step between reading a statement and writing it.
 //
 // Only the rows worth a decision are here: a row that is exactly what the
 // register already holds is skipped without asking, and a row with nothing
@@ -10,7 +10,7 @@
 // Match keeps the user's payee, category and memo and marks the row cleared.
 // Import as new writes it anyway. Skip leaves it out altogether.
 //
-// §159 — and a second question, for a different set of rows: the new ones
+// And a second question, for a different set of rows: the new ones
 // that would be written with no category, because the file gave none and no
 // payee rule caught them. Each gets a picker, and a "remember" box that
 // turns the pick into a rule so the next statement does not ask.
@@ -26,9 +26,9 @@ interface Props {
   path: string;
   accountId: string;
   mapping: CsvMapping | null;
-  /** §159 — for the category picker on rows that have none. */
+  /** For the category picker on rows that have none. */
   categories?: readonly Category[];
-  /** §90: the memo answers, carried through to the import. */
+  /** The memo answers, carried through to the import. */
   memoRules?: MemoRule[];
   preview: ImportMatchPreview;
   /** Re-read at a different date window; the parent owns the preview. */
@@ -51,7 +51,7 @@ export default function ImportMatchDialog({
   onCancel,
 }: Props) {
   const [choices, setChoices] = useState<Record<number, Choice>>({});
-  // §159 — a category per uncategorized row, and whether to keep it as a
+  // A category per uncategorized row, and whether to keep it as a
   // payee rule so the next statement does not ask again.
   const [picks, setPicks] = useState<Record<number, string>>({});
   const [remember, setRemember] = useState<Record<number, boolean>>({});
@@ -89,10 +89,10 @@ export default function ImportMatchDialog({
         action: c.action,
         existingId: c.action === "match" ? c.existingId ?? null : null,
       }));
-      // §159 — the categories chosen for rows that had none. The decision
+      // The categories chosen for rows that had none. The decision
       // carries the category, so this row is filed whatever the rules say.
       //
-      // §183 — the rules are made AFTER the import, one per payee text. They
+      // The rules are made AFTER the import, one per payee text. They
       // were made first, a row at a time, and the backend refuses a second
       // rule for the same text ("there is already a rule for …"): two rows
       // from the same payee both set to remember aborted the whole import,

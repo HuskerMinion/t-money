@@ -2,14 +2,14 @@
 //
 // Rewritten 2026-08-30. The previous suite asserted the WRONG column order
 // (Date/Description/Category/Check #/Amount/Balance) and so locked in the
-// mistake §6.1a documents. These tests assert Money's actual grid, measured
+// mistake. These tests assert Money's actual grid, measured
 // from reference/ms-money-02-account-register.png.
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 
 vi.mock("@tauri-apps/api/core", () => import("../test/tauriMock"));
-// §183 — the QIF export asks where to save, and the dialog plugin does not
+// The QIF export asks where to save, and the dialog plugin does not
 // go through the mocked `invoke`, so it is stood in for here.
 const dialog = vi.hoisted(() => ({ save: vi.fn(), open: vi.fn() }));
 vi.mock("@tauri-apps/plugin-dialog", () => ({ save: dialog.save, open: dialog.open }));
@@ -23,7 +23,7 @@ import { useAccountStore } from "../stores/useAccountStore";
 import { invokeCalls, resetIpc, setIpcHandlers } from "../test/tauriMock";
 import type { Account, Category, NewSplit, RegisterRow } from "../lib/types";
 
-/** The Category field is a type-ahead combobox (§17), not a <select>.
+/** The Category field is a type-ahead combobox, not a <select>.
  *  Focus it, type enough to filter, then click the option. */
 async function pickCategory(label: string) {
   const box = screen.getByLabelText("Category:");
@@ -33,7 +33,7 @@ async function pickCategory(label: string) {
 }
 
 /** The split grid's pickers are comboboxes too, since CategorySelect became
- *  an adapter over CategoryCombo (§23). Same shape as pickCategory, but the
+ *  an adapter over CategoryCombo. Same shape as pickCategory, but the
  *  label differs per line. */
 async function pickIn(label: string, option: string) {
   const box = screen.getByLabelText(label);
@@ -139,7 +139,7 @@ function dataRows() {
     .filter((r) => !r.classList.contains("filler") && r.querySelector("td"));
 }
 
-describe("RegisterGrid — Money's column model (§6.1a)", () => {
+describe("RegisterGrid — Money's column model", () => {
   it("renders Money's headers in order, with no Category column", () => {
     render(<RegisterGrid groups={[{ label: null, rows }]} />);
     const headers = screen.getAllByRole("columnheader").map((h) => h.textContent);
@@ -223,7 +223,7 @@ describe("RegisterGrid — Money's column model (§6.1a)", () => {
   });
 });
 
-describe("RegisterGrid — grouping (§6.1d)", () => {
+describe("RegisterGrid — grouping", () => {
   // The view is "Unreconciled transactions … Grouped", so the fixture's
   // already-reconciled opening deposit is not in it; use an uncleared one.
   const openDeposit: RegisterRow = { ...deposit, is_reconciled: false, cleared_state: "" };
@@ -266,7 +266,7 @@ describe("RegisterGrid — grouping (§6.1d)", () => {
   });
 });
 
-describe("RegisterGrid — reconcile clearing mode (§6.1d)", () => {
+describe("RegisterGrid — reconcile clearing mode", () => {
   it("renders the C column as a toggle and reports clicks", async () => {
     const toggled: string[] = [];
     const cleared = { ...withdrawal, id: "t-3", cleared_state: "C" as const, payee: "Safeway" };
@@ -352,7 +352,7 @@ describe("<AccountRegister />", () => {
     expect(screen.getByText("Ending Balance: $1,457.50")).toBeInTheDocument();
   });
 
-  it("shows no per-column totals — Money's footer has none (§6.1a #9)", async () => {
+  it("shows no per-column totals — Money's footer has none", async () => {
     setIpcHandlers({ get_register: () => rows, list_categories: () => [] });
     useAccountStore.setState({ accounts: [checking], selectedAccountId: "acc-1" });
     render(<AccountRegister />);
@@ -361,7 +361,7 @@ describe("<AccountRegister />", () => {
     expect(screen.queryByRole("table")?.querySelector("tfoot")).toBeNull();
   });
 
-  // §40: the View is Show + dates + sort, described in one line.
+  // The View is Show + dates + sort, described in one line.
   it("the View has dates and a sort, and a non-date sort blanks the Balance column", async () => {
     setIpcHandlers({ get_register: () => rows, list_categories: () => [] });
     useAccountStore.setState({ accounts: [checking], selectedAccountId: "acc-1" });
@@ -378,7 +378,7 @@ describe("<AccountRegister />", () => {
     expect(within(dataRows()[0]).getAllByRole("cell")[4]).toHaveTextContent("Grocery Store");
   });
 
-  // §96: asked for the thing every other grid does — click the header.
+  // Asked for the thing every other grid does — click the header.
   it("sorts by a clicked column header, reverses on a second click, and forgets it when the register is left", async () => {
     setIpcHandlers({ get_register: () => rows, list_categories: () => [] });
     useAccountStore.setState({ accounts: [checking], selectedAccountId: "acc-1" });
@@ -445,7 +445,7 @@ describe("<AccountRegister />", () => {
     expect(screen.getByText("Checks (No transactions this period)")).toBeInTheDocument();
   });
 
-  it("has a Show transaction forms toggle (§6.1b's mechanism)", async () => {
+  it("has a Show transaction forms toggle", async () => {
     setIpcHandlers({ get_register: () => rows, list_categories: () => [] });
     useAccountStore.setState({ accounts: [checking], selectedAccountId: "acc-1" });
     render(<AccountRegister />);
@@ -457,9 +457,9 @@ describe("<AccountRegister />", () => {
   });
 });
 
-describe("in-place transaction form (§6.1b)", () => {
+describe("in-place transaction form", () => {
   // Shaped like migration 0014's tree: "Gasoline" is a child of "Automobile",
-  // so the picker must show it as "Automobile : Gasoline" (§6.1e).
+  // so the picker must show it as "Automobile : Gasoline".
   const cats: Category[] = [
     {
       id: "c-1",
@@ -481,7 +481,7 @@ describe("in-place transaction form (§6.1b)", () => {
     },
   ];
 
-  // Saved entry templates (§31).
+  // Saved entry templates.
   const commons = [
     {
       id: "ct-1",
@@ -546,7 +546,7 @@ describe("in-place transaction form (§6.1b)", () => {
     render(<AccountRegister />);
     await screen.findByRole("table");
     await userEvent.click(screen.getByRole("button", { name: "New" }));
-    // §71: a typed date. Shows M/D/YYYY, takes 7/4, 7/4/26, 7/4/2026 or ISO.
+    // A typed date. Shows M/D/YYYY, takes 7/4, 7/4/26, 7/4/2026 or ISO.
     const date = screen.getByLabelText("Date") as HTMLInputElement;
     expect(date.type).toBe("text");
     await userEvent.clear(date);
@@ -601,7 +601,7 @@ describe("in-place transaction form (§6.1b)", () => {
     expect(payload.category_id).toBe("c-1");
   });
 
-  // §61 — the entry line, and check numbers that follow on.
+  // The entry line, and check numbers that follow on.
   it("the entry line at the foot of the register starts a new transaction", async () => {
     render(<AccountRegister />);
     await screen.findByRole("table");
@@ -616,7 +616,7 @@ describe("in-place transaction form (§6.1b)", () => {
     expect(screen.getByRole("button", { name: "New transaction" })).toBeInTheDocument();
   });
 
-  // §123 — where the caret lands, and the arrow keys.
+  // Where the caret lands, and the arrow keys.
   it("a new entry starts in the Date; an existing row opens in the Payee", async () => {
     render(<AccountRegister />);
     await screen.findByRole("table");
@@ -634,7 +634,7 @@ describe("in-place transaction form (§6.1b)", () => {
     await waitFor(() => expect(screen.getByLabelText("Payee")).toHaveFocus());
   });
 
-  it("§123: up and down walk the transaction list and stop at the ends", async () => {
+  it("Up and down walk the transaction list and stop at the ends", async () => {
     render(<AccountRegister />);
     await screen.findByRole("table");
     const rowOf = (payee: string) => screen.getByText(payee).closest("tr")!;
@@ -656,7 +656,7 @@ describe("in-place transaction form (§6.1b)", () => {
     expect(rowOf("Opening Deposit")).toHaveAttribute("aria-selected", "true");
   });
 
-  it("§123: the arrows belong to the form while one is open, not to the list", async () => {
+  it("The arrows belong to the form while one is open, not to the list", async () => {
     render(<AccountRegister />);
     await screen.findByRole("table");
     const rowOf = (payee: string) => screen.getByText(payee).closest("tr")!;
@@ -702,7 +702,7 @@ describe("in-place transaction form (§6.1b)", () => {
     await userEvent.type(screen.getByLabelText("Payee"), "City Power & Light");
     await userEvent.type(screen.getByLabelText("Payment"), "120");
     await userEvent.click(screen.getByRole("button", { name: "Enter" }));
-    // §161 — Enter opens the next entry, and it starts with 1042.
+    // Enter opens the next entry, and it starts with 1042.
     await waitFor(() => expect((screen.getByLabelText("Payee") as HTMLInputElement).value).toBe(""));
     expect((screen.getByLabelText("Num") as HTMLInputElement).value).toBe("1042");
     // Escape closes it; the entry line shows 1042, and New starts with it too.
@@ -723,7 +723,7 @@ describe("in-place transaction form (§6.1b)", () => {
     expect((screen.getByLabelText("Num") as HTMLInputElement).value).toBe("1042");
   });
 
-  it("the next new transaction starts on the date of the last one entered (§71)", async () => {
+  it("the next new transaction starts on the date of the last one entered", async () => {
     render(<AccountRegister />);
     await screen.findByRole("table");
     await userEvent.click(screen.getByRole("button", { name: "New" }));
@@ -733,7 +733,7 @@ describe("in-place transaction form (§6.1b)", () => {
     await userEvent.type(screen.getByLabelText("Payee"), "Fireworks");
     await userEvent.type(screen.getByLabelText("Payment"), "20");
     await userEvent.click(screen.getByRole("button", { name: "Enter" }));
-    // §161 — Enter opens the next entry on that date, with the caret in the
+    // Enter opens the next entry on that date, with the caret in the
     // Date so Tab moves straight on to the Payee when the date is right.
     await waitFor(() => expect((screen.getByLabelText("Payee") as HTMLInputElement).value).toBe(""));
     expect(invokeCalls.find((c) => c.cmd === "create_transaction")!.args).toMatchObject({ payload: { date: "2026-07-04" } });
@@ -751,7 +751,7 @@ describe("in-place transaction form (§6.1b)", () => {
     expect((screen.getByLabelText("Date") as HTMLInputElement).value).toBe("7/4/2026");
   });
 
-  it("Enter on an EXISTING row saves and closes it; nothing new opens (§161)", async () => {
+  it("Enter on an EXISTING row saves and closes it; nothing new opens", async () => {
     render(<AccountRegister />);
     await screen.findByRole("table");
     await userEvent.dblClick(dataRows()[1]);
@@ -760,9 +760,9 @@ describe("in-place transaction form (§6.1b)", () => {
     await waitFor(() => expect(screen.queryByLabelText("Payee")).not.toBeInTheDocument());
   });
 
-  // §171 — rules that learn: giving a category to a row that had none is
+  // Rules that learn: giving a category to a row that had none is
   // how an unknown import gets filed, so the register offers to remember it.
-  it("offers to remember the category given to an uncategorized row, and Remember makes the rule (§171)", async () => {
+  it("offers to remember the category given to an uncategorized row, and Remember makes the rule", async () => {
     setIpcHandlers({
       get_register: () => rows,
       list_categories: () => cats,
@@ -789,7 +789,7 @@ describe("in-place transaction form (§6.1b)", () => {
     await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Remembered."));
   });
 
-  it("does not offer a rule when one already covers the payee, nor when the row already had a category (§171)", async () => {
+  it("does not offer a rule when one already covers the payee, nor when the row already had a category", async () => {
     setIpcHandlers({
       get_register: () => rows,
       list_categories: () => cats,
@@ -818,7 +818,7 @@ describe("in-place transaction form (§6.1b)", () => {
     expect(screen.queryByRole("button", { name: "Remember" })).not.toBeInTheDocument();
   });
 
-  it("Enter still saves after a split — the caret comes back to the form (§160)", async () => {
+  it("Enter still saves after a split — the caret comes back to the form", async () => {
     render(<AccountRegister />);
     await screen.findByRole("table");
     await userEvent.click(screen.getByRole("button", { name: "New" }));
@@ -835,7 +835,7 @@ describe("in-place transaction form (§6.1b)", () => {
     await waitFor(() => expect(invokeCalls.some((c) => c.cmd === "create_transaction")).toBe(true));
   });
 
-  // §73 — moving to another row saves the open form.
+  // Moving to another row saves the open form.
   it("clicking another row saves an edited transaction without Enter", async () => {
     render(<AccountRegister />);
     await screen.findByRole("table");
@@ -889,7 +889,7 @@ describe("in-place transaction form (§6.1b)", () => {
   //
   // `check_number` landed in migration 0011 and RegisterGrid has rendered it
   // ever since, but nothing could write it: the field was a `disabled` stub,
-  // so the column was permanently blank. These pin the write path (§23).
+  // so the column was permanently blank. These pin the write path.
 
   it("sends the Num as check_number", async () => {
     render(<AccountRegister />);
@@ -959,7 +959,7 @@ describe("in-place transaction form (§6.1b)", () => {
   // Regression, 2026-09-03. Selecting a row opened its edit form immediately
   // whenever "Show transaction forms" was checked, so a single click expanded
   // the row — you could not look at a transaction, or pick one to clear or
-  // delete, without it unfolding under the cursor (§26.2).
+  // delete, without it unfolding under the cursor.
   it("selecting a row does not open its form", async () => {
     render(<AccountRegister />);
     await screen.findByRole("table");
@@ -993,7 +993,7 @@ describe("in-place transaction form (§6.1b)", () => {
     expect((screen.getByLabelText("Payee") as HTMLInputElement).value).toBe("Opening Deposit");
   });
 
-  // ── Common Transactions (§31) ────────────────────────────────────────
+  // ── Common Transactions ────────────────────────────────────────
   //
   // The button was a disabled stub from the first version of this form. It is
   // the last piece of Money's entry flow, and the thing that makes entering
@@ -1091,7 +1091,7 @@ describe("in-place transaction form (§6.1b)", () => {
   });
 
   it("the menu is not inside the register, so nothing can clip it", async () => {
-    // §19.1's lesson, applied rather than re-learned. The button strip is a
+    // An old lesson, applied rather than re-learned. The button strip is a
     // row of the register table, which sits in an overflow-auto wrapper with a
     // 52vh cap — an absolutely positioned menu there is clipped, and clipped
     // in the way that hides the bug: a short list fits, a full one does not.
@@ -1140,7 +1140,7 @@ describe("in-place transaction form (§6.1b)", () => {
   });
 
   it("Edit seeds the Num from the row", async () => {
-    // Same shape as the §15 category bug: a field the form forgets to seed
+    // Same shape as an earlier category bug: a field the form forgets to seed
     // is a field an edit silently wipes.
     setIpcHandlers({
       get_register: () => [deposit, { ...withdrawal, check_number: "1042" }],
@@ -1162,7 +1162,7 @@ describe("in-place transaction form (§6.1b)", () => {
   // "(none)" however it was filed, and committing that edit wrote NULL back
   // over the real category. Silent data loss on any edit, including one that
   // only touched the amount.
-  // §17 — Money offers a known payee's last category when you re-enter it.
+  // Money offers a known payee's last category when you re-enter it.
   // In short: recognize a common transaction and pre-fill the category
   // with the same one as last time.
   it("recalls a known payee's category on a new transaction", async () => {
@@ -1223,7 +1223,7 @@ describe("in-place transaction form (§6.1b)", () => {
     );
   });
 
-  // §17.4 — Money offers the payee's last AMOUNT as well as its category.
+  // Money offers the payee's last AMOUNT as well as its category.
   // Most payees are the same figure every month, and this is half of why
   // entry in Money feels fast.
 
@@ -1350,7 +1350,7 @@ describe("in-place transaction form (§6.1b)", () => {
     render(<AccountRegister />);
     await screen.findByRole("table");
     await userEvent.click(screen.getByRole("button", { name: "New" }));
-    // §82: typing opens the suggestions; Tab takes the highlighted one.
+    // Typing opens the suggestions; Tab takes the highlighted one.
     const input = screen.getByLabelText("Payee") as HTMLInputElement;
     await userEvent.type(input, "net");
     const list = await screen.findByRole("listbox", { name: "Payee suggestions" });
@@ -1360,7 +1360,7 @@ describe("in-place transaction form (§6.1b)", () => {
     expect(screen.queryByRole("listbox", { name: "Payee suggestions" })).toBeNull();
   });
 
-  // §18 — typing a category that does not exist offers to create it without
+  // Typing a category that does not exist offers to create it without
   // abandoning the transaction.
   it("offers to add a category that does not exist", async () => {
     render(<AccountRegister />);
@@ -1576,7 +1576,7 @@ describe("in-place transaction form (§6.1b)", () => {
     ).toBeInTheDocument();
   });
 
-  it("itemizing sets the transaction amount from the split total (§6.1e)", async () => {
+  it("itemizing sets the transaction amount from the split total", async () => {
     render(<AccountRegister />);
     await screen.findByRole("table");
     await userEvent.click(screen.getByRole("button", { name: "New" }));
@@ -1607,21 +1607,21 @@ describe("in-place transaction form (§6.1b)", () => {
     await userEvent.click(screen.getByRole("button", { name: "Enter" }));
 
     await waitFor(() => expect(invokeCalls.some((c) => c.cmd === "create_transaction")).toBe(true));
-    // §168 — the lines ride in the create itself, one command and one undo
+    // The lines ride in the create itself, one command and one undo
     // step; there is no second call.
     expect(invokeCalls.some((c) => c.cmd === "set_splits")).toBe(false);
     const call = invokeCalls.find((c) => c.cmd === "create_transaction")!;
     expect(call.args).toMatchObject({
       payload: {
         amount_cents: -3000,
-        // §102: every line carries `transfer_account_id`, null unless the line
+        // Every line carries `transfer_account_id`, null unless the line
         // is a transfer. Rust defaults it, so an older payload still works.
         splits: [{ category_id: "c-1", transfer_account_id: null, description: null, amount_cents: -3000 }],
       },
     });
   });
 
-  it("re-splitting an existing transaction writes the lines BEFORE the edit (§38)", async () => {
+  it("re-splitting an existing transaction writes the lines BEFORE the edit", async () => {
     // `set_splits` is the one call allowed to move a split row's total;
     // `update_transaction` refuses an amount change on a row that has lines.
     // So for an existing row the lines go first, and the edit then carries
@@ -1649,14 +1649,14 @@ describe("in-place transaction form (§6.1b)", () => {
     await userEvent.clear(amt);
     await userEvent.type(amt, "50.00");
     await userEvent.click(screen.getByRole("button", { name: "Done" }));
-    // §160 — the lines no longer add up to the $42.50 the row had, so Done
+    // The lines no longer add up to the $42.50 the row had, so Done
     // asks before it moves the amount.
     await userEvent.click(screen.getByRole("button", { name: /^Change the amount to/ }));
     expect((screen.getByLabelText("Payment") as HTMLInputElement).value).toBe("50.00");
     await userEvent.click(screen.getByRole("button", { name: "Enter" }));
 
     await waitFor(() => expect(invokeCalls.some((c) => c.cmd === "update_transaction")).toBe(true));
-    // §168 — the lines ride in the edit itself; the backend writes them
+    // The lines ride in the edit itself; the backend writes them
     // first and then the edit, in one undo step.
     expect(invokeCalls.some((c) => c.cmd === "set_splits")).toBe(false);
     expect(invokeCalls.find((c) => c.cmd === "update_transaction")!.args).toMatchObject({
@@ -1677,7 +1677,7 @@ describe("in-place transaction form (§6.1b)", () => {
   });
 });
 
-describe("classifications in the register (§112)", () => {
+describe("classifications in the register", () => {
   /** The register opens a row on its SECOND click, as Money does. */
   async function openGroceryRow(user: ReturnType<typeof userEvent.setup>) {
     const row = screen.getByText("Grocery Store").closest("tr")!;
@@ -1768,7 +1768,7 @@ describe("classifications in the register (§112)", () => {
     await openGroceryRow(user);
     await user.type(screen.getByLabelText(/^Memo/), "receipt");
     await user.click(screen.getByRole("button", { name: "Enter" }));
-    // §168 — the lines travel in the edit payload itself.
+    // The lines travel in the edit payload itself.
     await waitFor(() => expect(invokeCalls.some((c) => c.cmd === "update_transaction")).toBe(true));
     const sent = (invokeCalls.find((c) => c.cmd === "update_transaction")!.args as { payload: { splits: NewSplit[] } }).payload;
     expect(sent.splits[0].classes).toEqual([{ classification_id: "cl-prop", value_id: "v-cos", label: "Maple" }]);
@@ -1776,7 +1776,7 @@ describe("classifications in the register (§112)", () => {
   });
 
   it("shows what the split lines are classified as when the row itself is not", async () => {
-    // §117.3 — reported as "I tagged the principal line and the register
+    // Reported as "I tagged the principal line and the register
     // shows (none)". It did: the row only ever showed the TRANSACTION's own
     // value, so a mortgage tagged line by line looked untagged.
     handlers({
@@ -1822,7 +1822,7 @@ describe("classifications in the register (§112)", () => {
     await user.click(screen.getByRole("button", { name: "Split" }));
     const dialog = await screen.findByRole("dialog", { name: "Transaction with Multiple Categories" });
     expect(within(dialog).getAllByLabelText(/^Property \d/)[0]).toHaveValue("");
-    // The brackets mean "this line follows the transaction" — §117.5 says so
+    // The brackets mean "this line follows the transaction" — the dialog says so
     // in words, because "(X)" beside "X" did not.
     expect(
       within(within(dialog).getAllByLabelText(/^Property \d/)[0]).getByRole("option", {
@@ -1837,7 +1837,7 @@ describe("classifications in the register (§112)", () => {
     const sent = invokeCalls.find((c) => c.cmd === "set_transaction_classes")!.args as { picks: { value_id: string }[] };
     expect(sent.picks).toEqual([{ classification_id: "cl-prop", value_id: "v-cos" }]);
 
-    // §117.4 — and the REGISTER must be read again afterwards. The store
+    // And the REGISTER must be read again afterwards. The store
     // reloads inside update_transaction, which happens BEFORE this write, so
     // without a second read the row on screen is the one from a moment
     // before the tag existed: no mark, and re-opening the row seeds the form
@@ -1848,7 +1848,7 @@ describe("classifications in the register (§112)", () => {
   });
 
   it("grays out a classification with no values, and says where to add them", async () => {
-    // §117.1 — the shape people get wrong first: a classification per house,
+    // The shape people get wrong first: a classification per house,
     // instead of one Property classification with the houses in it. The
     // register drew four usable-looking fields with nothing in any of them.
     handlers({ list_classifications: () => [{ ...property, values: [] }] });
@@ -1879,7 +1879,7 @@ describe("classifications in the register (§112)", () => {
   });
 });
 
-describe("transfers (§10.2 item 5)", () => {
+describe("transfers", () => {
   const savings: Account = { ...checking, id: "acc-2", name: "Everyday Savings 5678", balance_cents: 500000 };
 
   beforeEach(() => {
@@ -1949,7 +1949,7 @@ describe("transfers (§10.2 item 5)", () => {
     },
   ];
 
-  // §20 — a transfer sent to the wrong account is editable in place. It used
+  // A transfer sent to the wrong account is editable in place. It used
   // to be read-only, with "delete it and re-enter" as the only recourse, which
   // also threw away the row's reconcile state.
   const transferRow: RegisterRow = {
@@ -2020,7 +2020,7 @@ describe("transfers (§10.2 item 5)", () => {
     expect(call.args).toMatchObject({ amountCents: -40000, otherAccountId: "acc-2" });
   });
 
-  // §164 — §20.2 refused both of these as "a different pair of rows". They
+  // An earlier version refused both of these as "a different pair of rows". They
   // are, and the register now writes or removes the partner row itself,
   // because an imported row the bank called a transfer arrives as an
   // ordinary one and delete-and-re-enter lost its cleared mark.
@@ -2128,7 +2128,7 @@ describe("register interactions", () => {
     );
   });
 
-  it("Tax line… on a row takes it out of the tax reports or puts it on a line (§53)", async () => {
+  it("Tax line… on a row takes it out of the tax reports or puts it on a line", async () => {
     let rowsNow = rows;
     setIpcHandlers({
       get_register: () => rowsNow,
@@ -2213,7 +2213,7 @@ describe("save failures are visible (regression)", () => {
 // value stayed above zero for the life of the session, so the wizard reopened
 // on EVERY remount of the register: Banking → Bills → Banking, or picking an
 // account after visiting any other rail item. Reported as "clicking between
-// the bills and banking tab triggered the reconcile dialog" (§26.1).
+// the bills and banking tab triggered the reconcile dialog".
 describe("the reconcile request is one-shot", () => {
   const statementRows = rows;
 
@@ -2278,7 +2278,7 @@ describe("the reconcile request is one-shot", () => {
   });
 });
 
-describe("reconcile (§6.1f)", () => {
+describe("reconcile", () => {
   const statement = {
     id: "st-1",
     account_id: "acc-1",
@@ -2322,7 +2322,7 @@ describe("reconcile (§6.1f)", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows the resume dialog when a statement was postponed (§6.1f A)", async () => {
+  it("shows the resume dialog when a statement was postponed", async () => {
     handlers({ get_open_statement: () => statement });
     render(<AccountRegister />);
     await screen.findByRole("table");
@@ -2357,7 +2357,7 @@ describe("reconcile (§6.1f)", () => {
     expect(screen.getAllByRole("button", { name: /^Clear / }).length).toBeGreaterThan(0);
   });
 
-  it("clearing is a strip above the register, not a dialog over it, so rows stay clickable (§69)", async () => {
+  it("clearing is a strip above the register, not a dialog over it, so rows stay clickable", async () => {
     handlers();
     render(<AccountRegister />);
     await screen.findByRole("table");
@@ -2485,7 +2485,7 @@ describe("everyday cleared marks (Ctrl+M / right-click)", () => {
     useAccountStore.setState({ accounts: [checking], selectedAccountId: "acc-1" });
   });
 
-  // §69 — clearing while a row is open, and from the toolbar.
+  // Clearing while a row is open, and from the toolbar.
   it("an open row's C cell toggles its cleared mark", async () => {
     render(<AccountRegister />);
     await screen.findByRole("table");
@@ -2510,7 +2510,7 @@ describe("everyday cleared marks (Ctrl+M / right-click)", () => {
     );
   });
 
-  // §70 — reconciling by hand: one row from the menu, or everything through a date.
+  // Reconciling by hand: one row from the menu, or everything through a date.
   it("right-click offers Mark as reconciled on a row that is not R", async () => {
     render(<AccountRegister />);
     await screen.findByRole("table");
@@ -2605,7 +2605,7 @@ describe("everyday cleared marks (Ctrl+M / right-click)", () => {
     );
   });
 
-  // §102 — Ctrl+M is bound from the menu table now (Edit → Mark as cleared),
+  // Ctrl+M is bound from the menu table now (Edit → Mark as cleared),
   // not by a private listener on the grid, so what the register owes is the
   // COMMAND. The key itself is checked where it is bound, in App.nav.
   it("Mark as cleared unreconciles an R row too, so it stays consistent", async () => {
@@ -2741,7 +2741,7 @@ describe("a reconciled transaction can still be removed", () => {
   });
 });
 
-describe("voiding a transaction (§6.1h)", () => {
+describe("voiding a transaction", () => {
   // Money's void: the row stays with its date, payee and original amount, but
   // stops counting. The fraud case — a reversed charge did not happen, but you
   // want the evidence it was there.
@@ -2828,7 +2828,7 @@ describe("voiding a transaction (§6.1h)", () => {
   });
 });
 
-describe("nextCheckNumber (§61)", () => {
+describe("nextCheckNumber", () => {
   it("is one past the highest numeric Num, whatever came between", () => {
     expect(nextCheckNumber([])).toBeNull();
     expect(nextCheckNumber([{ check_number: "ATM" }, { check_number: null }])).toBeNull();
@@ -2836,8 +2836,8 @@ describe("nextCheckNumber (§61)", () => {
   });
 });
 
-// §118 — a house or a car reads as a value, not as a checking account.
-describe("a valued asset's register says what it is for (§93/§118)", () => {
+// A house or a car reads as a value, not as a checking account.
+describe("a valued asset's register says what it is for", () => {
   const home: Account = {
     ...checking,
     id: "acc-home",
@@ -2895,8 +2895,8 @@ describe("a valued asset's register says what it is for (§93/§118)", () => {
   });
 });
 
-// §120 — a mortgage's register does not say "Deposit".
-describe("a debt's register columns say Increase and Decrease (§120)", () => {
+// A mortgage's register does not say "Deposit".
+describe("a debt's register columns say Increase and Decrease", () => {
   const mortgage: Account = {
     ...checking,
     id: "acc-mtg",
@@ -2964,7 +2964,7 @@ describe("a debt's register columns say Increase and Decrease (§120)", () => {
   });
 });
 
-describe("§154 — the register survives losing its account", () => {
+describe("The register survives losing its account", () => {
   // `reloadAll` — what every importer calls when it finishes — clears the
   // selection before it fetches. The "select an account" return used to sit
   // ABOVE the menu-bar hooks and the arrow-key effect, so a register that was
@@ -2984,9 +2984,9 @@ describe("§154 — the register survives losing its account", () => {
   });
 });
 
-// §181 — what the walk of §178 found: refusals looked like info, the far row's
+// What a walkthrough found: refusals looked like info, the far row's
 // form stayed open with nothing said, and a closed account was still offered.
-describe("§181 — refusals read as refusals, and closed accounts stay out", () => {
+describe("Refusals read as refusals, and closed accounts stay out", () => {
   const far: RegisterRow = {
     ...deposit,
     id: "t-far",
@@ -3136,7 +3136,7 @@ describe("§181 — refusals read as refusals, and closed accounts stay out", ()
   });
 });
 
-describe("§183 — the register's review fixes", () => {
+describe("The register's review fixes", () => {
   const savings: Account = { ...checking, id: "acc-2", name: "Everyday Savings 5678", balance_cents: 0 };
   const statement = {
     id: "st-1",

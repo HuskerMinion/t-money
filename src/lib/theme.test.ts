@@ -9,7 +9,7 @@ import { PREVIEW_DEFAULTS, THEMES, applyTheme, isDark, readTheme, saveTheme, the
 const tokensCss: string = readFileSync("src/branding/tm-tokens.css", "utf8");
 
 
-describe("themes (§63)", () => {
+describe("themes", () => {
   beforeEach(() => {
     window.localStorage.clear();
     applyTheme("money");
@@ -53,7 +53,7 @@ describe("themes (§63)", () => {
   });
 });
 
-// §87: the header's one-click light/dark.
+// The header's one-click light/dark.
 describe("toggleDark", () => {
   it("goes to Evening and back to the light theme it left", () => {
     window.localStorage.clear();
@@ -70,7 +70,7 @@ describe("toggleDark", () => {
 });
 
 
-// §102 — the bug this locks out.
+// The bug this locks out.
 //
 // The menu bar's hover state painted `--tm-ms-tab-active-bot` and hard-coded
 // WHITE text on top. That is fine for nine themes and wrong for the tenth:
@@ -112,7 +112,7 @@ function resolved(themeId: string, key: string, fallbackKey?: string): string {
   );
 }
 
-describe("every theme keeps its chrome readable (§102)", () => {
+describe("every theme keeps its chrome readable", () => {
   for (const theme of THEMES) {
     it(`${theme.label}: a hovered menu item can be read`, () => {
       const bg = resolved(theme.id, "ms-chrome-sel", "ms-tab-active-bot");
@@ -142,13 +142,13 @@ describe("every theme keeps its chrome readable (§102)", () => {
     });
   }
 
-  /// §142 — and the thing that keeps it done.
+  /// And the thing that keeps it done.
   ///
   /// `tm-tokens.css` is supposed to be the single source for color, and the
   /// reason it matters is that a literal cannot be overridden: three
   /// `text-[#1e7b34]` spans stayed Money's light-theme green on all three
   /// dark themes, where the theme's own --tm-positive is #4fd08a. That is
-  /// the §19.2 class exactly — a color nothing looked at.
+  /// exactly the old bug — a color nothing looked at.
   ///
   /// Chrome-less files are checked, not just the ones that were wrong: the
   /// point is that the NEXT one cannot be written either.
@@ -168,7 +168,7 @@ describe("every theme keeps its chrome readable (§102)", () => {
     expect(offenders, "use a --tm-* token from tm-tokens.css, not a literal").toEqual([]);
   });
 
-  /// §142 — the error box was three literals, so it was a light pink card on
+  /// The error box was three literals, so it was a light pink card on
   /// a near-black screen. Now it is a token, which means every theme has to
   /// answer for it the way it already answers for the amber warning box.
   it("every theme's error box is readable", () => {

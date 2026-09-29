@@ -19,7 +19,7 @@ describe("shares and prices in millionths", () => {
     expect(formatShares(100_000_000)).toBe("100");
     expect(formatShares(-500_000)).toBe("-0.5");
     expect(formatPrice(34_567_800)).toBe("34.5678");
-    // §72: five and six places survive, so a fund priced to the mill round-trips.
+    // Five and six places survive, so a fund priced to the mill round-trips.
     expect(formatPrice(34_567_890)).toBe("34.56789");
     expect(formatPrice(1_000_123)).toBe("1.000123");
     expect(formatPrice(10_000_000)).toBe("10.00");
@@ -50,7 +50,7 @@ describe("shares and prices in millionths", () => {
     expect(isLongTerm("2025-03-10", "2026-03-11")).toBe(true);
   });
 
-  it("allocates a sale by Money's distribution methods (§48)", () => {
+  it("allocates a sale by Money's distribution methods", () => {
     const lots = [
       { id: "a", acquired_on: "2024-01-10", shares_micro: 100_000_000, cost_cents: 100_000 }, // $10/sh
       { id: "b", acquired_on: "2025-06-10", shares_micro: 100_000_000, cost_cents: 300_000 }, // $30/sh
@@ -64,8 +64,8 @@ describe("shares and prices in millionths", () => {
   });
 });
 
-// §79: the file's rounding. Some brokers truncate; the default rounds half away.
-describe("valueCents rounding (§79)", () => {
+// The file's rounding. Some brokers truncate; the default rounds half away.
+describe("valueCents rounding", () => {
   it("20.125 × 10.07 is 202.66 nearest and 202.65 down; 10.25 × 50.07 is 513.22 / 513.21", () => {
     expect(valueCents(20_125_000, 10_070_000)).toBe(20_266);
     expect(valueCents(20_125_000, 10_070_000, "down")).toBe(20_265);

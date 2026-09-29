@@ -3,7 +3,7 @@
 //! # Why this exists, and why it is shaped this way
 //!
 //! Every screen in this app is hard to judge against an empty database. The
-//! register's running balance, payee and amount recall (§23.2), the reconcile
+//! register's running balance, payee and amount recall, the reconcile
 //! flow, budgets, reports — none of them show their real behavior until
 //! there are months of transactions behind them.
 //!
@@ -11,7 +11,7 @@
 //!
 //! 1. **Never into a real file.** The generator ships in every build,
 //!    because `commands::create_sample_file` uses it to make a NEW sample
-//!    file (§128). Seeding the file that is already open,
+//!    file. Seeding the file that is already open,
 //!    `commands::seed_demo_data`, is behind `#[cfg(debug_assertions)]` and
 //!    refuses in a release build. A personal-finance app must never have a
 //!    "fill my file with fake transactions" button in the shipped product.
@@ -69,7 +69,7 @@ struct Recurring {
     /// mid-summer and mid-winter (electric, gas), so a year of history has a
     /// shape rather than a flat line.
     seasonal: Option<i64>,
-    /// Written as a scheduled-bill RULE as well as history (§32), so the
+    /// Written as a scheduled-bill RULE as well as history, so the
     /// Bills screen and the forecast have something to project.
     rule: bool,
 }
@@ -79,12 +79,12 @@ const fn rec(payee: &'static str, category: &'static str, cents: i64, day: u32, 
 }
 
 const RECURRING: &[Recurring] = &[
-    rec("Employer Payroll", "Gross Pay", 312_500, 1, 0),
-    rec("Employer Payroll", "Gross Pay", 312_500, 15, 0),
+    rec("Employer Payroll", "Gross Pay", 325_000, 1, 0),
+    rec("Employer Payroll", "Gross Pay", 325_000, 15, 0),
     // The mortgage is TWO things a month: interest (a real expense, tax
     // line and all) here, and principal as a transfer to the loan below.
     rec("Example Bank", "Mortgage Interest", -118_400, 1, 0),
-    // §174 — no scheduled rule for these two: the Subscriptions card and
+    // No scheduled rule for these two: the Subscriptions card and
     // the forecast's detector are what find them.
     Recurring { payee: "Netflix", category: "Subscriptions", cents: -1_899, day: 4, vary: 0, seasonal: None, rule: false },
     Recurring { payee: "Spotify", category: "Subscriptions", cents: -1_199, day: 9, vary: 0, seasonal: None, rule: false },
@@ -167,7 +167,7 @@ const ANNUAL: &[(u32, u32, &str, &str, i64, Card)] = &[
 ];
 
 /// How many months of history to write. Thirty-seven: three full years plus
-/// the current month (§128). It was thirteen, which gave year-over-year
+/// the current month. It was thirteen, which gave year-over-year
 /// exactly one prior year to compare against and left the demo mortgage
 /// almost where it started. Three years is what makes the reports worth
 /// looking at when somebody is judging the app on a first sitting — a price
@@ -197,7 +197,7 @@ pub fn seed(conn: &Conn) -> Result<SeedSummary, String> {
     // transaction below, which is what Money does — the money in an account
     // came from somewhere, and the register should say so. It also keeps a
     // property the tests lean on: for these accounts, the rows sum to the
-    // balance. (`create_account` writes the same row itself since §38, but
+    // balance. (`create_account` writes the same row itself, but
     // dated at `opened_on`; the seeder wants its own date, one day before
     // the history window.)
     let checking = unique_account(conn, "Demo Checking", "checking", 0)?;
@@ -230,10 +230,10 @@ pub fn seed(conn: &Conn) -> Result<SeedSummary, String> {
     let opened = iso(months_back(today, MONTHS).pred_opt().unwrap_or(today));
     let mut n_txn = 0u32;
     for (account, amount) in [
-        (&checking, 412_000i64),
+        (&checking, 600_000i64),
         (&savings, 1_850_000),
         (&cash, 12_000),
-        (&brokerage, 240_000),          // the cash sweep; the holdings are lots (§41)
+        (&brokerage, 240_000),          // the cash sweep; the holdings are lots
         (&truck_loan, -2_215_000),      // a liability opens negative
         (&home, 46_500_000),
         (&mortgage, -28_740_000),
@@ -250,7 +250,7 @@ pub fn seed(conn: &Conn) -> Result<SeedSummary, String> {
 
     // ── securities, with a price history, and the lots held at the start ──
     // Prices walk month by month from a starting NAV, so net worth over time
-    // moves because the market moved and a sale shows a real gain (§41).
+    // moves because the market moved and a sale shows a real gain.
     let mut secs: Vec<DemoSecurity> = Vec::new();
     for (name, symbol, kind, start_micro) in [
         ("Vanguard Total Stock Market", "VTSAX", "mutual_fund", 118_420_000i64),
@@ -370,7 +370,7 @@ pub fn seed(conn: &Conn) -> Result<SeedSummary, String> {
             n_txn += 1;
         }
 
-        // One check a month, so the Num column is populated (§23.1) and its
+        // One check a month, so the Num column is populated and its
         // values look like Money's: a running check number, plus the odd
         // marker.
         let check = &CHECKS[(back as usize) % CHECKS.len()];
@@ -379,8 +379,8 @@ pub fn seed(conn: &Conn) -> Result<SeedSummary, String> {
                 let cat = category_id(conn, check.1)?;
                 // `Some(&check_no.to_string())` would be Option<&String>, and
                 // the parameter is Option<&str> — Rust deref-coerces
-                // &String -> &str at a plain argument but not through Option
-                // (§21.3). Bind it, then borrow as &str.
+                // &String -> &str at a plain argument but not through Option.
+                // Bind it, then borrow as &str.
                 let num = check_no.to_string();
                 queries::create_transaction(
                     conn,
@@ -434,7 +434,7 @@ pub fn seed(conn: &Conn) -> Result<SeedSummary, String> {
 
         // The monthly moves: savings, brokerage, 401(k), and the principal on
         // the two loans — real transfers, so both halves and both balances
-        // are exercised (§10.2 item 5), and net worth moves for a reason.
+        // are exercised, and net worth moves for a reason.
         for (day, to, amount) in [
             (2u32, &savings, 40_000i64),
             (2, &brokerage, 25_000),
@@ -494,7 +494,7 @@ pub fn seed(conn: &Conn) -> Result<SeedSummary, String> {
             }
         }
 
-        // A split: the Walmart trip §10.1 uses as the motivating example.
+        // A split: a Walmart trip, the classic example of one.
         if let Some(date) = month_start.with_day(21) {
             if date <= today {
                 let total = j.between(-14_500, -7_500);
@@ -538,11 +538,11 @@ pub fn seed(conn: &Conn) -> Result<SeedSummary, String> {
         }
     }
 
-    // ── a position opened inside the last year (§128) ────────────────────
+    // ── a position opened inside the last year ────────────────────
     //
     // Every opening lot is dated the day before the window, so at MONTHS = 37
     // a FIFO sale of anything held from the start is long-term BY
-    // DEFINITION — and until §128 widened the window, the Apple sale below
+    // DEFINITION — and until the window was widened to three years, the Apple sale below
     // was the short-term one. A capital-gains report with nothing on the
     // short side of the one-year line demonstrates half of what it is for.
     //
@@ -556,7 +556,7 @@ pub fn seed(conn: &Conn) -> Result<SeedSummary, String> {
         n_txn += 1;
     }
 
-    // ── three sales, one short-term and two long (§41, §128) ─────────────
+    // ── three sales, one short-term and two long ─────────────
     // The VTSAX bought two hundred days ago, sold ten weeks in: short-term.
     // Apple and Microsoft come out of the opening lots and are long-term.
     // All three sweep to checking, so the transfer that Money's "Transfer to"
@@ -590,7 +590,7 @@ pub fn seed(conn: &Conn) -> Result<SeedSummary, String> {
         n_transfer += 1;
     }
 
-    // ── a voided transaction, so that path has an example (§6.1h) ────────
+    // ── a voided transaction, so that path has an example ────────
     let void_date = iso(today - Duration::days(9));
     let bad = queries::create_transaction(
         conn,
@@ -654,7 +654,7 @@ pub fn seed(conn: &Conn) -> Result<SeedSummary, String> {
 
     // ── budgets for the last twelve months and this one ──────────────────
     //
-    // Twelve, not `MONTHS`: §128 widened the transaction history to three
+    // Twelve, not `MONTHS`: the transaction history was widened to three
     // years, and budgets deliberately did not follow. A budget is a thing you
     // set for the year you are in; three years of them would say that this
     // household has been budgeting since 2023, which is a claim the rest of
@@ -690,7 +690,7 @@ pub fn seed(conn: &Conn) -> Result<SeedSummary, String> {
         }
     }
 
-    // ── scheduled bills and income (§32) — the rules behind the history ───
+    // ── scheduled bills and income — the rules behind the history ───
     // Each starts on its next due date; the matcher then pairs past
     // occurrences in the window with the rows above.
     let mut n_rule = 0u32;
@@ -746,7 +746,7 @@ pub fn seed(conn: &Conn) -> Result<SeedSummary, String> {
     let _ = n_rule;
 
     // ── goals, holdings and templates, so those views are not empty ──────
-    // Emergency Fund watches savings (§46): it started at $18,500 and every
+    // Emergency Fund watches savings: it started at $18,500 and every
     // monthly savings transfer is tagged for it, so its progress is derived.
     let emergency = queries::create_goal(
         conn, "Emergency Fund", 3_000_000, 1_850_000, Some("2027-06-30"), None, Some(&savings),
@@ -789,7 +789,7 @@ pub fn seed(conn: &Conn) -> Result<SeedSummary, String> {
     );
 
 
-    // ── §174: what the walks of §158–§173 need a demo file to have ────────
+    // ── what the later features need a demo file to have ─────────────────
     // Somebody judging the app on a first sitting should be able to walk
     // every feature without typing their own life in first: a HELOC paid
     // as one split, a closed account, an employer match arriving as money
@@ -858,7 +858,7 @@ pub fn seed(conn: &Conn) -> Result<SeedSummary, String> {
 
     // (c) The employer's match: money that never touched a bank, arriving
     //     in the 401(k) as a deposit (Retirement Contributions) and bought
-    //     the same day — §172's shape, and a flow the performance card sees.
+    //     the same day — the shape a TSP contribution has, and a flow the performance card sees.
     let contributions = queries::ensure_category(conn, "Retirement Contributions")?;
     conn.execute("UPDATE categories SET kind = 'income' WHERE id = ?1", rusqlite::params![contributions]).map_err(|e| e.to_string())?;
     for back in (0..MONTHS).rev() {
@@ -873,7 +873,7 @@ pub fn seed(conn: &Conn) -> Result<SeedSummary, String> {
     }
 
     // (d) A rebalance inside the plan ten months ago: bonds out, stocks in,
-    //     linked as an exchange so the lot engine carries the basis (§167).
+    //     linked as an exchange so the lot engine carries the basis.
     {
         let d = iso(months_back(today, 10).with_day(20).unwrap());
         let bond_price = lots::price_asof(conn, &sec("VBTLX"), &d)?.map(|p| p.0).unwrap_or(lots::MICRO);
@@ -886,7 +886,7 @@ pub fn seed(conn: &Conn) -> Result<SeedSummary, String> {
         n_txn += 2;
     }
 
-    // (e) Rename rules, one of them with a condition (§171).
+    // (e) Rename rules, one of them with a condition.
     let groceries = required_category(conn, "Groceries")?;
     let subscriptions = required_category(conn, "Subscriptions")?;
     let misc = required_category(conn, "Miscellaneous")?;
@@ -895,8 +895,8 @@ pub fn seed(conn: &Conn) -> Result<SeedSummary, String> {
     let _ = queries::create_payee_rule(conn, "AMZN", "Amazon Prime", Some(&subscriptions), &crate::models::RuleConditions { memo_contains: Some("prime".to_string()), ..Default::default() });
 
     // (f) Three rows the way a bank download leaves them — raw text, no
-    //     category — so the Remember offer (§171) and the import review
-    //     (§159) have something to work on.
+    //     category — so the Remember offer and the import review
+    //     have something to work on.
     for (days_ago, payee, memo, cents) in [
         (3i64, "SQ *BLUE BOTTLE COFFEE", "SQ *BLUE BOTTLE COFFEE ANYTOWN US", -1_275i64),
         (9, "AMZN Mktp US*1A2B3C", "AMZN Mktp US*1A2B3C Amzn.com/bill WA", -3_418),
@@ -907,7 +907,7 @@ pub fn seed(conn: &Conn) -> Result<SeedSummary, String> {
         n_txn += 1;
     }
 
-    // (g) For the detector (§60, §173): a subscription that stopped, a water
+    // (g) For the detector: a subscription that stopped, a water
     //     bill every two months, and one doubled day (a retry).
     for back in (16..MONTHS).rev() {
         let Some(date) = months_back(today, back).with_day(6) else { continue };
@@ -928,7 +928,7 @@ pub fn seed(conn: &Conn) -> Result<SeedSummary, String> {
         n_txn += 1;
     }
 
-    // (h) Attachments (§170): a statement on the account, a receipt on a row.
+    // (h) Attachments: a statement on the account, a receipt on a row.
     let statement = tiny_pdf(&[
         "Example Bank",
         "Demo Checking — statement",
@@ -1008,7 +1008,7 @@ fn inv(
     )
 }
 
-/// §174 — an investment row with a memo, for the rebalance the lot engine
+/// An investment row with a memo, for the rebalance the lot engine
 /// links by memo.
 fn inv_memo(
     conn: &Conn,
@@ -1039,7 +1039,7 @@ fn inv_memo(
     )
 }
 
-/// §174 — a one-page PDF, built by hand: enough for "Open" to hand Windows
+/// A one-page PDF, built by hand: enough for "Open" to hand Windows
 /// a real file and for the size column to say something. Text only.
 fn tiny_pdf(lines: &[&str]) -> Vec<u8> {
     let mut content = String::from("BT /F1 12 Tf 72 720 Td 16 TL\n");
@@ -1091,7 +1091,7 @@ fn iso(d: NaiveDate) -> String {
 /// `peak` in January and July, 100 in April and October, a straight line
 /// between.
 ///
-/// §180: the phase was `(month + 5) % 6 - 3`, which is 0 in April and
+/// The phase was `(month + 5) % 6 - 3`, which is 0 in April and
 /// October — the peaks landed in spring and fall and both comments beside it
 /// were wrong about the code. `+ 2` puts 0 at January (3 % 6 − 3) and July
 /// (9 % 6 − 3), and ±3 at April (6 % 6 − 3) and October (12 % 6 − 3).
@@ -1198,7 +1198,7 @@ fn unique_account(
 mod tests {
     use super::*;
 
-    // §182 — checked whole when the test ends.
+    // Checked whole when the test ends.
     use crate::db::test_db::TestDb;
 
     /// Every account's stored balance, recomputed from its own transactions.
@@ -1231,7 +1231,7 @@ mod tests {
         Ok(())
     }
 
-    /// §180 — the peak is where the comments say it is.
+    /// The peak is where the comments say it is.
     #[test]
     fn a_seasonal_bill_peaks_in_january_and_july() {
         assert_eq!(seasonal_pct(1, 165), 165);
@@ -1262,6 +1262,29 @@ mod tests {
 
         // The one that would catch a balance bug in any write path.
         balances_agree(&c).expect("balances");
+    }
+
+    #[test]
+    fn demo_checking_never_runs_negative() {
+        // A sample file whose checking account is overdrawn reads as a bug
+        // to anyone judging the app from it.
+        let db = TestDb::new("checking-positive");
+        let c = db.conn();
+        seed(&c).expect("seed");
+        let id = queries::get_all_accounts(&c)
+            .unwrap()
+            .into_iter()
+            .find(|a| a.name == "Demo Checking")
+            .expect("Demo Checking")
+            .id;
+        let reg = queries::get_register(&c, &id).unwrap();
+        let low = reg.iter().min_by_key(|r| r.running_balance_cents).expect("rows");
+        assert!(
+            low.running_balance_cents >= 0,
+            "Demo Checking is {} on {}",
+            low.running_balance_cents,
+            low.date
+        );
     }
 
     #[test]
@@ -1331,7 +1354,7 @@ mod tests {
         // The money has to come from somewhere, and the register should say
         // so — this is also what makes rows-sum-to-balance true above.
         let opening = rows.iter().find(|r| r.payee == "Opening Balance").expect("no opening row");
-        assert_eq!(opening.amount_cents, 412_000);
+        assert_eq!(opening.amount_cents, 600_000);
         assert_eq!(rows[0].payee, "Opening Balance", "the opening row must sort first");
 
         assert!(rows.iter().any(|r| r.check_number.is_some()), "no Num values");
@@ -1356,7 +1379,7 @@ mod tests {
         );
     }
 
-    // §174 — the things the walks of §158–§173 needed, all present in one
+    // The things the later features need, all present in one
     // seeding, so a first sitting can try each without typing anything in.
     #[test]
     fn the_seeded_file_has_what_the_later_walks_need() {
@@ -1414,7 +1437,7 @@ mod tests {
 
     #[test]
     fn three_years_of_history_reaches_every_report() {
-        // What the seeder is FOR now (§39, widened in §128): three years and
+        // What the seeder is FOR now: three years and
         // the current month, every account type, income that is not a
         // paycheck, transfers between assets and liabilities, statements
         // month by month, a year of budgets, rules behind the bills. If any
@@ -1432,7 +1455,7 @@ mod tests {
             .query_row("SELECT count(DISTINCT substr(date, 1, 7)) FROM transactions", [], |r| r.get(0))
             .expect("months");
         assert!(months >= MONTHS, "only {months} distinct months, wanted {MONTHS}");
-        assert!(MONTHS >= 37, "§128: three years and the current month");
+        assert!(MONTHS >= 37, "Three years and the current month");
 
         // Year-over-year needs more than one prior year to compare against,
         // which is the whole reason this went from 13 to 37.
@@ -1497,7 +1520,7 @@ mod tests {
 
     #[test]
     fn recurring_payees_give_amount_recall_something_to_offer() {
-        // §23.2 exists to be seen. Netflix at a fixed 18.99 every month is the
+        // Amount recall exists to be seen. Netflix at a fixed 18.99 every month is the
         // case that demonstrates it.
         let db = TestDb::new("recall");
         let c = db.conn();

@@ -1,4 +1,4 @@
-//! §138 — the year plan: one figure per category per year, and twelve columns
+//! The year plan: one figure per category per year, and twelve columns
 //! of what actually happened against it.
 //!
 //! > *"I'm seeing that I have to budget every single month. Not put a budget
@@ -36,7 +36,7 @@
 //! permanently ahead of plan. `monthly_of` divides by the mask's count, and
 //! `expected_to_date` counts only SET months that have elapsed.
 //!
-//! §143 — EXCEPT WHEN THE MASK MEANS SOMETHING ELSE. The paragraph above
+//! EXCEPT WHEN THE MASK MEANS SOMETHING ELSE. The paragraph above
 //! assumes the mask says WHEN THIS IS SPENT. For home insurance it does not:
 //!
 //! > *"I still want that bill's monthly amount in all the other months
@@ -75,7 +75,7 @@ use uuid::Uuid;
 
 pub const EVERY_MONTH: &str = "111111111111";
 
-/// §143 — how to read a plan's `months` mask. See the module header.
+/// How to read a plan's `months` mask. See the module header.
 pub const SPENT: &str = "spent";
 pub const ASIDE: &str = "aside";
 
@@ -91,7 +91,7 @@ fn err<E: std::fmt::Display>(e: E) -> String {
     e.to_string()
 }
 
-/// §179 — run a multi-step write as one SQL transaction.
+/// Run a multi-step write as one SQL transaction.
 ///
 /// A plan write is three writes: the plan row, the envelope rule on its
 /// parent, and the year's monthly rows. Each ran on its own, so a failure in
@@ -137,7 +137,7 @@ pub fn month_count(months: &str) -> i64 {
     months.bytes().filter(|b| *b == b'1').count() as i64
 }
 
-/// §143 — how many ways the annual figure is divided to get the monthly
+/// How many ways the annual figure is divided to get the monthly
 /// one. `SPENT` divides by the months it runs in; `ASIDE` always divides by
 /// twelve, because you set money aside every month regardless of when the
 /// bill lands.
@@ -153,13 +153,13 @@ pub fn spread_count(months: &str, spread: &str) -> i64 {
     }
 }
 
-/// §144 — the monthly figure, rounded UP to something a person can hold in
+/// The monthly figure, rounded UP to something a person can hold in
 /// their head.
 ///
 /// > *"To me that should say $90 (1000 divided by 12 then raised up to the
 /// >  next whole $10)."*
 ///
-/// The same instinct as §130's envelope rule: *"it should always land
+/// The same instinct as the envelope rule: *"it should always land
 /// slightly higher... my preference a whole ten number"*. Rounding UP rather
 /// than to nearest is the point — a monthly figure you save to should never
 /// be short of the bill it is saving for.
@@ -188,7 +188,7 @@ pub fn round_up_monthly(cents: i64) -> i64 {
 /// The annual figure over the months it is spread across, rounded up by
 /// `round_up_monthly`.
 ///
-/// §144 — THE TWO COLUMNS NO LONGER MULTIPLY INTO EACH OTHER, deliberately.
+/// THE TWO COLUMNS NO LONGER MULTIPLY INTO EACH OTHER, deliberately.
 /// $1,000 a year is $90 a month and twelve of those is $1,080. The annual
 /// figure is the BILL; the monthly figure is what you put by for it, and
 /// putting by slightly more than the bill is the entire point of rounding up.
@@ -207,7 +207,7 @@ pub fn monthly_of(annual_cents: i64, months: &str, spread: &str) -> i64 {
     }
 }
 
-/// §143 — what ONE payment of an `ASIDE` line is: the annual figure over
+/// What ONE payment of an `ASIDE` line is: the annual figure over
 /// the months it is DUE, which is the mask's count. $1,200 due in January is
 /// one payment of $1,200; due in Jan and Jul it is two of $600.
 ///
@@ -282,7 +282,7 @@ struct Plan {
     annual_cents: i64,
     months: String,
     spread: String,
-    /// §150 — the annual figure a PERSON typed, if one ever did. The
+    /// The annual figure a PERSON typed, if one ever did. The
     /// envelope shown is the larger of this and what the children need, so
     /// the typed figure is never overwritten, only outgrown. See migration 0041.
     asked_for: Option<i64>,
@@ -312,7 +312,7 @@ fn plan_of(conn: &Conn, category_id: &str, year: i32) -> Result<Option<Plan>, St
     .map_err(err)
 }
 
-/// §130/§131/§137, carried onto the year plan: a parent is the envelope for
+/// The envelope rule, carried onto the year plan: a parent is the envelope for
 /// its whole category, and is never below what its children have claimed.
 ///
 /// The comparison is in MONTHLY cents because that is the number the user reasons
@@ -339,7 +339,7 @@ fn raise_parent(conn: &Conn, child_id: &str, year: i32) -> Result<Option<RaisedP
     raise_to_cover_children(conn, &parent_id, &parent_name, year)
 }
 
-/// §142 — the envelope itself, for a parent named directly.
+/// The envelope itself, for a parent named directly.
 ///
 /// Split out of `raise_parent` because there are TWO ways the invariant above
 /// can stop being true and only one of them was being checked. See
@@ -353,7 +353,7 @@ fn raise_to_cover_children(
     let parent_id = parent_id.to_string();
     let parent_name = parent_name.to_string();
 
-    // §143 — in monthly cents as always, and an ASIDE child claims its
+    // In monthly cents as always, and an ASIDE child claims its
     // TWELFTH, not its payment: $1,200 due each January is $100 a month of
     // the parent's envelope, because that is what is actually being set
     // aside every month. Reading it as $1,200 would size the parent for a
@@ -375,7 +375,7 @@ fn raise_to_cover_children(
         .map_err(err)?
         .collect::<Result<Vec<i64>, _>>()
         .map_err(err)?;
-    // §155 — how many children HAVE a plan, apart from what they claim. A
+    // How many children HAVE a plan, apart from what they claim. A
     // child planned at zero claims nothing and still has a plan, and its
     // parent shows that zero rather than nothing (Z1) — the screen reads the
     // same at both levels. Only when no child has a plan at all is there
@@ -384,7 +384,7 @@ fn raise_to_cover_children(
     let claimed: i64 = claims.iter().sum();
     let existing = plan_of(conn, &parent_id, year)?;
 
-    // §150 — the whole rule: the envelope is the LARGER of the figure the user
+    // The whole rule: the envelope is the LARGER of the figure the user
     // asked for and the figure its children need. Neither overwrites the
     // other, so a parent grows to cover its children and then settles back
     // onto the user's own figure when they shrink.
@@ -393,7 +393,7 @@ fn raise_to_cover_children(
     // >  that"*
     //
     // Both sides are in MONTHLY cents, because two lines can be spread over
-    // different months and are only comparable per month (§131).
+    // different months and are only comparable per month.
     let floor = if claimed > 0 { next_ten_above(claimed) } else { 0 };
     let asked_monthly = existing.as_ref().and_then(|p| {
         p.asked_for.map(|a| monthly_of(a, &p.months, &p.spread))
@@ -405,7 +405,7 @@ fn raise_to_cover_children(
             if want <= 0 && children_planned == 0 {
                 return Ok(None);
             }
-            // §137 — the parent had no envelope and now has one. Every
+            // The parent had no envelope and now has one. Every
             // month, because a parent seeded from a seasonal child is still
             // the envelope for the category all year. No `asked_for_cents`:
             // nobody asked for this one, so when the children stop
@@ -417,7 +417,7 @@ fn raise_to_cover_children(
                 params![Uuid::new_v4().to_string(), parent_id, year, annual, EVERY_MONTH],
             )
             .map_err(err)?;
-            // §155 — a zero seeded from a child at zero is written silently:
+            // A zero seeded from a child at zero is written silently:
             // nothing was raised, and "set to 0.00 to cover its
             // subcategories" is not a sentence anyone should read.
             if want <= 0 {
@@ -431,11 +431,11 @@ fn raise_to_cover_children(
             }))
         }
         Some(p) => {
-            // Nothing wanted and nothing ever asked for: no envelope. §137's
-            // rule, now falling out of the arithmetic rather than being a
+            // Nothing wanted and nothing ever asked for: no envelope. The
+            // empty-envelope rule, now falling out of the arithmetic rather than being a
             // special case.
             //
-            // §154 — "nothing asked for" is `asked_for` being NULL, not zero.
+            // "nothing asked for" is `asked_for` being NULL, not zero.
             // A zero the user TYPED is `Some(0)`: a plan of nothing, measured
             // against, and it stays. This branch used to fire on it, which is
             // why 0.00 held on a child and on a childless line and vanished
@@ -474,7 +474,7 @@ fn raise_to_cover_children(
                 params![parent_id, year, annual],
             )
             .map_err(err)?;
-            // §155 — settling back onto a zero is not a raise either.
+            // Settling back onto a zero is not a raise either.
             if want <= 0 {
                 return Ok(None);
             }
@@ -488,7 +488,7 @@ fn raise_to_cover_children(
     }
 }
 
-/// §142 — the envelope rule applied to the line that was actually written,
+/// The envelope rule applied to the line that was actually written,
 /// whichever end of the relationship it sits on.
 ///
 /// `raise_parent` raises the parent OF a line, which covers editing a child
@@ -550,7 +550,7 @@ pub fn set_plan(
     if !valid_spread(spread) {
         return Err(format!("{spread:?} is not a spread"));
     }
-    // §143 — true for both readings, and for different reasons: a SPENT
+    // True for both readings, and for different reasons: a SPENT
     // line has to be spent somewhere, and an ASIDE line has to be DUE
     // somewhere or nothing on the screen can say when it lands.
     if month_count(months) == 0 {
@@ -610,7 +610,7 @@ pub fn clear_plan(conn: &Conn, category_id: &str, year: i32) -> Result<(), Strin
             params![category_id, format!("{year:04}-%")],
         )
         .map_err(err)?;
-        // §155 — Z2. Clearing a child ran no envelope check at all, so a parent
+        // Z2. Clearing a child ran no envelope check at all, so a parent
         // the child had pushed up stayed there until something else was typed.
         // The parent comes back down to what the user asked for, or goes if they never
         // asked and nothing else is claiming.
@@ -653,17 +653,17 @@ pub fn materialize(conn: &Conn, year: i32) -> Result<u32, String> {
     let mut written = 0u32;
     for (category_id, annual, months, spread, asked_for) in plans {
         let per = monthly_of(annual, &months, &spread);
-        // §179 — the month row carries what the PLAN says was asked for, in
+        // The month row carries what the PLAN says was asked for, in
         // the month's terms. Written without it, every materialized row read
-        // as an envelope nobody asked for (§150), and the month-level rule
+        // as an envelope nobody asked for, and the month-level rule
         // treated a plan's parent that way: delete a child's budget row for
         // one month and `delete_budget` deleted the parent's row too, though
         // the plan above it said Bills was $1,000 on purpose. A parent the
-        // plan itself only seeded (§137, `asked_for_cents` NULL) stays NULL
+        // plan itself only seeded (`asked_for_cents` NULL) stays NULL
         // here, so it still goes when nothing claims it.
         let asked = asked_for.map(|a| monthly_of(a, &months, &spread));
         for m in 1..=12u32 {
-            // §143 — an ASIDE line materializes TWELVE equal rows, because
+            // An ASIDE line materializes TWELVE equal rows, because
             // the twelfth is what you set aside each month and the mask is
             // only saying where the bill lands. `budgets` therefore looks
             // exactly as it would for `every month`, which is what keeps the
@@ -813,10 +813,10 @@ fn one_line(
     let actual_to_date: i64 = (1..=months_elapsed)
         .map(|m| actual[(m - 1) as usize])
         .sum();
-    // §143 — an ASIDE line expects its twelfth in EVERY elapsed month:
+    // An ASIDE line expects its twelfth in EVERY elapsed month:
     // what it is owed by now is what should have been set aside by now, and
     // that accrues whether or not the bill has landed yet. A SPENT line
-    // counts only the months it runs in, as §138 had it.
+    // counts only the months it runs in, as it always has.
     let expected_to_date: i64 = (1..=months_elapsed)
         .filter(|m| aside || is_set(&months, *m))
         .map(|_| per)
@@ -962,7 +962,7 @@ pub fn year_plan(conn: &Conn, year: i32, today: &str) -> Result<YearPlan, String
 }
 
 // ---------------------------------------------------------------------------
-// §141 — building next year from what this year did
+// Building next year from what this year did
 // ---------------------------------------------------------------------------
 
 /// Up to the next whole ten dollars. Not `next_ten_above`, which is strictly
@@ -991,7 +991,7 @@ fn observed(year: i32, today: &str) -> u32 {
     elapsed(year, today)
 }
 
-/// §141 — read one year and propose the next.
+/// Read one year and propose the next.
 ///
 /// The question: if a job ended partway through the year and the new year is
 /// built from history, can that job be marked as gone, and how?
@@ -1091,8 +1091,8 @@ pub fn from_history(
             .get(&cat.id)
             .map(|p| p.months.clone())
             .unwrap_or_else(|| EVERY_MONTH.to_string());
-        // §179 — and how the mask reads. Carrying the mask without its
-        // spread turned a set-aside line (§143) into a spent one: home
+        // And how the mask reads. Carrying the mask without its
+        // spread turned a set-aside line into a spent one: home
         // insurance due in January came back as $1,200 a month, spent in
         // January only. No plan to carry from is SPENT, as ever — a year read
         // from the register is a year of spending.
@@ -1155,10 +1155,10 @@ pub fn from_history(
 
         // A line spread over some months is proposed per RUNNING month, not
         // per calendar month: heating oil's $900 is $180 in each of five, and
-        // dividing by twelve here would undo §138's whole point.
+        // dividing by twelve here would undo the whole point of spreading it.
         //
-        // §179 — "running" is the spread's divisor, not the mask's count: an
-        // ASIDE line is set aside in all twelve months (§143), so its twelfth
+        // "running" is the spread's divisor, not the mask's count: an
+        // ASIDE line is set aside in all twelve months, so its twelfth
         // is already the figure.
         let per_running = if divisor == 12 { monthly } else { monthly * 12 / divisor };
         let suggested_monthly = if income { floor_ten(per_running) } else { ceil_ten(per_running) };
@@ -1189,7 +1189,7 @@ pub fn from_history(
     Ok(out)
 }
 
-/// §141 — write the accepted proposals, and rebuild the year's monthly rows
+/// Write the accepted proposals, and rebuild the year's monthly rows
 /// once at the end rather than once per line.
 ///
 /// The envelope rule runs per line as usual, so a parent still ends up above
@@ -1199,7 +1199,7 @@ pub fn apply_proposals(
     year: i32,
     picks: &[(String, i64, String, String)],
 ) -> Result<u32, String> {
-    // §179 — every pick or none. A refusal on the fifth line used to leave
+    // Every pick or none. A refusal on the fifth line used to leave
     // the first four written and the year's monthly rows never rebuilt.
     atomically(conn, || {
         let mut n = 0u32;
@@ -1211,7 +1211,7 @@ pub fn apply_proposals(
             {
                 return Err(format!("{category_id:?} cannot be planned that way"));
             }
-            // §150 — a proposal the user ticked is a figure they asked for.
+            // A proposal the user ticked is a figure they asked for.
             conn.execute(
                 "INSERT INTO budget_plans (id, category_id, year, annual_cents, months, spread, asked_for_cents)
                  VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?4)
@@ -1232,8 +1232,8 @@ pub fn apply_proposals(
     })
 }
 
-/// §179 — fold `from_id`'s year plans into `into_id`'s, for a category merge
-/// or a delete that reassigns (§133). Returns the years touched, for
+/// Fold `from_id`'s year plans into `into_id`'s, for a category merge
+/// or a delete that reassigns. Returns the years touched, for
 /// `settle_after_fold`.
 ///
 /// `budget_plans` is `UNIQUE (category_id, year)` and `ON DELETE CASCADE`,
@@ -1252,7 +1252,7 @@ pub fn apply_proposals(
 ///   is the one the user chose for it; an ASIDE source folded into a SPENT line is
 ///   read as spent across the union of their months.
 /// - `asked_for_cents` — the sum of the figures that were asked for, NULL
-///   only when neither was (§150). An envelope nobody asked for plus one the user
+///   only when neither was. An envelope nobody asked for plus one the user
 ///   did is their figure, and the envelope rule then keeps the line at the
 ///   larger of that and what its children claim.
 pub(crate) fn fold_plans(conn: &Conn, from_id: &str, into_id: &str) -> Result<Vec<i32>, String> {
@@ -1296,7 +1296,7 @@ pub(crate) fn fold_plans(conn: &Conn, from_id: &str, into_id: &str) -> Result<Ve
     Ok(years)
 }
 
-/// §179 — after a fold, keep the envelope rule true for the lines it moved
+/// After a fold, keep the envelope rule true for the lines it moved
 /// money between, and rebuild the year's monthly rows from the plans.
 /// `category_ids` that no longer exist are skipped.
 pub(crate) fn settle_after_fold(conn: &Conn, category_ids: &[String], year: i32) -> Result<(), String> {
@@ -1332,7 +1332,7 @@ mod tests {
     use super::*;
     use crate::db::queries;
 
-    // §182 — checked whole when the test ends.
+    // Checked whole when the test ends.
     use crate::db::test_db::EmptyChartDb as TestDb;
 
     fn cat(c: &Conn, name: &str, kind: &str, parent: Option<&str>) -> String {
@@ -1359,7 +1359,7 @@ mod tests {
             .expect("line")
     }
 
-    /// §144 — the rounding, on its own, against a few bills.
+    /// The rounding, on its own, against a few bills.
     ///
     /// > *"To me that should say $90 (1000 divided by 12 then raised up to
     /// >  the next whole $10)."*
@@ -1393,7 +1393,7 @@ mod tests {
         assert_eq!(round_up_monthly(-1), 0);
     }
 
-    /// §145 — the question a user asked: when the real payment hits, the
+    /// The question a user asked: when the real payment hits, the
     /// monthly amount is still being set aside, so how is that accounted
     /// for?
     ///
@@ -1455,7 +1455,7 @@ mod tests {
         }
     }
 
-    /// §145 — the case that IS short, so the figure is not mistaken for a
+    /// The case that IS short, so the figure is not mistaken for a
     /// guarantee: a bill due in January of the first year you plan it has
     /// nothing behind it yet.
     ///
@@ -1482,7 +1482,7 @@ mod tests {
         assert_eq!(l.variance_cents, 0, "$1,200 put by, $1,200 paid");
     }
 
-    /// §144 — and it reaches the materialized rows, because the monthly
+    /// And it reaches the materialized rows, because the monthly
     /// figure is what the user actually puts by. The month screen says $90.
     #[test]
     fn the_rounded_figure_is_what_gets_materialized() {
@@ -1520,7 +1520,7 @@ mod tests {
         assert_eq!(monthly_of(90_000, "100000000011", SPENT), 30_000);
         assert_eq!(month_count("100000000011"), 3);
         assert_eq!(monthly_of(90_000, "111110000000", SPENT), 18_000);
-        // §144 — rounded UP to a figure a person can hold in their head.
+        // Rounded UP to a figure a person can hold in their head.
         // $1,000 over three months is 333.33, which the user would call $340.
         assert_eq!(monthly_of(100_000, "111000000000", SPENT), 34_000);
         assert_eq!(monthly_of(0, EVERY_MONTH, SPENT), 0);
@@ -1626,7 +1626,7 @@ mod tests {
         assert_eq!(line(&p, &food).variance_cents, -5_000);
     }
 
-    /// §142 — the invariant above has two ways to stop being true, and only
+    /// The invariant above has two ways to stop being true, and only
     /// the child-edited one was ever checked.
     ///
     /// A parent row is editable on the year grid, and budgeting off parents
@@ -1634,7 +1634,7 @@ mod tests {
     /// its children have already claimed used to be written exactly as
     /// typed: the envelope quietly stopped being an envelope, and nothing
     /// on the screen said so.
-    /// §143 — the case §138 could not describe.
+    /// The case per-month spreading alone could not describe.
     ///
     /// Home insurance: an amount is saved every month, but the bill is paid
     /// once a year, so the plan has to show both what to save monthly and the
@@ -1803,7 +1803,7 @@ mod tests {
     /// The other half: a parent typed ABOVE its children is left exactly as
     /// typed. The rule is a floor, not a target — raising one to $900 when
     /// the children claim $500 is a deliberate envelope with room in it.
-    /// §147 — the year plan's twin of
+    /// The year plan's twin of
     /// `a_parent_the_rule_raised_comes_back_down_when_its_children_do`.
     #[test]
     fn a_planned_parent_the_rule_raised_follows_its_children_down() {
@@ -1829,7 +1829,7 @@ mod tests {
         set_plan(&c, &mtge, 2027, 0, EVERY_MONTH, SPENT).unwrap();
         assert_eq!(monthly(&bills), 61_000, "back to $610, not stuck at $2,410");
 
-        // §155 — Electricity planned at ZERO is still a plan, and Bills shows
+        // Electricity planned at ZERO is still a plan, and Bills shows
         // that zero rather than nothing (Z1)...
         set_plan(&c, &power, 2027, 0, EVERY_MONTH, SPENT).unwrap();
         let p = year_plan(&c, 2027, "2027-12-31").unwrap();
@@ -1837,7 +1837,7 @@ mod tests {
         assert_eq!(monthly(&bills), 0);
 
         // ...and with both children CLEARED, an envelope NOBODY ASKED FOR
-        // goes (§150). Bills was seeded by the rule here — nobody typed
+        // goes. Bills was seeded by the rule here — nobody typed
         // into it — so it has no figure to fall back to.
         clear_plan(&c, &power, 2027).unwrap();
         clear_plan(&c, &mtge, 2027).unwrap();
@@ -1845,7 +1845,7 @@ mod tests {
         assert!(!line(&p, &bills).has_plan, "nothing claimed, nothing asked for");
     }
 
-    /// §155 — Z2: a parent the user typed zero into, a child that claims and is
+    /// Z2: a parent the user typed zero into, a child that claims and is
     /// then EMPTIED. Clearing ran no envelope check, so the parent stayed at
     /// the raised figure until something else was typed into the child.
     #[test]
@@ -1881,7 +1881,7 @@ mod tests {
         assert!(!line(&p, &home).has_plan, "cleared, and nobody asked for the parent");
     }
 
-    /// §147 — deliberate headroom on the year plan survives too.
+    /// Deliberate headroom on the year plan survives too.
     #[test]
     fn a_planned_parent_he_typed_is_never_pulled_down() {
         let db = TestDb::new("plan-keep");
@@ -1901,7 +1901,7 @@ mod tests {
         set_plan(&c, &fuel, 2027, 120_000, EVERY_MONTH, SPENT).unwrap();
         assert_eq!(monthly(&auto), 90_000, "the user's figure, the user's headroom");
 
-        // §150 — and when the children outgrow it and then shrink again, it
+        // And when the children outgrow it and then shrink again, it
         // settles back onto its own 900 rather than onto theirs.
         set_plan(&c, &fuel, 2027, 2_400_000, EVERY_MONTH, SPENT).unwrap();
         assert_eq!(monthly(&auto), 201_000, "the children need more than was asked for");
@@ -1923,7 +1923,7 @@ mod tests {
     }
 
     /// A parent with no children is nobody's envelope, so the new check has
-    /// nothing to say about it — including the §137 trap, where an empty
+    /// nothing to say about it — including the empty-envelope trap, where an empty
     /// claim asks for `next_ten_above(0)` and invents $10.
     #[test]
     fn a_childless_category_is_written_exactly_as_typed() {
@@ -1941,7 +1941,7 @@ mod tests {
         assert_eq!(w.line.annual_cents, 0);
     }
 
-    /// §154 — R3: *"typing 0.00 in any parent category that has child
+    /// R3: *"typing 0.00 in any parent category that has child
     /// categories does not keep 0.00"*, while a child and a childless line
     /// both held it. The envelope rule read "nothing wanted" as "nothing
     /// asked for" and deleted the parent's plan; `asked_for` is `Some(0)`
@@ -1964,7 +1964,7 @@ mod tests {
         set_plan(&c, &bills, 2027, 0, EVERY_MONTH, SPENT).unwrap();
         assert_eq!(bills_line(), (true, 0, 0), "typing 0 is a plan, and it was being deleted");
 
-        // A child claims: §150's rule covers it...
+        // A child claims: the envelope rule covers it...
         set_plan(&c, &power, 2027, 720_000, EVERY_MONTH, SPENT).unwrap();
         assert_eq!(bills_line().2, 61_000, "$600 claimed -> $610");
 
@@ -1974,7 +1974,7 @@ mod tests {
         assert_eq!(bills_line(), (true, 0, 0), "the typed zero is still underneath");
     }
 
-    /// §141 writes many lines at once, and the order they arrive in is not
+    /// Rolling a year forward writes many lines at once, and the order they arrive in is not
     /// something the caller controls. A parent applied AFTER its children
     /// used to overwrite the envelope they had just raised.
     #[test]
@@ -2010,7 +2010,7 @@ mod tests {
         let salary = cat(&c, "Salaried job", "income", Some(&jordan));
         let side_job = cat(&c, "Acme Corp", "income", Some(&jordan));
 
-        // §137 — the parent had no plan, so budgeting a child gives it one,
+        // The parent had no plan, so budgeting a child gives it one,
         // on the next whole ten above what the children claim.
         let w = set_plan(&c, &salary, 2027, 3_000_000, EVERY_MONTH, SPENT).unwrap();
         let made = w.raised.expect("the parent should have been given one");
@@ -2120,7 +2120,7 @@ mod tests {
     }
 
 
-    /// §141 — the question that produced this: if a job ended partway
+    /// The question that produced this: if a job ended partway
     /// through the year and the new year is built from history, can that job
     /// be marked as gone? The screen should already know.
     #[test]
@@ -2272,7 +2272,7 @@ mod tests {
         assert_eq!(w.line.monthly_cents, 0);
     }
 
-    /// §179 — Build from history carried a line's mask and dropped its
+    /// Build from history carried a line's mask and dropped its
     /// spread: a set-aside bill came back as a spent one, with the whole bill
     /// as its monthly figure.
     #[test]
@@ -2308,7 +2308,7 @@ mod tests {
         assert_eq!(rows, 12, "set aside in every month");
     }
 
-    /// §179 — a plan write is one SQL transaction: when rebuilding the monthly
+    /// A plan write is one SQL transaction: when rebuilding the monthly
     /// rows fails, the plan row it wrote first is not left behind.
     #[test]
     fn a_plan_write_that_fails_part_way_leaves_nothing_written() {

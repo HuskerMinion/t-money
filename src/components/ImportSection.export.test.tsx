@@ -42,7 +42,7 @@ beforeEach(() => {
   useAccountStore.setState({ accounts: [checking] });
 });
 
-describe("Export an account as QIF (§54)", () => {
+describe("Export an account as QIF", () => {
   it("asks where to save, writes, and reports the counts", async () => {
     render(<ImportSection />);
     const button = screen.getByRole("button", { name: "Export…" });

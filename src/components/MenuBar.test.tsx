@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// §97 — the menu bar. The behavior worth locking down is the graying: an
+// The menu bar. The behavior worth locking down is the graying: an
 // item nothing can serve must be visibly unavailable and must not fire.
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -35,7 +35,7 @@ beforeEach(() => {
   openReport.mockClear();
 });
 
-describe("MenuBar (§97)", () => {
+describe("MenuBar", () => {
   it("shows Money's five menus and opens one on click", async () => {
     render(<MenuBar menus={menus()} />);
     expect(screen.getByRole("menubar", { name: "Main menu" })).toBeInTheDocument();
@@ -94,7 +94,7 @@ describe("MenuBar (§97)", () => {
   it("Escape closes it", async () => {
     render(<MenuBar menus={menus()} />);
     await userEvent.click(screen.getByRole("menuitem", { name: "Edit" }));
-    // §106: "Find and replace…" was removed — it promised Money's bulk
+    // "Find and replace…" was removed — it promised Money's bulk
     // editor and nothing served it. Any item in the Edit menu will do here;
     // the test is about Escape, not about which items exist.
     expect(screen.getByRole("menuitem", { name: /Void transaction/ })).toBeInTheDocument();
@@ -109,7 +109,7 @@ describe("MenuBar (§97)", () => {
     expect(within(panel).getByRole("menuitem", { name: /Settings…/ })).toBeInTheDocument();
   });
 
-  // §186 — "ALT+F gives you File and I see the F on Favorites is underlined."
+  // "ALT+F gives you File and I see the F on Favorites is underlined."
   it("underlines each menu's own Alt letter — the a in Favorites, not its F", async () => {
     render(<MenuBar menus={menus()} />);
     const underlined = (name: string) =>
@@ -126,9 +126,9 @@ describe("MenuBar (§97)", () => {
   });
 });
 
-// §183 — Ctrl+Z in a field is the field's. It took back the last SAVED change
+// Ctrl+Z in a field is the field's. It took back the last SAVED change
 // instead, so correcting a typo in a memo undid a transaction.
-describe("§183 — undo and redo in a field belong to the field", () => {
+describe("Undo and redo in a field belong to the field", () => {
   function Shell({ m }: { m: Menu[] }) {
     useMenuAccelerators(m);
     return (
@@ -168,9 +168,9 @@ describe("§183 — undo and redo in a field belong to the field", () => {
   });
 });
 
-// §183 — the header promised a keyboard menu; Alt+F opened one nobody could
+// The header promised a keyboard menu; Alt+F opened one nobody could
 // move through.
-describe("§183 — the menus work from the keyboard", () => {
+describe("The menus work from the keyboard", () => {
   it("Alt+F puts focus on the first item that can run, and the arrows skip gray ones", async () => {
     registerCommand("file.open", vi.fn());
     registerCommand("file.close", vi.fn());

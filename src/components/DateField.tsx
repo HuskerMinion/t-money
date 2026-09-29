@@ -1,4 +1,4 @@
-// A date you can TYPE (§71). The native date picker is a fine calendar and
+// A date you can TYPE. The native date picker is a fine calendar and
 // a poor keyboard: in WebView2 it takes the caret segment by segment and
 // double-clicking it opens the popup. Money's date field was plain text
 // with a few keys. So: a text field showing M/D/YYYY, parsed as you type
@@ -15,11 +15,11 @@ interface Props {
   label?: string;
   className?: string;
   autoFocus?: boolean;
-  /** §181 — shown but not changeable (a split line's far row: its date is
+  /** Shown but not changeable (a split line's far row: its date is
    *  the payment's). The +/−/T keys and the calendar are off too. */
   readOnly?: boolean;
   title?: string;
-  /** §183 — told whenever the typed text stops (true) or starts again (false)
+  /** Told whenever the typed text stops (true) or starts again (false)
    *  reading as a date. A form whose date may be left empty cannot tell an
    *  unreadable date from a cleared one by `value` alone ("" either way), so
    *  it listens here to refuse the save. */
@@ -59,7 +59,7 @@ export default function DateField({ value, onChange, label = "Date", className =
   const [bad, setBad] = useState(false);
   const focused = useRef(false);
   const pickerRef = useRef<HTMLInputElement>(null);
-  // §183 — the date the field held when the caret came in. An unreadable
+  // The date the field held when the caret came in. An unreadable
   // date now sends "" (see `read`), so `value` no longer says what the date
   // was: a year left off ("8/3") still means that date's year, + and − still
   // step from it, and a field emptied and left goes back to it.
@@ -84,7 +84,7 @@ export default function DateField({ value, onChange, label = "Date", className =
   }, [value]);
 
   /** Tell the form what the text says, as it is typed and when it is left.
-   *  §183: text that does not read as a date sends "". The form used to keep
+   *  Text that does not read as a date sends "". The form used to keep
    *  the last date that DID parse on the way, so typing 2/29/2027 passed
    *  through 2/29/20 and saved 2020-02-29 under a red field; "" is a date the
    *  forms refuse. Empty text is not a date being typed — the form gets back
@@ -113,7 +113,7 @@ export default function DateField({ value, onChange, label = "Date", className =
         onChange={(e) => {
           setText(e.target.value);
           // Commit as soon as what is typed reads as a date, so Tab / Enter
-          // never carry a half-typed one — and, §183, as soon as it does not,
+          // never carry a half-typed one — and as soon as it does not,
           // so they never carry a stale one. The text itself is left alone,
           // and the field turns red only when it is left.
           if (read(e.target.value)) setBad(false);

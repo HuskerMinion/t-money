@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 //
 // `queries` owns every balance calculation in the app and had **no tests**
-// until 2026-09-01 (§10.6, §21). Three data bugs in a row were found
+// until 2026-09-01. Three data bugs in a row were found
 // by a user walkthrough rather than by the suite, all of them in this layer.
 //
 // The bias here is deliberate: these test **money moving**, not CRUD. The
@@ -22,7 +22,7 @@ use rusqlite::{params, OptionalExtension};
 use super::*;
 
 // A throwaway encrypted database, checked whole and deleted when the
-// test ends (§182). These tests control their own categories, so they
+// test ends. These tests control their own categories, so they
 // start from an empty chart.
 pub(super) use crate::db::test_db::EmptyChartDb as TestDb;
 
@@ -76,7 +76,7 @@ pub(super) fn inv(account: &str, date: &str, activity: &str, sec: &str, shares_m
     }
 }
 
-// §178 — a mortgage payment out of checking: interest, principal to the
+// A mortgage payment out of checking: interest, principal to the
 // loan, escrow to the escrow account. Returns (payment, principal row,
 // escrow row).
 pub(super) fn split_payment(c: &Conn, chk: &str, loan: &str, escrow: &str, date: &str) -> (String, String, String) {
@@ -100,7 +100,7 @@ pub(super) fn split_payment(c: &Conn, chk: &str, loan: &str, escrow: &str, date:
     (pay.id.clone(), far(loan), far(escrow))
 }
 
-/// §178 — the file agrees with itself: balances, split lines, and every
+/// The file agrees with itself: balances, split lines, and every
 /// split transfer line with its row in the other account.
 pub(super) fn assert_consistent(c: &Conn) {
     let v = verify_file(c, false).unwrap();

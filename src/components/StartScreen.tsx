@@ -1,6 +1,6 @@
-// §117 — the screen when no file is open.
+// The screen when no file is open.
 //
-// File → Close used to mean "go back to T-Money's own database" (§104), on
+// File → Close used to mean "go back to T-Money's own database", on
 // the reasoning that a start screen would exist for one purpose. The first
 // time that met a real machine it did the one thing it must not: a user had
 // the same accounts in their own file and in the app's, so Close swapped one
@@ -16,7 +16,7 @@ export interface RecentFile {
   path: string;
   name: string;
   exists: boolean;
-  /** §134 — this computer holds no key that opens it. Marked rather than
+  /** This computer holds no key that opens it. Marked rather than
    *  disabled: the file is perfectly openable, it just needs the key pasted
    *  in, and a grayed-out row would say the opposite. */
   needsKey?: boolean;
@@ -28,7 +28,7 @@ interface Props {
   recents: readonly RecentFile[];
   onOpen: () => void;
   onNew: () => void;
-  /** §128 — a new file with three years of demo data in it. Offered HERE
+  /** A new file with three years of demo data in it. Offered HERE
    *  because this is the screen somebody sees the first time they run the
    *  app, and "New file…" hands them an empty register, which is the worst
    *  possible first impression of a program whose whole job is showing you

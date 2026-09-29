@@ -1,4 +1,4 @@
-// Categories manager (§10.3 item 9) — the tree, and the two operations that
+// Categories manager — the tree, and the two operations that
 // move existing transactions.
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -22,7 +22,7 @@ function cat(over: Partial<Category> & { id: string; name: string }): Category {
   };
 }
 
-/** §133 — a merge that touches nothing, for tests to spread over. */
+/** A merge that touches nothing, for tests to spread over. */
 const PREVIEW: MergePreview = {
   transactions: 0,
   splits: 0,
@@ -191,7 +191,7 @@ describe("CategoriesView", () => {
     expect(within(dialog).getByRole("button", { name: "Merge" })).toBeDisabled();
 
     await userEvent.selectOptions(within(dialog).getByLabelText("Merge into"), "e-1");
-    // §133 — the button names the direction once there is one to name.
+    // The button names the direction once there is one to name.
     const go = await within(dialog).findByRole("button", { name: /^Merge Groceries into / });
     await userEvent.click(go);
 
@@ -199,7 +199,7 @@ describe("CategoriesView", () => {
     expect(call.args).toEqual({ fromId: "e-3", intoId: "e-1" });
   });
 
-  // §133 — "Its not intuitive on which way the merge goes."
+  // "Its not intuitive on which way the merge goes."
   it("says which category survives and which one is deleted", async () => {
     setIpcHandlers({
       list_categories: () => CATS,
@@ -260,7 +260,7 @@ describe("CategoriesView", () => {
 
     const alert = await within(dialog).findByRole("alert");
     expect(alert).toHaveTextContent(/subcategories named Fuel/);
-    // §151 — it says plainly that this cannot be done, and says what to do
+    // It says plainly that this cannot be done, and says what to do
     // instead, rather than leaving a grayed button as the only signal.
     expect(alert).toHaveTextContent(/This merge cannot be done/);
     expect(alert).toHaveTextContent(/Swap direction/);
@@ -363,7 +363,7 @@ describe("CategoriesView", () => {
   });
 });
 
-describe("movesList (§133)", () => {
+describe("movesList", () => {
   it("leaves out everything that is zero", () => {
     expect(movesList({ ...PREVIEW, transactions: 214 })).toEqual(["214 transactions"]);
   });
@@ -380,7 +380,7 @@ describe("movesList (§133)", () => {
   });
 });
 
-describe("§149 — staying where you were working", () => {
+describe("Staying where you were working", () => {
   // > "once I made the change it pops back to the top of the categories and
   // >  when I undid it it brought the category back as it should but was at
   // >  the top and I had to scroll to see it again."
@@ -399,9 +399,9 @@ describe("§149 — staying where you were working", () => {
   });
 });
 
-// §181 — G5: "Delete refused but there was no message, it just acted like I
+// G5: "Delete refused but there was no message, it just acted like I
 // didn't press the button". The error went to the form behind the backdrop.
-describe("§181 — a refused delete or merge is answered in its dialog", () => {
+describe("A refused delete or merge is answered in its dialog", () => {
   it("shows the delete refusal in red inside the dialog, which stays open", async () => {
     setIpcHandlers({
       list_categories: () => CATS,
@@ -448,8 +448,8 @@ describe("§181 — a refused delete or merge is answered in its dialog", () => 
   });
 });
 
-// §183 — after a merge the form holds the survivor, and success lines stay.
-describe("§183 — the form after a merge, a create or a delete", () => {
+// After a merge the form holds the survivor, and success lines stay.
+describe("The form after a merge, a create or a delete", () => {
   it("loads the surviving category into the form, so Save cannot rename it to another category's name", async () => {
     let cats = CATS;
     setIpcHandlers({

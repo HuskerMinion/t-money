@@ -1,4 +1,4 @@
-//! §94 — loans: their terms, their amortization, and recording a payment.
+//! Loans: their terms, their amortization, and recording a payment.
 //!
 //! A mortgage payment is one transaction with three parts that go three
 //! different places: interest to a category (it is spending), escrow to an
@@ -105,7 +105,7 @@ pub fn set_terms(conn: &Conn, t: &LoanTerms) -> Result<(), String> {
     if let Some(d) = t.first_payment_date.as_deref() {
         NaiveDate::parse_from_str(d, "%Y-%m-%d").map_err(|_| format!("{d:?} is not a date"))?;
     }
-    // §178: a day of the month is 1 to 31. A 0 used to be saved, and the
+    // A day of the month is 1 to 31. A 0 used to be saved, and the
     // schedule then asked chrono for the 0th of every month, got nothing, and
     // printed the same date for every payment.
     if let Some(day) = t.payment_day {
@@ -195,14 +195,14 @@ fn period(terms: &LoanTerms, opening: i64, date: &str) -> LoanPeriod {
         // The payment does not even cover the interest: nothing comes off.
         principal = 0;
     }
-    // §178: never more than is left, and nothing is left on a loan that is
+    // Never more than is left, and nothing is left on a loan that is
     // paid off or overpaid. Clamping to a negative opening balance proposed a
     // negative principal — a payment that ADDED to the debt.
     let left = opening.max(0);
     if principal > left {
         principal = left;
     }
-    // §121: extra principal is paid ON TOP of the scheduled payment, so it
+    // Extra principal is paid ON TOP of the scheduled payment, so it
     // comes off after the scheduled principal and never takes more than is
     // left. Interest is charged on the opening balance either way — paying
     // ahead does not earn a discount this month, it shrinks next month's.
@@ -233,7 +233,7 @@ pub fn schedule(conn: &Conn, account_id: &str, from: &str, count: usize) -> Resu
 pub fn schedule_with(terms: &LoanTerms, opening: i64, from: &str, count: usize) -> Result<Vec<LoanPeriod>, String> {
     let mut balance = opening;
     let mut date = NaiveDate::parse_from_str(from, "%Y-%m-%d").map_err(|_| format!("{from:?} is not a date"))?;
-    // §178: a day outside 1..=31 — a 0 saved before `set_terms` checked — is
+    // A day outside 1..=31 — a 0 saved before `set_terms` checked — is
     // read as no day at all, which follows the start date.
     let day = terms
         .payment_day
@@ -264,7 +264,7 @@ pub fn schedule_with(terms: &LoanTerms, opening: i64, from: &str, count: usize) 
 /// Record a payment as ONE transaction in the funding account, split up to
 /// four ways. Every amount is the caller's — the schedule only proposed them.
 ///
-/// §121: extra principal is its own line rather than more principal, because
+/// Extra principal is its own line rather than more principal, because
 /// it is its own decision — the point of paying it is being able to see, a
 /// year later, which months carried it. It transfers to the same loan, so the
 /// loan register gets two decrease rows for a month paid ahead, which is how
@@ -315,7 +315,7 @@ pub fn record_payment(
         });
     }
     if extra_principal_cents > 0 {
-        // §121: the same destination as the principal line and deliberately
+        // The same destination as the principal line and deliberately
         // NOT merged into it. One transaction still leaves the checking
         // account, so the register matches the statement's single amount.
         splits.push(NewSplit { classes: Vec::new(),
@@ -326,7 +326,7 @@ pub fn record_payment(
         });
     }
     if escrow_cents > 0 {
-        // §178: terms saved with no escrow amount say nothing about where
+        // Terms saved with no escrow amount say nothing about where
         // escrow goes, and an escrow typed into the payment then became a
         // line with neither a category nor an account — money out of checking
         // filed nowhere. Refused before anything is written.
@@ -355,7 +355,7 @@ pub fn record_payment(
         }
     }
 
-    // §178: the row and its lines in one SQL transaction. They were two, and
+    // The row and its lines in one SQL transaction. They were two, and
     // lines refused after the row was committed left the whole payment in
     // checking as one unsplit, uncategorized row, with the loan never paid
     // down.
@@ -406,10 +406,10 @@ mod payment_tests {
     use super::*;
     use crate::db::queries;
 
-    // §182 — checked whole when the test ends.
+    // Checked whole when the test ends.
     use crate::db::test_db::TestDb;
 
-    /// §119: what an account says it is worth, and how many rows it has —
+    /// What an account says it is worth, and how many rows it has —
     /// the two things an undo has to put back exactly.
     fn balance(c: &Conn, id: &str) -> i64 {
         c.query_row("SELECT balance_cents FROM accounts WHERE id = ?1", params![id], |r| r.get(0)).unwrap()
@@ -462,7 +462,7 @@ mod payment_tests {
         Setup { chk, house, mortgage, escrow, interest_cat }
     }
 
-    /// §94. The thing that was asked for: one payment out of checking, and the
+    /// The thing that was asked for: one payment out of checking, and the
     /// mortgage goes down by the principal part of it.
     #[test]
     fn one_payment_splits_three_ways_and_the_mortgage_balance_falls() {
@@ -663,7 +663,7 @@ mod payment_tests {
         assert_eq!(s[0].principal_cents, 0);
     }
 
-    /// §119 — Ctrl+Z after Record payment.
+    /// Ctrl+Z after Record payment.
     ///
     /// It was not undoable, and this is the write that most needed it: one row
     /// in the checking register, three split lines, and transfer rows in the
@@ -723,7 +723,7 @@ mod payment_tests {
         assert_eq!(queries::list_splits(&c, &id).unwrap().len(), 3);
     }
 
-    /// §121 — the reason this exists.
+    /// The reason this exists.
     ///
     /// The bank shows ONE debit of $1,800.00. Before extra principal had a
     /// line of its own, recording the $150.00 meant a second Record payment,
@@ -795,7 +795,7 @@ mod payment_tests {
         assert_eq!(queries::get_account(&c, &s.escrow).unwrap().balance_cents, 120_000);
     }
 
-    /// §178 — terms with no escrow amount say nothing about where escrow
+    /// Terms with no escrow amount say nothing about where escrow
     /// goes, so an escrow typed into the payment has nowhere to be filed.
     /// Refused, and nothing is written.
     #[test]
@@ -819,7 +819,7 @@ mod payment_tests {
         record_payment(&c, &s.mortgage, &s.chk, "2026-02-01", 75_000, 14_933, 0, 0, "Mortgage", None, None).unwrap();
     }
 
-    /// §178 — the row and its lines are one write. Lines refused after the
+    /// The row and its lines are one write. Lines refused after the
     /// row was committed (here: paying from the escrow account, so the escrow
     /// line would transfer to its own account) used to leave the whole
     /// payment behind as one unsplit row.
@@ -838,7 +838,7 @@ mod payment_tests {
         assert!(v.drift.is_empty() && v.split_transfers.is_empty(), "{v:?}");
     }
 
-    /// §178 — a day of the month is 1 to 31; a 0 already in a file is read
+    /// A day of the month is 1 to 31; a 0 already in a file is read
     /// as no day, so the schedule still moves forward a month at a time.
     #[test]
     fn a_payment_day_outside_the_month_is_refused_and_a_saved_zero_is_ignored() {
@@ -860,7 +860,7 @@ mod payment_tests {
         assert_eq!(dates, vec!["2026-02-15", "2026-03-15", "2026-04-15"]);
     }
 
-    /// §178 — a loan paid past zero owes nothing, and the next payment
+    /// A loan paid past zero owes nothing, and the next payment
     /// proposes no principal. It proposed a negative one: a "payment" that
     /// added the overpayment back onto the debt.
     #[test]

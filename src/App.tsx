@@ -84,18 +84,18 @@ export type BudgetScreen = "budget" | "categories" | "classifications";
 
 export default function App() {
   const [tab, setTab] = useState<Tab>("Home");
-  /** §117 — is ANY file open? False after File → Close, and then the start
+  /** Is ANY file open? False after File → Close, and then the start
    *  screen is what the window contains: no rail, no tabs, nothing that would
    *  query a database that is not there. */
   const [fileOpen, setFileOpen] = useState(true);
   /** The file that was open when it was closed, offered back by name. */
   const [lastFile, setLastFile] = useState<{ path: string; name: string } | null>(null);
 
-  // §62: the Help topic to open — set by F1 (the tab you were on) or left
+  // The Help topic to open — set by F1 (the tab you were on) or left
   // null so the Help tab keeps its place.
   const [helpTopic, setHelpTopic] = useState<string | null>(null);
   const [tabEpoch, setTabEpoch] = useState(0);
-  // §97: F1 used to be bound here AND is now printed beside Help → T-Money
+  // F1 used to be bound here AND is now printed beside Help → T-Money
   // Help, so the menu's accelerator table owns it. Two handlers for one key
   // is how a shortcut and its label drift apart.
   const [side, setSide] = useState("accounts");
@@ -116,7 +116,7 @@ export default function App() {
     setBankingScreen("register");
   }
   const [budgetScreen, setBudgetScreen] = useState<BudgetScreen>("budget");
-  // The header's Search box (§38). A query opens the Search screen; a hit
+  // The header's Search box. A query opens the Search screen; a hit
   // opens its register with the row selected — the same "go and look at
   // it" path every other way into the register uses.
   const [searchQuery, setSearchQuery] = useState<string | null>(null);
@@ -141,7 +141,7 @@ export default function App() {
         const t = await api.getTransactionAccount(txnId);
         acct = t;
       } catch (e) {
-        // §183 — the row was deleted (or merged away) since the report ran.
+        // The row was deleted (or merged away) since the report ran.
         // Returning quietly made the click look dead.
         setNavError(`That transaction could not be opened — it may have been deleted since the report ran. (${String(e)})`);
         return;
@@ -154,7 +154,7 @@ export default function App() {
     useAccountStore.getState().focusRow(txnId);
     openAccountRegister(acct);
   }
-  /** §183 — a way in that led nowhere (a report row whose transaction is
+  /** A way in that led nowhere (a report row whose transaction is
    *  gone). Shown in the shell, under the menu bar, like the file banner. */
   const [navError, setNavError] = useState<string | null>(null);
 
@@ -171,7 +171,7 @@ export default function App() {
   const loadFavorites = useAccountStore((s) => s.loadFavorites);
   const loadSummary = useBudgetStore((s) => s.loadSummary);
 
-  // Initial data load on mount; the remembered text size goes on first (§58).
+  // Initial data load on mount; the remembered text size goes on first.
   useEffect(() => {
     void applyZoom(readZoom());
     applyTheme(readTheme());
@@ -188,11 +188,11 @@ export default function App() {
     if (id === "payees") setBankingScreen("payees");
     if (id === "accounts") setBankingScreen("list");
     // "Transactions" is the register, not the account list — the two rail
-    // items used to land in the same place (§40). With no
+    // items used to land in the same place. With no
     // account selected yet, the first one is.
     //
-    // §183 — the first OPEN one. `accounts[0]` is whatever sorts first, and
-    // since §181 keeps closed accounts off the rail that could be an account
+    // The first OPEN one. `accounts[0]` is whatever sorts first, and
+    // since closed accounts are kept off the rail that could be an account
     // the rail does not even list.
     if (id === "transactions") {
       const st = useAccountStore.getState();
@@ -203,7 +203,7 @@ export default function App() {
     if (id === "categories") setBudgetScreen("categories");
     if (id === "classifications") setBudgetScreen("classifications");
     if (id === "budget") setBudgetScreen("budget");
-    // The rail's report items are specific destinations, not "Reports" (§39).
+    // The rail's report items are specific destinations, not "Reports".
     if (id === "spending") setReportKind("spending_by_category");
     if (id === "networth") setReportKind("net_worth");
     if (id === "income-expenses") setReportKind("monthly_income_expenses");
@@ -214,7 +214,7 @@ export default function App() {
     // only thing that consumes the request, so it has to be on screen: with
     // no account selected the rail lands on the Account List instead, and
     // does NOT leave a request armed to pop the wizard open, unasked, the
-    // next time any register is opened (§38).
+    // next time any register is opened.
     if (id === "reconcile") {
       if (useAccountStore.getState().selectedAccountId) {
         setBankingScreen("register");
@@ -225,7 +225,7 @@ export default function App() {
     }
   }
 
-  // §97 — the menu bar. The shell serves the commands that ARE the shell:
+  // The menu bar. The shell serves the commands that ARE the shell:
   // navigation, and the things that live in no particular screen. Everything
   // else is registered by whoever owns it (the register prints, the Portfolio
   // updates prices), which is what lets the menu gray out honestly.
@@ -245,7 +245,7 @@ export default function App() {
     setTab(t);
   };
 
-  // §100 — Settings is a pop-up now, not a tab: it is a thing you go and do
+  // Settings is a pop-up now, not a tab: it is a thing you go and do
   // and come back from, and losing the screen you were on to reach it was
   // always the wrong trade.
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -263,7 +263,7 @@ export default function App() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [settingsOpen]);
-  /** §102 — a menu item for something that lives inside Settings opens
+  /** A menu item for something that lives inside Settings opens
    *  Settings ON that pane. "Opens Settings, now go and find it" is the kind
    *  of wiring a user reads as broken. */
   const openSettingsAt = (group: Parameters<typeof aimSettingsAt>[0], pane: string) => {
@@ -272,12 +272,12 @@ export default function App() {
   };
   useCommand("file.restore", () => openSettingsAt("file", "database"), fileOpen);
   useCommand("file.backup.settings", () => openSettingsAt("file", "backup"), fileOpen);
-  // §183 — File → Back up now and Verify this file were registered by the
+  // File → Back up now and Verify this file were registered by the
   // Settings screen alone, so they were live only while Settings was already
   // open: gray in the menu and on the ribbon nearly all the time. The shell
   // serves them now by opening Settings on the pane and asking it to run the
   // thing — the result belongs on that pane, beside the controls for it.
-  // Settings registers both at a higher priority while it is open (§97).
+  // Settings registers both at a higher priority while it is open.
   useCommand("file.backup", () => {
     runInSettings("backup");
     openSettingsAt("file", "backup");
@@ -333,10 +333,10 @@ export default function App() {
     })();
   });
 
-  // §102 — the New family. Each of these screens registers the same command
+  // The New family. Each of these screens registers the same command
   // at a higher priority while it is open, so the menu item does the thing
   // when you are already there and BRINGS you there when you are not. Two
-  // owners, one command, nearest wins — which is what the priority in §97's
+  // owners, one command, nearest wins — which is what the priority in the command
   // registry was for.
   useCommand("new.category", () => {
     setSide("categories");
@@ -365,16 +365,16 @@ export default function App() {
   }, fileOpen);
 
 
-  // §102 — two menu items that named nothing: Tools → Calculator and
+  // Two menu items that named nothing: Tools → Calculator and
   // Favorites → Organize favorites. Both are small dialogs owned by the shell,
   // because neither belongs to any one screen.
   const [calcOpen, setCalcOpen] = useState(false);
   const [favOpen, setFavOpen] = useState(false);
   useCommand("tools.calculator", () => setCalcOpen(true));
-  // §103 — File → Import → TSP activity detail. The shell owns it because it
+  // File → Import → TSP activity detail. The shell owns it because it
   // is about a file, not about whatever screen you happen to be on.
   const [tspOpen, setTspOpen] = useState(false);
-  // §155 — the file, when the CSV door sniffed a tsp.gov export and handed
+  // The file, when the CSV door sniffed a tsp.gov export and handed
   // it over: the importer opens ON it rather than asking for it a second time.
   const [tspPath, setTspPath] = useState<string | null>(null);
   const [tspDone, setTspDone] = useState<string | null>(null);
@@ -386,13 +386,13 @@ export default function App() {
     },
     fileOpen
   );
-  // §106 — the payee rules, run backwards over what is already in the file.
+  // The payee rules, run backwards over what is already in the file.
   // The shell owns it because it is about the whole file, not one screen.
   const [rulesOpen, setRulesOpen] = useState(false);
   const [rulesDone, setRulesDone] = useState<string | null>(null);
   useCommand("tools.payee.apply", () => setRulesOpen(true), fileOpen);
   useCommand("fav.organize", () => setFavOpen(true), fileOpen);
-  // Escape closes whichever is open, bound only while one is (§100's rule:
+  // Escape closes whichever is open, bound only while one is (the rule:
   // never eat an Escape meant for the register).
   useEffect(() => {
     if (!calcOpen && !favOpen) return;
@@ -418,9 +418,9 @@ export default function App() {
     setBudgetScreen("categories");
     goTab("Budget");
   }, fileOpen);
-  // §112 — Tools → Classifications, and File → New → Classification. The
+  // Tools → Classifications, and File → New → Classification. The
   // screen registers `new.classification` at a higher priority while it is
-  // open, so the menu item adds one there and comes here otherwise (§97).
+  // open, so the menu item adds one there and comes here otherwise.
   const openClassifications = () => {
     setSide("classifications");
     setBudgetScreen("classifications");
@@ -437,35 +437,35 @@ export default function App() {
     void getCurrentWindow().close();
   });
 
-  // §98 — T-Money files. Opening one swaps the database under the whole app,
+  // T-Money files. Opening one swaps the database under the whole app,
   // so every store is reloaded and the selection is dropped: an account id
   // from the file you just closed means nothing in the one you just opened.
   const [recentFiles, setRecentFiles] = useState<
     { path: string; name: string; exists: boolean; needsKey: boolean }[]
   >([]);
-  /** §134 — the file waiting on a key, if one is. `wrong` is set after a key
+  /** The file waiting on a key, if one is. `wrong` is set after a key
    *  was tried and refused, so the dialog says so rather than looking like it
    *  ignored the press. */
   const [keyPrompt, setKeyPrompt] = useState<{ path: string; name: string; wrong: boolean } | null>(
     null
   );
   const [fileName, setFileName] = useState<string | null>(null);
-  /** The open file's full path — what the start screen offers back (§117). */
+  /** The open file's full path — what the start screen offers back. */
   const [filePath, setFilePath] = useState<string>("");
-  /** §104 — is this T-Money's own database? File → Close has nothing to do
+  /** Is this T-Money's own database? File → Close has nothing to do
    *  when it is, and a menu item that grays out says that better than one
    *  that quietly does nothing. */
   const [fileIsDefault, setFileIsDefault] = useState(true);
   const [fileError, setFileError] = useState<string | null>(null);
-  // §115 — the price timer. It lives here because it must outlive whichever
+  // The price timer. It lives here because it must outlive whichever
   // screen is open, and it is the whole of "automatic": a check every half
   // hour WHILE THE APP IS RUNNING, which fetches only when the interval the
   // user chose has actually elapsed. Off by default, so a file that never
   // visits Settings never reaches the network on its own.
   //
-  // §158 — and a check the moment a FILE is open, not only the moment the
+  // And a check the moment a FILE is open, not only the moment the
   // app mounts. The check at mount was the "fetch at launch" originally
-  // asked for, and since §118 it usually ran against nothing: launch lands
+  // asked for, and since an earlier change it usually ran against nothing: launch lands
   // on the start screen more often than not, the file is opened a moment
   // later by hand, and the first check that saw it was the half-hour tick.
   // Someone who opens the app monthly opened it to a portfolio priced a
@@ -482,7 +482,7 @@ export default function App() {
     async function check() {
       try {
         const status = await api.priceStatus();
-        // §180: local time, as the backend stamps `last_auto` — never UTC.
+        // Local time, as the backend stamps `last_auto` — never UTC.
         if (stopped || !refreshIsDue(status, localNow())) return;
         // `auto` stamps the run, so a machine that is offline all week asks
         // once a day rather than every half hour.
@@ -513,7 +513,7 @@ export default function App() {
       const open = cur.isOpen !== false;
       setFileOpen(open);
       setLastFile(open ? null : { path: cur.path, name: cur.name });
-      // §105 — the file's name belongs in the window title, and nowhere else.
+      // The file's name belongs in the window title, and nowhere else.
       //
       // It is what every document application does, it costs no screen space
       // in an app whose whole business is dense rows of numbers, and it is
@@ -533,7 +533,7 @@ export default function App() {
       /* the file list is a convenience; never block the app on it */
     }
   };
-  // §108 — a second copy of the app was started, and handed us its file.
+  // A second copy of the app was started, and handed us its file.
   //
   // The single-instance plugin has already swapped the database by the time
   // this arrives; what is left is the same reset every other file change does.
@@ -565,7 +565,7 @@ export default function App() {
 
   useEffect(() => {
     void refreshFiles();
-    // §102 — did the app fall back to its own database because the file you
+    // Did the app fall back to its own database because the file you
     // left it on would not open? Say so, once. A silent fallback is how a
     // week of transactions ends up in the wrong file.
     void api
@@ -577,7 +577,7 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /** §102 — swap the database under the whole app.
+  /** Swap the database under the whole app.
    *
    *  ORDER MATTERS, and it used to be wrong. The old version opened the new
    *  file first and only then went looking for a neutral screen, so there was
@@ -602,7 +602,7 @@ export default function App() {
     setBudgetScreen("budget");
     setOpenTabs([]);
     setTab("Home");
-    // §104 — and REMOUNT what is on screen.
+    // And REMOUNT what is on screen.
     //
     // Everything under <main> is keyed on `tabEpoch`; setting the tab alone
     // leaves those components mounted with the state they loaded from the
@@ -641,7 +641,7 @@ export default function App() {
     try {
       await api.openFile(path, create, key ?? null);
     } catch (e) {
-      // §134 — a file from another computer needs its key, and now there is
+      // A file from another computer needs its key, and now there is
       // somewhere to put it. This comment used to say exactly that and the
       // call passed `null`, which is how the app spent five sections
       // describing a door it had never fitted a handle to.
@@ -658,7 +658,7 @@ export default function App() {
       // The old file is still open behind us, so reload from it rather than
       // leaving the app looking empty.
       //
-      // §117: with nothing open there is nothing to fall back to — the Rust
+      // With nothing open there is nothing to fall back to — the Rust
       // side stayed closed too, so the start screen keeps the error rather
       // than an empty shell pretending a file is there.
       if (fileOpen) await useAccountStore.getState().reloadAll();
@@ -668,7 +668,7 @@ export default function App() {
     // It opened. Whatever was being asked for is answered.
     setKeyPrompt(null);
     // The backend cleared its undo stack when it swapped the file; drop the
-    // label that went with the old one (§101).
+    // label that went with the old one.
     forgetUndo();
 
     // 3) Load the new file. Anything that fails is reported, never thrown at
@@ -676,7 +676,7 @@ export default function App() {
     await loadFile();
   }
 
-  /** §128 — New, but seeded. The path is chosen the same way; the backend
+  /** New, but seeded. The path is chosen the same way; the backend
    *  refuses it if anything is already there, so there is no way to point
    *  this at a real file. */
   async function makeSample() {
@@ -708,28 +708,28 @@ export default function App() {
     });
     if (typeof picked === "string") await switchTo(picked, false);
   });
-  // §104 — Close is a swap like any other, so it goes through the same
+  // Close is a swap like any other, so it goes through the same
   // reset. Grayed out when you are already on T-Money's own file: there is
   // nothing to close, and saying so is better than a no-op that looks broken.
-  // §117 — Close closes. The pool is dropped on the Rust side, so there is
+  // Close closes. The pool is dropped on the Rust side, so there is
   // nothing left to load: `loadFile` would ask a database that is not there
   // and get NO_FILE back for every call. The screens are torn down first,
   // then the file goes, then the start screen is what is left.
   //
   // It is no longer grayed out on the app's own file: closing that one is
   // exactly as meaningful as closing any other, which is the whole point of
-  // the change (§104 had it return there instead, and the user could not tell
+  // the change (an earlier version had it return there instead, and the user could not tell
   // the difference between the two files they had).
   useCommand("file.close", async () => {
     setFileError(null);
     // The shell comes DOWN FIRST, before the await. Tearing it down after
-    // the call means every self-fetching widget remounts (§104's epoch bump)
+    // the call means every self-fetching widget remounts (the epoch bump)
     // while the file is being closed underneath it, and each one asks a
     // database that is on its way out. Nothing renders, so nothing asks.
     setLastFile({ path: filePath, name: fileName ?? "the file" });
     setFileOpen(false);
     leaveFile();
-    // §183 — favorites and the pending row too. `favorites` is a second copy
+    // Favorites and the pending row too. `favorites` is a second copy
     // of the accounts (the Home card reads it), and a row id left pending
     // would be "found" in whatever register the next file opens first.
     useAccountStore.setState({
@@ -766,11 +766,11 @@ export default function App() {
     });
     if (typeof picked === "string") await switchTo(picked, true);
   });
-  // §128 — a file to look at. Same shape as New, and it lands on a file with
+  // A file to look at. Same shape as New, and it lands on a file with
   // three years in it rather than an empty register.
   useCommand("file.sample", makeSample);
 
-  // §101 — undo. The status comes from the backend and is refreshed by the
+  // Undo. The status comes from the backend and is refreshed by the
   // store after every write it makes, so the Edit menu's label is the name of
   // the thing that would actually be undone rather than a bare "Undo".
   const undo = useSyncExternalStore(onUndoChange, undoStatus, undoStatus);
@@ -781,7 +781,7 @@ export default function App() {
   // far side of a transfer, the funding row of a buy — so everything is
   // reloaded rather than the current register alone.
   //
-  // §133 — and the categories, because a merge is undoable now: putting one
+  // And the categories, because a merge is undoable now: putting one
   // back restores a row every category picker in the app is holding a stale
   // copy of. The tab epoch goes with it so a screen that fetched its own data
   // — the Budget grid in particular, whose rows ARE categories — refetches
@@ -793,7 +793,7 @@ export default function App() {
     if (st.selectedAccountId) await st.loadRegister(st.selectedAccountId);
     setTabEpoch((e) => e + 1);
   };
-  // §183 — a refused step says why. `undoLast` has never thrown (§180), and
+  // A refused step says why. `undoLast` has never thrown, and
   // the shell took its `false` as "nothing happened" and showed nothing, so a
   // refusal from the backend read as Ctrl+Z being a dead key.
   const [undoError, setUndoError] = useState<string | null>(null);
@@ -813,10 +813,10 @@ export default function App() {
     },
     undo.redo !== null,
   );
-  // §183 — the store has kept an `error` since the beginning and nothing drew
+  // The store has kept an `error` since the beginning and nothing drew
   // it: a register that failed to load was simply an empty register.
   const storeError = useAccountStore((s) => s.error);
-  // §183 — the key dialog's Open is disabled while the file is being opened;
+  // The key dialog's Open is disabled while the file is being opened;
   // it was never told, so a second press opened the file twice.
   const [keyBusy, setKeyBusy] = useState(false);
   const submitKey = async (path: string, key: string) => {
@@ -849,7 +849,7 @@ export default function App() {
   });
   useMenuAccelerators(menus);
 
-  // §99 — the look decides how the chrome is arranged. Read once and kept in
+  // The look decides how the chrome is arranged. Read once and kept in
   // state so Settings can change it without a reload.
   const [look, setLook] = useState(() => readLook());
   useEffect(() => {
@@ -869,11 +869,11 @@ export default function App() {
     setOpenTabs((t) => (t.includes(sidebarSelectedId) ? t : [...t, sidebarSelectedId]));
   }, [sidebarSelectedId]);
 
-  // §117 — no file open: the menu bar and the start screen, and nothing
+  // No file open: the menu bar and the start screen, and nothing
   // else. Everything below this line queries a database, so none of it is
   // mounted; the alternative (a shell full of empty panes over a NO_FILE
   // error from every call) is exactly the "failed by showing nothing" that
-  // §102 was about.
+  // this guard is here to prevent.
   if (!fileOpen) {
     return (
       <div className="h-full flex flex-col">
@@ -891,7 +891,7 @@ export default function App() {
           }}
         />
 
-        {/* §134 — the key box. Rendered in BOTH shells, because the two ways
+        {/* The key box. Rendered in BOTH shells, because the two ways
             to hit this are opening a file from the start screen (nothing open)
             and File → Open from inside a file, and a dialog that only exists
             in one of them is a dead end in the other. */}
@@ -911,7 +911,7 @@ export default function App() {
   return (
     <div className="h-full flex flex-col">
       <MenuBar menus={menus} />
-      {/* §102 — the file banner. `fileError` was set by every failed open and
+      {/* The file banner. `fileError` was set by every failed open and
           rendered nowhere, so a file that would not open failed in silence:
           the app simply stayed on the one it had. */}
       {fileError && (
@@ -922,7 +922,7 @@ export default function App() {
           </button>
         </div>
       )}
-      {/* §183 — refusals that belong to the shell rather than to one screen:
+      {/* Refusals that belong to the shell rather than to one screen:
           an undo the backend would not run, a way in that led nowhere, and a
           load the account store could not finish. */}
       {undoError && (
@@ -945,7 +945,7 @@ export default function App() {
         showTabs={structure !== "sidebar"}
         active={tab}
         onTab={(t) => {
-          // §64: a header tab is the tab's START — its gallery, its account
+          // A header tab is the tab's START — its gallery, its account
           // list, its first card — even when you are already on it. The
           // rail's items are the specific screens. Everything under <main>
           // is keyed on `tabEpoch`, so the click remounts the tab's view.
@@ -976,7 +976,7 @@ export default function App() {
           }
         />
       )}
-      {/* §102 — the shell row carries a class so a look can rearrange it in
+      {/* The shell row carries a class so a look can rearrange it in
           CSS (Workbench mirrors it) without the shell knowing about looks. */}
       <div className="flex-1 flex min-h-0 tm-shell-row">
         <AeroSidebar
@@ -988,7 +988,7 @@ export default function App() {
           selectedAccountId={sidebarSelectedId}
           onSelectAccount={openAccountRegister}
         />
-        {/* Drag the rail's edge to widen it; double-click to reset (§42). */}
+        {/* Drag the rail's edge to widen it; double-click to reset. */}
         <div
           className="tm-rail-grip"
           role="separator"
@@ -1069,7 +1069,7 @@ export default function App() {
             />
           )}
         </main>
-        {/* §126 — Two-up. Beside the register, not instead of it: the main
+        {/* Two-up. Beside the register, not instead of it: the main
             pane stays the one you work, and this is the one you watch. */}
         {structure === "two-up" && (
           <WatchPane
@@ -1123,9 +1123,9 @@ export default function App() {
                   (s.transfers_linked ? `, ${s.transfers_linked} linked to deposits already in your register` : "") +
                   "."
               );
-              // §155 — `reloadAll` keeps the selected account now, so a
+              // `reloadAll` keeps the selected account now, so a
               // register that was on screen stays on screen and shows the
-              // import. §153 — the import is one undo step; read the
+              // import. The import is one undo step; read the
               // status back so the Edit menu offers it.
               void useAccountStore.getState().reloadAll();
               void refreshUndo();
@@ -1143,7 +1143,7 @@ export default function App() {
         </div>
       )}
 
-      {/* §134 — and here too: File → Open from inside a file lands in the same
+      {/* And here too: File → Open from inside a file lands in the same
           place as opening one from the start screen. */}
       {keyPrompt && (
         <KeyPromptDialog
@@ -1167,10 +1167,10 @@ export default function App() {
           <div className="tm-dialog-backdrop" onClick={() => setFavOpen(false)} />
           <OrganizeFavoritesDialog
             accounts={sidebarAccounts}
-            // §183 — handed back as promises, so a refusal is shown in the
+            // Handed back as promises, so a refusal is shown in the
             // dialog rather than dropped as an unhandled rejection.
             onToggle={(id) => useAccountStore.getState().toggleFavorite(id)}
-            // §169 — the whole arrangement, written back and reloaded.
+            // The whole arrangement, written back and reloaded.
             onReorder={(ids) => useAccountStore.getState().reorderAccounts(ids)}
             onClose={() => setFavOpen(false)}
           />
@@ -1233,9 +1233,9 @@ function BankingView({
   // Was sharing `amount` with the transaction form — creating an account then
   // silently used whatever was typed as a transaction amount.
   const [showNewAccount, setShowNewAccount] = useState(false);
-  // §102 — File → New → Account. Banking owns the wizard, so it serves the
+  // File → New → Account. Banking owns the wizard, so it serves the
   // command at priority 10 while it is on screen; the shell's registration
-  // below navigates here first when it is not (§97 priority).
+  // below navigates here first when it is not (command priority).
   useCommand("new.account", () => setShowNewAccount(true), true, 10);
   const [merging, setMerging] = useState<Account | null>(null);
   const bankingView = screen;
@@ -1248,26 +1248,26 @@ function BankingView({
    *  the same thing, and the dropdown did not: it called `selectAccount`
    *  alone, so choosing an account changed the selection and left the user
    *  looking at the list, exactly the way the Home tab's favorites card
-   *  used to (§33). Same bug, second place. See §36. */
+   *  used to. Same bug, second place. */
   function openRegister(id: string) {
     void selectAccount(id);
     setBankingView("register");
   }
   const [detailsFor, setDetailsFor] = useState<Account | null>(null);
   const [deleting, setDeleting] = useState<Account | null>(null);
-  // §181 — a refused delete (§179: split payments still send the account a
+  // A refused delete (split payments still send the account a
   // line) is shown IN the confirm dialog, which stays open. It was written
   // to the status line under the Account List bar, behind the dialog.
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  // §183 — the star beside the picker had no catch: a refused write was an
+  // The star beside the picker had no catch: a refused write was an
   // unhandled rejection and a star that did not change.
   const [starError, setStarError] = useState<string | null>(null);
 
   const selected = accounts.find((a) => a.id === selectedAccountId) ?? null;
 
-  /** §183 — the account on screen is gone (deleted, or merged into another).
+  /** The account on screen is gone (deleted, or merged into another).
    *  The selection pointed at it afterwards, so the sub-nav kept a tab for it
    *  and the register tried to load an account that no longer exists. */
   function forgetIfSelected(id: string) {
@@ -1282,11 +1282,11 @@ function BankingView({
           New button / "Show transaction forms"), exactly as in Money — there
           is deliberately no separate quick-add card, because a second entry
           path with fewer fields is how you end up with uncategorized
-          transactions (§6.1b). */}
+          transactions. */}
       <section className="aero-card max-w-2xl">
         <div className="aero-card-title">Accounts</div>
         {/* One account at a time — a dropdown rather than a list that grows
-            with every account. The rail lists them all (§6.1a context). */}
+            with every account. The rail lists them all. */}
         <div className="p-3">
           {accounts.length === 0 ? (
             <div className="text-[12px] text-slate-500 text-center pb-2">
@@ -1304,7 +1304,7 @@ function BankingView({
                 <option value="" disabled>
                   Select an account…
                 </option>
-                {/* §181 — open accounts, as the rail lists them; a closed one
+                {/* Open accounts, as the rail lists them; a closed one
                     only while it is the one on screen (opened from Account
                     List → Show closed accounts), so the picker still says
                     where you are. */}
@@ -1341,7 +1341,7 @@ function BankingView({
             </Notice>
           )}
         </div>
-        {/* "Add a new account" opens Money's two-step wizard (§6.1g). */}
+        {/* "Add a new account" opens Money's two-step wizard. */}
         <div className="px-3 pb-3">
           <button
             type="button"
@@ -1428,7 +1428,7 @@ function BankingView({
             onSave={async (details) => {
               await useAccountStore.getState().updateAccountDetails(details);
             }}
-            // §183 — closed only once the dialog's own writes (rounding,
+            // Closed only once the dialog's own writes (rounding,
             // Secured by) are done too, and reloaded after them: a new
             // rounding changes the holdings value the list shows.
             onSaved={async () => {
@@ -1444,7 +1444,7 @@ function BankingView({
           stated before the button is offered. */}
       {deleting && (
         <>
-          {/* §183 — not while the delete is running: closing the dialog then
+          {/* Not while the delete is running: closing the dialog then
               lost its refusal, or its "Deleted" line, mid-flight. */}
           <div className="tm-dialog-backdrop" onClick={() => !busy && setDeleting(null)} />
           <div className="tm-dialog" role="dialog" aria-label="Delete account">
@@ -1457,7 +1457,7 @@ function BankingView({
                 Every transaction in this account is deleted with it. This cannot
                 be undone — take a backup first if you are not sure.
               </p>
-              {/* §136 — say the second thing out loud. The stack is emptied
+              {/* Say the second thing out loud. The stack is emptied
                   because Undo cannot reach past this, and a menu item that
                   silently stops naming your last edit reads like a bug. */}
               <p>Anything Edit → Undo was holding is cleared as well.</p>
@@ -1477,7 +1477,7 @@ function BankingView({
                       forgetIfSelected(deleting.id);
                       await useAccountStore.getState().loadAccounts();
                       await useAccountStore.getState().loadFavorites();
-                      // §136 — the delete emptied the stack on the Rust side.
+                      // The delete emptied the stack on the Rust side.
                       // Without this the menu keeps offering a label for a
                       // step the backend has already dropped.
                       void refreshUndo();
@@ -1513,7 +1513,7 @@ function BankingView({
               forgetIfSelected(merging.id);
               await useAccountStore.getState().loadAccounts();
               await useAccountStore.getState().loadFavorites();
-              // §136 — same as the delete: a merge is not on the undo stack,
+              // Same as the delete: a merge is not on the undo stack,
               // so the backend emptied it and the menu has to be told.
               void refreshUndo();
               setMsg(`Merged "${merging.name}" into "${into.name}": ${s.moved} moved${s.duplicates ? `, ${s.duplicates} already there` : ""}${s.self_transfers ? `, ${s.self_transfers} self-transfer${s.self_transfers === 1 ? "" : "s"} removed` : ""}.`);
@@ -1582,12 +1582,12 @@ function BudgetTab({
   );
 }
 
-/** §139 — Budgets, which is now two ways of looking at one plan.
+/** Budgets, which is now two ways of looking at one plan.
  *
  *  **Year plan** is where the budget is SET: one annual figure per category
  *  and the months it runs. **This month** is the same plan read as a single
  *  month, which is what the Home tab and the spending tracker show — it is
- *  still the §129 screen, and it still writes, because the file may hold
+ *  still the original monthly screen, and it still writes, because the file may hold
  *  monthly budgets that predate the plan.
  *
  *  The year plan opens first. It is the one that answers the question the user

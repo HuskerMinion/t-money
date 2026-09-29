@@ -1,4 +1,4 @@
-// §134 — telling a locked file from a broken one.
+// Telling a locked file from a broken one.
 import { describe, expect, it } from "vitest";
 import { fileNameOf, keyProblem, withoutSentinel } from "./keyError";
 

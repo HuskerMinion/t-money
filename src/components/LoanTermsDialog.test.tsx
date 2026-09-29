@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// §94 — loan terms: the schedule previews before it is saved, and the escrow
+// Loan terms: the schedule previews before it is saved, and the escrow
 // destination is not allowed to be left blank.
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -58,7 +58,7 @@ beforeEach(() => {
   vi.useRealTimers();
 });
 
-describe("Loan terms (§94)", () => {
+describe("Loan terms", () => {
   it("previews the schedule from the typed terms without saving anything", async () => {
     setIpcHandlers({
       get_loan_terms: () => null,
@@ -138,7 +138,7 @@ describe("Loan terms (§94)", () => {
     await waitFor(() => expect(invokeCalls.some((c) => c.cmd === "clear_loan_terms")).toBe(true));
   });
 
-  it("§121: a standing extra principal payment is saved with the terms and shown in the schedule", async () => {
+  it("A standing extra principal payment is saved with the terms and shown in the schedule", async () => {
     setIpcHandlers({
       get_loan_terms: () => null,
       loan_schedule: () => [

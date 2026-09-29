@@ -1,4 +1,4 @@
-// §139 — the year plan.
+// The year plan.
 //
 // The tests worth having are the ones that would let the screen quietly lie:
 // a monthly figure that does not convert to the right annual one for a line
@@ -187,7 +187,7 @@ describe("the grid", () => {
       year: new Date().getFullYear(),
       annualCents: 150_000,
       months: "111000000011",
-      // §143 — the line's own reading travels with the write, so editing a
+      // The line's own reading travels with the write, so editing a
       // figure never quietly changes what its mask MEANS.
       spread: "spent",
     });
@@ -241,7 +241,7 @@ describe("the grid", () => {
     // Two of the five are dropped; what it costs for the year must not move.
     await userEvent.click(within(dlg).getByLabelText("Nov"));
     await userEvent.click(within(dlg).getByLabelText("Dec"));
-    // §152 — an EXPENSE that stops running all year is assumed to be saved
+    // An EXPENSE that stops running all year is assumed to be saved
     // for, so this now reads as a set-aside: $900 over twelve months with
     // three due months, not $300 in each of three.
     expect(within(dlg).getByLabelText("What this means")).toHaveTextContent(
@@ -256,7 +256,7 @@ describe("the grid", () => {
     expect(call.args.spread).toBe("aside");
   });
 
-  /// §152 — spent-only is still there, one click away, for an expense that
+  /// Spent-only is still there, one click away, for an expense that
   /// really is seasonal rather than saved for.
   it("still lets an expense be spent-only when that is what is meant", async () => {
     render(<YearPlanView />);
@@ -273,7 +273,7 @@ describe("the grid", () => {
     expect(invokeCalls.find((c) => c.cmd === "set_budget_plan")!.args.spread).toBe("spent");
   });
 
-  /// §152 — and INCOME is left alone. Acme Corp over July to October is
+  /// And INCOME is left alone. Acme Corp over July to October is
   /// money that ARRIVES then; a twelfth of it would claim $1,500 landing in
   /// January when nothing does.
   it("does not assume income is saved for", async () => {
@@ -294,7 +294,7 @@ describe("the grid", () => {
     for (const m of ["Jan", "Feb", "Mar", "Nov", "Dec"]) {
       await userEvent.click(within(dlg).getByLabelText(m));
     }
-    // §152 — unticking made this a set-aside line (it is an expense), so the
+    // Unticking made this a set-aside line (it is an expense), so the
     // empty-mask message is the set-aside one: the mask's whole job there is
     // to say when the bill lands.
     expect(within(dlg).getByLabelText("What this means")).toHaveTextContent(
@@ -338,7 +338,7 @@ describe("the grid", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(/shape this screen cannot read/);
   });
 
-  // §140 — a nineteen-column grid needs an anchor in both directions.
+  // A nineteen-column grid needs an anchor in both directions.
   it("shades alternate rows and marks the month in progress", async () => {
     render(<YearPlanView />);
     await screen.findByLabelText("Annual plan for Food");
@@ -383,7 +383,7 @@ describe("the grid", () => {
   });
 });
 
-describe("§143 — set aside monthly, paid in these months", () => {
+describe("Set aside monthly, paid in these months", () => {
   // > "I still want that bill's monthly amount in all the other months
   // >  because those are the months where that smaller monthly amount is put
   // >  into a savings account"
@@ -463,7 +463,7 @@ describe("§143 — set aside monthly, paid in these months", () => {
   });
 });
 
-describe("§144 — a month with nothing in it shows what it is planned to be", () => {
+describe("A month with nothing in it shows what it is planned to be", () => {
   // > "it should have the monthly amount until an actual categorized item is
   // >  entered... the amount for the spread over payment should land in the
   // >  month(s) selected replacing the lower monthly amount."
@@ -488,7 +488,7 @@ describe("§144 — a month with nothing in it shows what it is planned to be", 
     expect(projectedCents(l, 0, 1)).toBe(34_000); // January: likewise
   });
 
-  /// §151 — insurance due Jan and Jul, paid in June, and January
+  /// Insurance due Jan and Jul, paid in June, and January
   /// still promising a 2,000 payment nine months after it did not happen.
   it("does not promise a payment in a due month that has already gone by", () => {
     const l = autoIns();
@@ -573,14 +573,14 @@ describe("§144 — a month with nothing in it shows what it is planned to be", 
   });
 
   it("multiplies a set-aside monthly figure by twelve, not by its due months", () => {
-    // §143 — the mask names when the bill lands, not when it is funded. Over
+    // The mask names when the bill lands, not when it is funded. Over
     // its two due months, $340 would read as a $680 year.
     expect(annualFromMonthly(34_000, "000000100001", "aside")).toBe(408_000);
     expect(annualFromMonthly(34_000, "000000100001", "spent")).toBe(68_000);
   });
 });
 
-describe("§145 — what is put by, and what it is called", () => {
+describe("What is put by, and what it is called", () => {
   it("calls a set-aside line's last column a balance, not a variance", () => {
     // expected_to_date accrues every elapsed month INCLUDING the month a bill
     // lands, so this figure is what is still sitting there after the payment.
@@ -638,7 +638,7 @@ describe("§145 — what is put by, and what it is called", () => {
     });
     render(<YearPlanView />);
     const cell = await screen.findByTitle("Auto insurance: 380.00 saved so far, not yet spent");
-    // No plus sign — and, since §154, the word "saved" beside the figure.
+    // No plus sign — and the word "saved" beside the figure.
     expect(cell.textContent).toBe("380.00saved");
     expect(cell.textContent).not.toContain("+");
   });
@@ -660,7 +660,7 @@ describe("\u00a7151 \u2014 emptying an amount box", () => {
     expect(invokeCalls.some((c) => c.cmd === "set_budget_plan")).toBe(false);
   });
 
-  /// §151 — and the one that was actively creating plans nobody asked for.
+  /// And the one that was actively creating plans nobody asked for.
   ///
   /// > "if I click in to the Monthly box and tab out it puts 0.00 in both
   /// >  monthly and annual and that's bad - it needs to stay blank unless an
@@ -709,8 +709,8 @@ describe("\u00a7151 \u2014 emptying an amount box", () => {
   });
 });
 
-describe("§154 — the set-aside balance says what it is, on the screen", () => {
-  // §151 put "saved so far, not yet spent" in the cell's TITLE, and the user never
+describe("The set-aside balance says what it is, on the screen", () => {
+  // An earlier version put "saved so far, not yet spent" in the cell's TITLE, and the user never
   // saw it: nobody hovers a number. One word beside the figure; the sentence
   // stays as the title.
   const autoIns = (variance: number) =>
@@ -765,7 +765,7 @@ describe("§154 — the set-aside balance says what it is, on the screen", () =>
   });
 });
 
-describe("§156 — Ctrl+F finds a budget line, not a transaction", () => {
+describe("Ctrl+F finds a budget line, not a transaction", () => {
   it("narrows the page to the categories that match, planned or not", async () => {
     const user = userEvent.setup();
     render(<YearPlanView />);
@@ -803,7 +803,7 @@ describe("§156 — Ctrl+F finds a budget line, not a transaction", () => {
   });
 });
 
-describe("§183 — a year's figures stay under that year", () => {
+describe("A year's figures stay under that year", () => {
   function deferred<T>() {
     let resolve!: (v: T) => void;
     const promise = new Promise<T>((r) => (resolve = r));

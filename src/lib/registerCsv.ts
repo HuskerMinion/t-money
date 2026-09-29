@@ -1,4 +1,4 @@
-// §85: a register, as shown, as CSV for Excel. Money's columns — Num, Date,
+// A register, as shown, as CSV for Excel. Money's columns — Num, Date,
 // Payee, Category (or Transfer : Account), Memo, C, Payment, Deposit, Balance
 // — plus the investment fields when a row has them. Amounts are plain
 // decimals (no $, no parens) so a spreadsheet reads them as numbers; the
@@ -6,7 +6,7 @@
 import type { RegisterRow } from "./types";
 import { formatPrice, formatShares } from "./shares";
 
-/** A quoted TEXT cell. §180: Excel evaluates a cell that begins with = + - @
+/** A quoted TEXT cell. Excel evaluates a cell that begins with = + - @
  *  (or a tab or carriage return ahead of one) as a formula even inside quotes,
  *  so a payee or memo that came in from a bank's download could run when the
  *  export is opened. The apostrophe makes it text. Amounts never come through

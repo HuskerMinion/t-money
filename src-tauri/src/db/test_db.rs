@@ -1,4 +1,4 @@
-//! §182 — the one throwaway database the tests write money into, and the
+//! The one throwaway database the tests write money into, and the
 //! whole-file check every one of them ends with.
 //!
 //! Before this there were nine copies of the same helper, and each test
@@ -9,7 +9,7 @@
 //! all invisible to a test asserting the other account's balance.
 //!
 //! So the check lives in `Drop`, where nobody can forget it: when the test is
-//! over, `queries::verify_file` (§83, §177) reads the whole file back and the
+//! over, `queries::verify_file` reads the whole file back and the
 //! test fails if anything it reports is wrong. A test that corrupts the file
 //! on purpose says so, with its reason, through `expect_inconsistent`.
 
@@ -68,7 +68,7 @@ impl Drop for TestDb {
         };
         let _ = std::fs::remove_dir_all(&self.dir);
         if let Some(report) = report {
-            panic!("§182: the test left the file inconsistent:\n{report}");
+            panic!("The test left the file inconsistent:\n{report}");
         }
     }
 }
@@ -117,7 +117,7 @@ fn check(pool: &pool::DbPool) -> Option<String> {
 pub fn assert_consistent(conn: &rusqlite::Connection) {
     let v = queries::verify_file(conn, false).expect("verify_file");
     if let Some(report) = problems(&v) {
-        panic!("§182: the file is inconsistent:\n{report}");
+        panic!("The file is inconsistent:\n{report}");
     }
 }
 

@@ -1,4 +1,4 @@
-// §118 — the checkbox list that replaced the Ctrl-click multi-selects.
+// The checkbox list that replaced the Ctrl-click multi-selects.
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";

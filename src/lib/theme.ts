@@ -1,4 +1,4 @@
-// Themes (§63). Every color in the app is a --tm-* token from
+// Themes. Every color in the app is a --tm-* token from
 // src/branding/tm-tokens.css; a theme is a set of overrides for the chrome
 // and grid tokens, applied as inline custom properties on <html>. The
 // default theme is Money Plus itself — the measured values in tm-tokens.css
@@ -145,7 +145,7 @@ export const THEMES: readonly Theme[] = [
     },
   },
   {
-    // §99 — a dark mode asked for as better than, and in addition to, Evening.
+    // A dark mode asked for as better than, and in addition to, Evening.
     // Evening is a gray-blue dusk and stays. This one goes properly dark and
     // buys back the contrast Evening spends on softness: near-black grounds,
     // brighter ink, and a grid line you can actually see, which is what a
@@ -180,7 +180,7 @@ export const THEMES: readonly Theme[] = [
     },
   },
   {
-    // §99 — high contrast. Not a style: an accessibility mode. Pure black on
+    // High contrast. Not a style: an accessibility mode. Pure black on
     // pure white, every rule at full strength, no gradients and no tints that
     // could drop a pair below 7:1. Red and green are darkened until they pass
     // as text, because a negative balance that is only distinguishable by hue
@@ -194,7 +194,7 @@ export const THEMES: readonly Theme[] = [
       "ms-tab-inactive-top": "#3a3a3a", "ms-tab-inactive-bot": "#3a3a3a",
       "ms-tab-active-top": "#ffffff", "ms-tab-active-bot": "#ffffff",
       // The active tab is white here, so the chrome's selection cannot be —
-      // menu hover would be white on white (§102).
+      // menu hover would be white on white.
       "ms-chrome-sel": "#000000", "ms-chrome-sel-text": "#ffffff",
       "ms-tab-text": "#ffffff", "ms-tab-active-text": "#000000",
       "ms-subnav": "#000000", "ms-subnav-selected": "#ffe000",
@@ -217,7 +217,7 @@ export const THEMES: readonly Theme[] = [
     },
   },
   {
-    // §99 — a calm neutral. Every other theme has a hue; this one has none,
+    // A calm neutral. Every other theme has a hue; this one has none,
     // which turns out to be the one people reach for when they are working
     // rather than admiring.
     id: "graphite",
@@ -244,7 +244,7 @@ export const THEMES: readonly Theme[] = [
     },
   },
   {
-    // §102 — warm light. Money's blue is cool and a little clinical; this is
+    // Warm light. Money's blue is cool and a little clinical; this is
     // the same layout on paper-warm ground, which is what most people
     // actually want to look at for an afternoon.
     id: "sandstone",
@@ -382,7 +382,7 @@ export function saveTheme(id: string): void {
 
 const LIGHT_KEY = "tm.lightTheme";
 
-/** §87: the header's sun/moon. Dark → the light theme last used (Money
+/** The header's sun/moon. Dark → the light theme last used (Money
  *  Plus if none); light → Evening, remembering which light one to come
  *  back to. Returns the id now applied. */
 export function toggleDark(): string {
@@ -435,7 +435,7 @@ export const PREVIEW_DEFAULTS: Record<string, string> = {
   "ms-grid-header": "#cfddf0", "ms-grid-header-rule": "#94b8e6", "ms-row": "#ffffff", "ms-row-alt": "#f6fafd", "ms-grid-line": "#cbcbcb", "ms-row-active": "#fff0c2",
   "series-1": "#a2497a", "series-2": "#6b8a5a", "series-4": "#4e9c96", "series-7": "#ef9d4a",
   "negative": "#d52b2b",
-  // §142 — the error box, so a theme that does not override it is still
+  // The error box, so a theme that does not override it is still
   // measured against Money's own values rather than against "#000".
   "ms-error-bg": "#fdecea", "ms-error-border": "#e6b0aa", "ms-error-text": "#c0392b",
 };

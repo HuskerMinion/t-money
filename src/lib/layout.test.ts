@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// §99 — looks. The rules worth holding: Money Classic is the default and
+// Looks. The rules worth holding: Money Classic is the default and
 // never moves, a look sets no color of its own, and every look names a
 // structure the shell knows how to arrange.
 import { beforeEach, describe, expect, it } from "vitest";
@@ -12,7 +12,7 @@ beforeEach(() => {
   document.documentElement.removeAttribute("data-structure");
 });
 
-describe("looks (§99)", () => {
+describe("looks", () => {
   it("Money Classic is first and is what you get without choosing", () => {
     // Not a preference the app can drift away from: it is what T-Money is
     // for, and a new look must be something you go and pick.

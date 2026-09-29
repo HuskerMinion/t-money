@@ -1,4 +1,4 @@
-// Money's bill calendar (§52): the month as a grid, each day carrying the
+// Money's bill calendar: the month as a grid, each day carrying the
 // bills and deposits due on it, colored by status the same way the list
 // is. Double-click a day to schedule something on that date; click an entry
 // to open its rule. The occurrences are the same ones the list shows, so

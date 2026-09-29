@@ -1,4 +1,4 @@
-// The header's Search box, answered (§38).
+// The header's Search box, answered.
 //
 // "Where did that $340 go", "when did I last pay the vet". One query across
 // payee, memo, check number, category and amount; scoped to one account or

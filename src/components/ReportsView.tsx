@@ -1,4 +1,4 @@
-// Reports — Money's "View a report" page (§39): My favorites, then the gallery in its
+// Reports — Money's "View a report" page: My favorites, then the gallery in its
 // groups, Monthly reports for the last twelve months, and one viewer for
 // whichever report is open.
 import { useEffect, useState } from "react";
@@ -11,16 +11,16 @@ import { monthRange, monthTitle, recentMonths, resolveRange } from "../lib/repor
 import { useAccountStore } from "../stores/useAccountStore";
 import type { ReportGalleryEntry, SavedReport } from "../lib/types";
 
-/** A report to open, optionally scoped and dated (the Taxes tab, §43). */
+/** A report to open, optionally scoped and dated (the Taxes tab). */
 export interface ReportOpen {
   kind: string;
   categoryIds?: string[];
   accountIds?: string[];
   from?: string;
   to?: string;
-  /** Opened from the Taxes tab: only tax-included accounts (§48). */
+  /** Opened from the Taxes tab: only tax-included accounts. */
   taxScope?: boolean;
-  /** §97: Favorites → Favorite reports names a SAVED report by id. The saved
+  /** Favorites → Favorite reports names a SAVED report by id. The saved
    *  row carries the whole spec, so it is resolved here rather than
    *  reconstructed from a kind. */
   savedId?: string;
@@ -70,10 +70,10 @@ export function specForOpen(o: ReportOpen): ReportSpec {
 export default function ReportsView({ initialOpen = null, onOpenAccount, onOpenTransaction }: Props) {
   const [gallery, setGallery] = useState<ReportGalleryEntry[]>([]);
   const [spec, setSpec] = useState<ReportSpec | null>(initialOpen ? specForOpen(initialOpen) : null);
-  // My favorites: saved, named, customized reports, kept in the file (§39).
+  // My favorites: saved, named, customized reports, kept in the file.
   const [favorites, setFavorites] = useState<SavedReport[]>([]);
   const [favoritesLoaded, setFavoritesLoaded] = useState(false);
-  // §97's saved report opened from the Favorites menu, still waiting for the
+  // A saved report opened from the Favorites menu, still waiting for the
   // saved list to arrive. Null once it has been resolved (or was never asked).
   const [pendingSavedId, setPendingSavedId] = useState<string | null>(initialOpen?.savedId ?? null);
   const [error, setError] = useState<string | null>(null);
@@ -96,7 +96,7 @@ export default function ReportsView({ initialOpen = null, onOpenAccount, onOpenT
     void loadAccounts();
   }, [loadCategories, loadAccounts]);
 
-  // §183 — only a NEW opener resets the viewer. This effect used to depend
+  // Only a NEW opener resets the viewer. This effect used to depend
   // on `favorites` too, and saving a report reloads favorites: the report
   // on screen was thrown back to the one the rail opened, losing the
   // customizing just saved and the saved id the viewer had been given — so
@@ -107,7 +107,7 @@ export default function ReportsView({ initialOpen = null, onOpenAccount, onOpenT
       setSpec(null);
       return;
     }
-    // §97: a saved report opened from the Favorites menu. Its spec is in the
+    // A saved report opened from the Favorites menu. Its spec is in the
     // file, so wait for the saved list rather than guessing at a kind.
     if (initialOpen.savedId) {
       setPendingSavedId(initialOpen.savedId);

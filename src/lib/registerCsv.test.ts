@@ -1,4 +1,4 @@
-// §85 — the register as CSV.
+// The register as CSV.
 import { describe, expect, it } from "vitest";
 import { csvCents, registerCsv } from "./registerCsv";
 import type { RegisterRow } from "./types";
@@ -32,7 +32,7 @@ describe("registerCsv", () => {
     expect(without[1].split(",")).toHaveLength(8);
   });
 
-  it("defuses text that Excel would run as a formula, and leaves the amounts numbers (§180)", () => {
+  it("defuses text that Excel would run as a formula, and leaves the amounts numbers", () => {
     const out = registerCsv(
       [
         row({ payee: '=HYPERLINK("http://x")', category_name: "+Groceries", notes: "-cash back", check_number: "@1", amount_cents: -1234, running_balance_cents: -500 }),

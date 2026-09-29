@@ -1,4 +1,4 @@
-// Shares and prices in millionths (§41). The backend stores `shares_micro`
+// Shares and prices in millionths. The backend stores `shares_micro`
 // (shares x 1,000,000) and `price_micro` (dollars x 1,000,000) as i64; this
 // is the frontend's exact arithmetic on them — BigInt, never a float, so a
 // 401(k)'s 12.3456 shares at 34.5678 comes out to the cent the backend gets.
@@ -32,7 +32,7 @@ export function formatShares(micro: number): string {
 }
 
 /** A price to two places, or as many as it has up to six (a fund NAV at
- *  34.5678, a money-market unit at 1.000123) — §72: every stored digit is
+ *  34.5678, a money-market unit at 1.000123) — every stored digit is
  *  shown, so an edit round-trips exactly. */
 export function formatPrice(micro: number | null | undefined): string {
   if (micro === null || micro === undefined) return "";
@@ -59,7 +59,7 @@ export function mulDiv(a: number, b: number, c: number): number {
 }
 
 /**
- * shares x price → cents. `rounding` is the file's choice (§79): "nearest"
+ * shares x price → cents. `rounding` is the file's choice: "nearest"
  * (half away from zero, the default) or "down" (truncate, as some brokers do).
  * Mirrors `lots::value_cents_rounded`.
  */
@@ -99,15 +99,15 @@ export function activityLabel(a: string | null | undefined): string {
   return ACTIVITY_LABELS.find(([k]) => k === a)?.[1] ?? "";
 }
 
-/** §91 — the cash entries an investment account needs, offered in the same
+/** The cash entries an investment account needs, offered in the same
  *  Activity list as the share ones because that is where a user looks for
  *  them. Money's 401(k) register lists Contribution beside Buy; ours had the
- *  capability (the "New cash entry" button since §41) but nowhere anybody
+ *  capability (the "New cash entry" button) but nowhere anybody
  *  found it. A 401(k) whose statements download only 90 days at a time
  *  had no manual way to enter a Contribution.
  *
  *  Each one is a plain transaction in the investment account's cash — the
- *  same row §90's import writes beside a purchase — so the categories match
+ *  same row the importer writes beside a purchase — so the categories match
  *  the importer's exactly. */
 export interface CashActivity {
   key: string;

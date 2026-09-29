@@ -1,4 +1,4 @@
-// "Balance this account" — Money's reconcile wizard (§6.1f).
+// "Balance this account" — Money's reconcile wizard.
 //
 // Five states, matching reference/ms-money-05..09:
 //   A resume   — only when a previous attempt was postponed
@@ -47,10 +47,10 @@ interface Props {
   ) => void | Promise<void>;
   onFinish: (dontShowAgain: boolean) => void | Promise<void>;
   onCancel: () => void;
-  /** §69: the clearing stage is drawn as a strip above the register, not a
+  /** The clearing stage is drawn as a strip above the register, not a
    *  centered dialog, so the rows stay clickable while the difference is in view. */
   inline?: boolean;
-  /** §183 — a refusal from the backend (a statement it would not start, a
+  /** A refusal from the backend (a statement it would not start, a
    *  finish that failed). It is drawn inside the dialog, beside the buttons:
    *  the register used to write it to its own notice strip, which is under
    *  the backdrop while this dialog is up, so Next simply seemed not to work. */
@@ -141,7 +141,7 @@ function StatementStep({
       setError(`"${starting}" is not an amount.`);
       return;
     }
-    // §183 — a service charge or interest that does not read as an amount is
+    // A service charge or interest that does not read as an amount is
     // refused like the balances are. Both used to become "none": a typo in
     // the $12.00 fee started a statement without it, and the account then
     // would not balance by exactly the amount that had been typed.

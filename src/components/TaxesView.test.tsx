@@ -1,4 +1,4 @@
-// The Taxes tab (§43): totals by line, the Tax Line Manager, and the way out
+// The Taxes tab: totals by line, the Tax Line Manager, and the way out
 // to the full reports.
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -139,7 +139,7 @@ describe("the Taxes tab", () => {
     expect(onOpenReport).toHaveBeenLastCalledWith(expect.objectContaining({ kind: "capital_gains" }));
   });
 
-  it("asks for tax-scoped reports and lets an account be included or left out (§48)", async () => {
+  it("asks for tax-scoped reports and lets an account be included or left out", async () => {
     const onOpenReport = vi.fn();
     render(<TaxesView onOpenReport={onOpenReport} />);
     await screen.findByRole("table", { name: "Tax-related totals" });
@@ -161,9 +161,9 @@ describe("the Taxes tab", () => {
   });
 });
 
-// §183 — errors went to the top card, out of sight of what failed, and a year
+// Errors went to the top card, out of sight of what failed, and a year
 // that would not load left the previous year's figures under its heading.
-describe("§183 — Taxes says what failed where it failed", () => {
+describe("Taxes says what failed where it failed", () => {
   it("a year that will not load shows no figures from the year before", async () => {
     render(<TaxesView onOpenReport={vi.fn()} />);
     await screen.findByRole("table", { name: "Tax-related totals" });

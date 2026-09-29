@@ -1,13 +1,13 @@
 //! Database layer: encrypted pool, migrations, and queries.
 
-// §112 — classifications. NOT development-only: this was inserted directly
+// Classifications. NOT development-only: this was inserted directly
 // above `demo` and silently took its `#[cfg(debug_assertions)]`, so the whole
 // feature compiled in every test run and vanished from the release build,
 // which failed to compile at all. Anything added here goes BELOW the demo
 // lines, or gets its own line above this comment.
 pub mod classes;
 
-// Demo data. §128 UNGATED this: it was `#[cfg(debug_assertions)]`, compiled
+// Demo data. This used to be gated: it was `#[cfg(debug_assertions)]`, compiled
 // out of release entirely, so that a personal-finance app could not ship a
 // "fill my file with fake transactions" path however well hidden.
 //
@@ -27,14 +27,14 @@ pub mod loans;
 pub mod lots;
 pub mod migration_fixtures;
 pub mod migrations;
-// §138 — the year plan. Below the demo lines, as the rule below requires.
+// The year plan. Below the demo lines, as the rule below requires.
 pub mod plan;
 pub mod pool;
 pub mod queries;
 pub mod undo;
 pub mod reports;
 pub mod standard_categories;
-// §182 — the tests' shared database and its whole-file check. Gated by
+// The tests' shared database and its whole-file check. Gated by
 // `#![cfg(test)]` inside the file, like `migration_fixtures`.
 pub mod test_db;
 
@@ -42,13 +42,13 @@ pub mod test_db;
 /// nothing warns when that turns out to be the wrong line: every test runs in
 /// debug, so a module accidentally gated compiles everywhere the suite looks
 /// and is missing only from the release build — which then fails to compile,
-/// on Windows, after the tests have all passed. That happened once (§112.2)
-/// and again in §128, from the other direction: `demo` WAS gated, a release
+/// on Windows, after the tests have all passed. That happened once
+/// and again from the other direction: `demo` WAS gated, a release
 /// command was written against it, and `cargo test` passed while
 /// `cargo check --release` did not.
 ///
 /// So: NO module in this file may be gated. `demo` was the last one, and
-/// §128 ungated it — the guarantee it carried now lives in
+/// The sample file ungated it — the guarantee it carried now lives in
 /// `create_sample_file`'s runtime guards, which the whole test suite can
 /// actually see. If a module ever needs to be development-only again, it
 /// needs a reason good enough to reopen this hole, and this test is where

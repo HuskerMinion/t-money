@@ -1,4 +1,4 @@
-// One viewer for every report (§39) — Money's report page: title, the date
+// One viewer for every report — Money's report page: title, the date
 // range line under it, "Common tasks" on the left (Change view, Customize,
 // Add to favorites, Print, Export), the table or the chart, and the
 // "Date range:" dropdown along the bottom. Clicking a row drills through:
@@ -28,11 +28,11 @@ export interface ReportSpec {
   compare: DateRange | null;
   /** Net worth's Level of detail. */
   detail?: string;
-  /** Customize's Rows / Chart / Securities (§47). Absent = defaults. */
+  /** Customize's Rows / Chart / Securities. Absent = defaults. */
   options?: ReportOptions;
-  /** From the Taxes tab: accounts with tax_included = 0 are left out (§48). */
+  /** From the Taxes tab: accounts with tax_included = 0 are left out. */
   taxScope?: boolean;
-  // §113 — the rest of the scope. Every field is optional and absent means
+  // The rest of the scope. Every field is optional and absent means
   // "no filter", so an existing spec is unchanged by their arrival.
   /** Only these payees (or, with `excludePayees`, all but these). */
   payeeIds?: string[];
@@ -45,19 +45,19 @@ export interface ReportSpec {
   cleared?: string[];
   /** Payee or memo contains this. */
   text?: string;
-  /** §112: classification values a line must carry; `none:<axis>` = none. */
+  /** Classification values a line must carry; `none:<axis>` = none. */
   classValueIds?: string[];
-  /** §114: the axis a by-classification report groups on. */
+  /** The axis a by-classification report groups on. */
   classificationId?: string;
-  /** §116: the security a benchmark report measures against. */
+  /** The security a benchmark report measures against. */
   benchmarkSecurityId?: string;
-  /** Set when this spec came from a saved report (§39): saving again
+  /** Set when this spec came from a saved report: saving again
    *  replaces it rather than making a second one. */
   savedId?: string;
   savedName?: string;
 }
 
-/** Whether a spec carries any of the §113 line filters — what the Customize
+/** Whether a spec carries any of the line filters — what the Customize
  *  link says, and whether Reset has anything to do. */
 export function hasLineFilters(spec: ReportSpec): boolean {
   return (
@@ -158,7 +158,7 @@ interface Props {
 
 /** A typed amount as cents, or null when the box is empty. Signs are
  *  dropped: the filter is on the SIZE of a line, in or out. */
-/** §183 — cents as the amount boxes show them once left: "50.00", or blank. */
+/** Cents as the amount boxes show them once left: "50.00", or blank. */
 export function centsText(cents: number | null | undefined): string {
   return cents == null ? "" : (cents / 100).toFixed(2);
 }
@@ -170,7 +170,7 @@ export function centsOrNull(v: string): number | null {
   return Number.isFinite(n) ? Math.round(Math.abs(n) * 100) : null;
 }
 
-/** §118 — is this a whole date the report can be run for?
+/** Is this a whole date the report can be run for?
  *
  *  A `<input type="date">` reports "" while the day or month is still being
  *  typed, and a year typed digit by digit passes through 0002-01-01 on its
@@ -226,12 +226,12 @@ export function drillFor(spec: ReportSpec, row: ReportLine): Partial<ReportSpec>
     case "category":
       return { kind: "transactions_by_category", categoryIds: row.key ? [row.key] : [] };
     case "payee":
-      // §166 — scoped to the payee clicked (§113's filter), so the report
+      // Scoped to the payee clicked (the line filter), so the report
       // it opens is that payee's transactions, not every payee's. A payee
       // with no id (key "") cannot be scoped and opens the whole listing.
       return row.key ? { kind: "transactions_by_payee", payeeIds: [row.key] } : { kind: "transactions_by_payee" };
     case "class_value":
-      // §114: a value opens its transactions. The unclassified bucket's key
+      // A value opens its transactions. The unclassified bucket's key
       // is `none:<axis>`, which is a scope value in its own right — the
       // engine writes the axis into the key precisely so the viewer does not
       // have to know which axis the report chose.
@@ -257,18 +257,18 @@ export default function ReportViewer({ spec, onSpec, onOpenAccount, onOpenTransa
   const [saving, setSaving] = useState(false);
   const [saveName, setSaveName] = useState("");
   const [saveError, setSaveError] = useState<string | null>(null);
-  // §183 — a save on its way. Save stayed live while the first one was in
+  // A save on its way. Save stayed live while the first one was in
   // flight, and a second click stored the same report twice.
   const [saveBusy, setSaveBusy] = useState(false);
-  // §183 — Customize's At least / At most boxes, as typed. They showed the
+  // Customize's At least / At most boxes, as typed. They showed the
   // parsed cents re-formatted on every keystroke, so "5" became "5.00" and
   // the next digit landed after the zeros: $50 could not be typed. The text
   // is read into cents when the box is left and on Apply.
   const [amountText, setAmountText] = useState<{ min: string; max: string }>({ min: "", max: "" });
-  // §118 — what the custom date boxes are showing while they are being typed
+  // What the custom date boxes are showing while they are being typed
   // in, which is not always something the report can be run for.
   const [dateEcho, setDateEcho] = useState<DateRange | null>(null);
-  // §118 — Customize edits a copy. Nothing re-runs until Apply, so the panel
+  // Customize edits a copy. Nothing re-runs until Apply, so the panel
   // stays still while you work in it and Cancel really does undo.
   const [draft, setDraft] = useState<ReportSpec | null>(null);
   useEffect(() => {
@@ -292,7 +292,7 @@ export default function ReportViewer({ spec, onSpec, onOpenAccount, onOpenTransa
   }
   function closeCustomize(apply: boolean) {
     if (apply && draft) {
-      // §183 — a half-filled comparison is no comparison. Clearing one of
+      // A half-filled comparison is no comparison. Clearing one of
       // the two dates left "" in the request, which the backend refused;
       // either box blank now means what the hint beside them says — the
       // same length of time just before.
@@ -348,7 +348,7 @@ export default function ReportViewer({ spec, onSpec, onOpenAccount, onOpenTransa
   const singleSeries = !!report?.chart && report.chart.series.length === 1;
   const isInvestmentKind = ["portfolio_value", "investment_performance", "capital_gains", "investment_transactions", "investment_income", "benchmark_comparison", "asset_allocation"].includes(spec.kind);
   const [securities, setSecurities] = useState<Security[]>([]);
-  // §113/§114: the lists the scope picker offers. Loaded when Customize is
+  // The lists the scope picker offers. Loaded when Customize is
   // opened, not on every report — most reports are never customized.
   const [payees, setPayees] = useState<Payee[]>([]);
   const [classifications, setClassifications] = useState<Classification[]>([]);
@@ -398,7 +398,7 @@ export default function ReportViewer({ spec, onSpec, onOpenAccount, onOpenTransa
     return parts.join(" · ");
   }, [spec, accounts, categories]);
 
-  // §68: a category or payee row opens a quick look at its transactions —
+  // A category or payee row opens a quick look at its transactions —
   // a small report over this report, not a trip to another one. "Open the
   // full report" in it is the old drill.
   const [peek, setPeek] = useState<{ row: ReportLine; drill: Partial<ReportSpec> } | null>(null);
@@ -482,12 +482,12 @@ export default function ReportViewer({ spec, onSpec, onOpenAccount, onOpenTransa
     if (drill) onSpec({ ...spec, ...drill, compare: null, savedId: undefined, savedName: undefined });
   }
 
-  // §102 — File → Export → This report to CSV. The button on the rail has
-  // done this since §85; the menu item named it and nothing served it, so it
+  // File → Export → This report to CSV. The button on the rail has
+  // done this all along; the menu item named it and nothing served it, so it
   // was grayed out even while a report was on screen.
   useCommand("export.report.csv", () => void saveCsv());
 
-  // §85: the same CSV, to a file of the user's choosing.
+  // The same CSV, to a file of the user's choosing.
   async function saveCsv() {
     if (!report) return;
     try {
@@ -549,7 +549,7 @@ export default function ReportViewer({ spec, onSpec, onOpenAccount, onOpenTransa
             type="button"
             onClick={() => {
               if (window.confirm(`Remove "${spec.savedName}" from My favorites?`)) {
-                // §183 — a refused remove used to vanish into an unhandled
+                // A refused remove used to vanish into an unhandled
                 // rejection, and the report simply stayed.
                 setError(null);
                 onDeleteSaved(spec.savedId!)
@@ -579,7 +579,7 @@ export default function ReportViewer({ spec, onSpec, onOpenAccount, onOpenTransa
           {scopeNote && <span className="tm-text-muted"> — {scopeNote}</span>}
         </div>
 
-        {/* §118 — the date control. It used to sit under the table, where a
+        {/* The date control. It used to sit under the table, where a
             long report hid it entirely ("I don't see a way to change the date
             … found it at the VERY bottom"), and where typing a custom date
             shortened the page and threw the scroll back to the top with the
@@ -673,7 +673,7 @@ export default function ReportViewer({ spec, onSpec, onOpenAccount, onOpenTransa
           </form>
         )}
 
-        {/* §118 — Customize edits `d`, a copy of the spec. The report keeps
+        {/* Customize edits `d`, a copy of the spec. The report keeps
             showing what you were looking at until Apply, so choosing five
             categories is five clicks and one re-run rather than five re-runs,
             and Cancel puts everything back. */}
@@ -711,7 +711,7 @@ export default function ReportViewer({ spec, onSpec, onOpenAccount, onOpenTransa
                   Leave these out instead
                 </label>
               </div>
-              {/* §113 — the rest of the scope, on every report rather than on
+              {/* The rest of the scope, on every report rather than on
                   the handful that happened to support it. */}
               <div>
                 <PickList
@@ -980,7 +980,7 @@ export default function ReportViewer({ spec, onSpec, onOpenAccount, onOpenTransa
 
         {report && view === "chart" && chart && chartStyle && (
           <>
-            {/* §59: the chart's own style bar — every way to draw it, and depth. */}
+            {/* The chart's own style bar — every way to draw it, and depth. */}
             <div className="tm-chart-bar" role="toolbar" aria-label="Chart style">
               {CHART_STYLES.map((c) => {
                 const blocked = baseKind(c.value) === "pie" && !singleSeries;
@@ -1008,9 +1008,9 @@ export default function ReportViewer({ spec, onSpec, onOpenAccount, onOpenTransa
               chart={chart}
               style={chartStyle}
               depth={options.depth}
-              // §166 — a slice or a bar is the row it was drawn from: find
+              // A slice or a bar is the row it was drawn from: find
               // that row and treat the click as a click on it, so a category
-              // or payee opens its transactions (§68's quick look) and an
+              // or payee opens its transactions (the quick look) and an
               // account opens its register. A chart label is the row's own
               // label, or its group's ("Total Automobile" for a category
               // group). A label with no keyed row behind it does nothing.
@@ -1055,7 +1055,7 @@ export default function ReportViewer({ spec, onSpec, onOpenAccount, onOpenTransa
                     !!r.key_kind &&
                     r.key !== null &&
                     (r.key_kind !== "category" || spec.kind !== "transactions_by_category") &&
-                    // §114: a value row in the list it already opened leads
+                    // A value row in the list it already opened leads
                     // nowhere; everywhere else it opens its transactions.
                     (r.key_kind !== "class_value" || spec.kind !== "transactions_by_classification") &&
                     r.key_kind !== "recurrence" &&

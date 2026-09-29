@@ -1,4 +1,4 @@
-// §115 — how old a price is, and when the timer should fire.
+// How old a price is, and when the timer should fire.
 //
 // The app fetches only when told to. "Automatically" here means the app asks
 // once a day (or once a week) WHILE IT IS OPEN, and only after the setting is
@@ -9,7 +9,7 @@ import type { PriceInterval, PriceStatus } from "./types";
 
 export const PRICE_INTERVALS: { value: PriceInterval; label: string; days: number }[] = [
   { value: "off", label: "Only when I ask", days: 0 },
-  // §158 — "while T-Money is open" includes the moment it opens a file: a
+  // "while T-Money is open" includes the moment it opens a file: a
   // file whose last fetch is older than the interval is refreshed then,
   // rather than at the first half-hour tick.
   { value: "daily", label: "Once a day, while T-Money is open", days: 1 },
@@ -18,7 +18,7 @@ export const PRICE_INTERVALS: { value: PriceInterval; label: string; days: numbe
 
 /** The calendar day of an ISO date (yyyy-mm-dd, or a timestamp that starts
  *  with one) as a whole-day count, or null when it is not a real date.
- *  §180: `Date.parse` rolls 2026-02-30 over to March 2, and the old answer
+ *  `Date.parse` rolls 2026-02-30 over to March 2, and the old answer
  *  for nonsense was 0 days — which every caller reads as "fresh". Counted in
  *  UTC so a daylight-saving change cannot make a day 23 hours long. */
 function dayNumber(iso: string): number | null {
@@ -42,7 +42,7 @@ export function daysBetween(fromIso: string, toIso: string): number | null {
 }
 
 /** Now on this machine's clock, in the shape the backend stamps `last_auto`
- *  with (chrono's Local, "2026-09-15T18:00:00"). §180: the timer used to pass
+ *  with (chrono's Local, "2026-09-15T18:00:00"). The timer used to pass
  *  `toISOString()`, which is UTC — from 7 p.m. in U.S. Central (6 p.m. in
  *  winter) that is already tomorrow, so a daily refresh looked a day old and
  *  ran again at every half-hour tick until local midnight, each run stamping
@@ -63,7 +63,7 @@ export function refreshIsDue(status: PriceStatus, now: string): boolean {
   // Never run: due now, so turning it on does something visible.
   if (!status.last_auto) return true;
   const days = daysBetween(status.last_auto, now);
-  // §180: a stamp that will not parse is due, not fresh. The run re-stamps
+  // A stamp that will not parse is due, not fresh. The run re-stamps
   // it, so this asks once rather than every half hour.
   return days === null || days >= interval.days;
 }
@@ -78,7 +78,7 @@ export function stalenessNote(status: PriceStatus, today: string): string | null
   if (!status.oldest_date) return null;
   const days = daysBetween(status.oldest_date, today);
   const parts: string[] = [];
-  // §180: a date that will not parse is not "today's" — say so, and isStale
+  // A date that will not parse is not "today's" — say so, and isStale
   // points at it.
   if (days === null) parts.push("Price dates could not be read");
   else if (days <= 0) parts.push("Prices are today's");

@@ -1,4 +1,4 @@
-// The account taxonomy (§6.1g) — the wizard's filtering and the Account List's
+// The account taxonomy — the wizard's filtering and the Account List's
 // grouping both read from this table, and it must stay in step with the CHECK
 // constraint in migration 0009.
 import { describe, expect, it } from "vitest";
@@ -110,9 +110,9 @@ describe("grouping helpers", () => {
   });
 });
 
-// §94 — which accounts amortize. A credit card is a debt, but its balance is
+// Which accounts amortize. A credit card is a debt, but its balance is
 // whatever was charged, not a schedule, so it gets no loan terms.
-describe("isAmortizable (§94)", () => {
+describe("isAmortizable", () => {
   it("covers the debts with a rate and a payment, and no others", () => {
     for (const k of ["loan", "mortgage", "home_equity_line_of_credit", "liability", "line_of_credit"]) {
       expect(isAmortizable(k)).toBe(true);
@@ -129,7 +129,7 @@ describe("isAmortizable (§94)", () => {
   });
 });
 
-// §181 — N9: a closed account is out of every picker, except where the thing
+// N9: a closed account is out of every picker, except where the thing
 // being edited already names it.
 describe("pickableAccounts", () => {
   const list = [

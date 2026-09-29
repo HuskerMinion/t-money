@@ -1,4 +1,4 @@
-// §126 — the Two-up look's second register.
+// The Two-up look's second register.
 //
 // > *"1. Tiles - remove try to come up with an different option"*
 //
@@ -71,7 +71,7 @@ export default function WatchPane({ accounts, workingId, onWork }: Props) {
 
   // Reload whenever the account changes — and whenever the main pane writes.
   // A watched balance that is quietly stale is worse than no watched balance
-  // at all. §183: `workingId` alone did not stand in for a write — it only
+  // at all. `workingId` alone did not stand in for a write — it only
   // moves when the main pane switches accounts, so a payment entered in the
   // register left the watched account's rows as they were. `accounts` is
   // reloaded after every write that moves a balance (the store's

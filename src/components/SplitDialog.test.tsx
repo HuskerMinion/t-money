@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-// §102 — a split line can be a transfer.
+// A split line can be a transfer.
 //
 // The database column, the Rust `NewSplit` and the ledger have carried this
-// since §94, and no user could ever produce one: this dialog's picker offered
+// for some time, and no user could ever produce one: this dialog's picker offered
 // categories only, so the feature existed everywhere except where someone
 // could reach it. A user found it by looking for it and not finding it.
 //
@@ -75,7 +75,7 @@ describe("the transfer spelling", () => {
 
   it("offers no transfers at all when a picker is not given any", () => {
     // A budget target or a payee's default category cannot be a transfer, and
-    // offering one there would be a menu item that cannot work (§97's rule,
+    // offering one there would be a menu item that cannot work (the menu rule,
     // one layer down).
     expect(categoryItems(categories, "expense").every((i) => !i.value.startsWith("transfer:"))).toBe(true);
   });
@@ -92,7 +92,7 @@ const property: Classification = {
   ],
 };
 
-describe("classifications on a split line (§112)", () => {
+describe("classifications on a split line", () => {
   // The case the whole axis exists for: one receipt, two houses. A picker
   // that only reached whole transactions would lose this, which is where
   // clones of Money's classifications usually give up.
@@ -148,7 +148,7 @@ describe("classifications on a split line (§112)", () => {
   });
 
   it("grays out an axis that has no values, and says where to add them", () => {
-    // §117.1 — a classification with no values is a question with no answers.
+    // A classification with no values is a question with no answers.
     // One classification per value, rather than one classification with the
     // values IN it, left every register field empty with no hint of what was
     // wrong.
@@ -164,7 +164,7 @@ describe("classifications on a split line (§112)", () => {
   });
 });
 
-describe("SplitDialog (§102)", () => {
+describe("SplitDialog", () => {
   function open(initialSplits: NewSplit[] = [], onDone = vi.fn()) {
     render(
       <SplitDialog
@@ -195,7 +195,7 @@ describe("SplitDialog (§102)", () => {
     await user.click(await screen.findByText("Transfer : Vacation Fund"));
     await user.type(screen.getByLabelText("Amount 1"), "40.00");
     await user.click(screen.getByRole("button", { name: "Done" }));
-    // §160 — the line is not the whole $100.00, so Done asks first.
+    // The line is not the whole $100.00, so Done asks first.
     await user.click(screen.getByRole("button", { name: /^Change the amount to/ }));
 
     const [lines] = onDone.mock.calls[0] as [NewSplit[], number];
@@ -232,8 +232,8 @@ describe("SplitDialog (§102)", () => {
   });
 });
 
-// §160 — what a morning of real entry asked of this dialog.
-describe("SplitDialog (§160)", () => {
+// What a morning of real entry asked of this dialog.
+describe("SplitDialog", () => {
   beforeEach(() => {
     resetIpc();
     setIpcHandlers({ list_split_descriptions: () => [{ name: "Milk", usage_count: 3 }, { name: "Mints", usage_count: 1 }] });
@@ -311,7 +311,7 @@ describe("SplitDialog (§160)", () => {
     expect(onDone.mock.calls[0][1]).toBe(-6_000);
   });
 
-  // §183 — the banner held the lines from the first Done, and its answer
+  // The banner held the lines from the first Done, and its answer
   // wrote those even after the grid below it had been fixed.
   it("a line fixed after the confirmation appeared is what Done writes", async () => {
     const { onDone } = open();
@@ -339,7 +339,7 @@ describe("SplitDialog (§160)", () => {
     expect(onDone.mock.calls[0][1]).toBe(-9_000);
   });
 
-  // §183 — an amount Done could not read counted as an empty line and
+  // An amount Done could not read counted as an empty line and
   // dropped out of the split without a word.
   it("refuses a line whose amount is not an amount, and marks it", async () => {
     const { onDone } = open();

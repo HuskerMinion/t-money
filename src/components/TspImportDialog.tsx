@@ -1,4 +1,4 @@
-// §103 — File → Import → TSP activity detail.
+// File → Import → TSP activity detail.
 //
 // The dialog exists for one reason: **the plan's file does not know what
 // reached your bank.** A $1,000 distribution with tax withheld is $1,000 out
@@ -43,7 +43,7 @@ interface Answer {
 
 interface Props {
   accounts: readonly Account[];
-  /** §155 — a file already chosen elsewhere (the CSV door sniffed a tsp.gov
+  /** A file already chosen elsewhere (the CSV door sniffed a tsp.gov
    *  export and handed it over). The dialog opens on it rather than asking
    *  for it a second time. */
   initialPath?: string | null;
@@ -58,7 +58,7 @@ export default function TspImportDialog({ accounts, initialPath = null, onClose,
   const [accountId, setAccountId] = useState("");
   const [cashAccountId, setCashAccountId] = useState("");
   const [busy, setBusy] = useState(false);
-  // §183 — the import itself is running. Kept apart from `busy` (which a
+  // The import itself is running. Kept apart from `busy` (which a
   // preview sets too) so the account pickers lock only for the import: a
   // select disabled on every preview would drop the focus of someone
   // arrowing through its options.
@@ -73,9 +73,9 @@ export default function TspImportDialog({ accounts, initialPath = null, onClose,
   const cashAccounts = open.filter((a) => a.type !== "retirement" && a.type !== "investment");
 
   // The file the answers on screen belong to, so a re-preview of the SAME
-  // file (§155 — the account changed) keeps what has been typed.
+  // file (the account changed) keeps what has been typed.
   const answeredFor = useRef("");
-  // §183 — which preview's answer still counts. Changing the account
+  // Which preview's answer still counts. Changing the account
   // re-previews, and two changes in quick succession sent two requests; the
   // slower one — for the account no longer chosen — could land last and put
   // its opening position ("already held") on screen under the other account.
@@ -127,7 +127,7 @@ export default function TspImportDialog({ accounts, initialPath = null, onClose,
     await load(picked, accountId);
   }
 
-  // §155 — open on a file handed over, and re-preview whenever the account
+  // Open on a file handed over, and re-preview whenever the account
   // changes: the opening position is netted against what THAT account
   // already holds, which is the difference between a right import and a
   // doubled one.
@@ -145,7 +145,7 @@ export default function TspImportDialog({ accounts, initialPath = null, onClose,
     return grossCents - net;
   }
 
-  // §154 — the bank account is only a question when the plan PAID something
+  // The bank account is only a question when the plan PAID something
   // out. A file of contributions and reallocations moves nothing to a bank,
   // and "Money went to" was a required answer to a question with no subject:
   //
@@ -196,7 +196,7 @@ export default function TspImportDialog({ accounts, initialPath = null, onClose,
     <div className="tm-dialog" role="dialog" aria-label="Import TSP activity" style={{ minWidth: 640, maxWidth: 860 }}>
       <div className="tm-dialog-title">Import TSP activity detail</div>
       <div className="tm-dialog-body">
-        {/* §183 — only the file's contents scroll. The error was drawn at the
+        {/* Only the file's contents scroll. The error was drawn at the
             top of the scrolling body and Import at the bottom, so a refused
             import — pressed at the foot of a long table of payments — wrote
             its reason out of view. The error now sits beside the buttons,
@@ -244,7 +244,7 @@ export default function TspImportDialog({ accounts, initialPath = null, onClose,
                                 (+{o.rounding_sliver} to cover the plan's own rounding)
                               </span>
                             )}
-                            {/* §155 — what is already there is not written again. */}
+                            {/* What is already there is not written again. */}
                             {accountId && o.already_held !== "0.000000" && (
                               <span className="block" style={{ color: "var(--tm-ms-text-muted)" }}>
                                 {o.to_add === "0.000000"

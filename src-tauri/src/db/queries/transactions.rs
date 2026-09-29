@@ -37,7 +37,7 @@ pub fn get_transactions(
 pub fn get_register(conn: &Conn, account_id: &str) -> Result<Vec<RegisterRow>, String> {
     let sql = r#"
         SELECT t.id, t.date, t.payee, c.name, t.amount_cents,
-               -- §80: one pass, not a subquery per row (which was O(n²) and
+               -- One pass, not a subquery per row (which was O(n²) and
                -- took seconds on a real account). Void rows contribute 0
                -- but keep their place in the sequence.
                SUM(CASE WHEN t.is_void = 0 THEN t.amount_cents ELSE 0 END)
@@ -59,13 +59,13 @@ pub fn get_register(conn: &Conn, account_id: &str) -> Result<Vec<RegisterRow>, S
                t.goal_id, g.name, t.tax_line,
                (SELECT p.account_id FROM transactions f JOIN transactions p ON p.id = f.transfer_id WHERE f.id = t.funding_txn_id) AS funding_account_id,
                t.is_revaluation,
-               -- §167: linked to a row in THIS account — an exchange, not a transfer.
+               -- Linked to a row in THIS account — an exchange, not a transfer.
                COALESCE((SELECT tp.account_id = t.account_id FROM transactions tp WHERE tp.id = t.transfer_id), 0) AS is_exchange,
-               -- §170: the 📎 count.
+               -- The 📎 count.
                (SELECT COUNT(*) FROM attachments at WHERE at.transaction_id = t.id) AS attachment_count,
-               -- §181: a split line's far row, and the account of the payment
+               -- A split line's far row, and the account of the payment
                -- that wrote it, so the edit form can say where to go before
-               -- the user types a change §178 would refuse. Only far rows pay
+               -- the user types a change the far-row rule would refuse. Only far rows pay
                -- for the lookup; the line is found through its
                -- transfer_account_id, which is indexed.
                t.is_split_transfer,
@@ -125,8 +125,8 @@ pub fn get_register(conn: &Conn, account_id: &str) -> Result<Vec<RegisterRow>, S
         .map_err(|e| e.to_string())?
         .collect::<Result<Vec<RegisterRow>, _>>()
         .map_err(|e| e.to_string())?;
-    // §112: one query for the account's classification picks, not one per row.
-    // §117.3: and one more for what the split lines say, on the axes the
+    // One query for the account's classification picks, not one per row.
+    // And one more for what the split lines say, on the axes the
     // transaction itself is silent about.
     let mut by = crate::db::classes::classes_by_transaction(conn, account_id)?;
     let mut by_line = crate::db::classes::line_classes_by_transaction(conn, account_id)?;
@@ -222,7 +222,7 @@ pub fn create_transaction(
 ///   the row, which `set_splits` promises can never happen. Refused; the
 ///   split dialog is where the total changes.
 ///
-/// §178 — and a fourth: **the far row of a split transfer line** (§94, the
+/// And a fourth: **the far row of a split transfer line** (the
 /// principal row in the loan register) is the line's, not its own. Its
 /// amount, date and category are what the line in the payment says, so a
 /// change to any of them here is refused and pointed at the payment. Payee,
@@ -233,7 +233,7 @@ pub fn create_transaction(
 ///
 /// A split parent's DATE is carried to its far rows, for the same reason: the
 /// line and its row say one date, and `verify_file` reports them the moment
-/// they do not (§177).
+/// they do not.
 pub fn update_transaction(
     conn: &Conn,
     id: &str,
@@ -257,7 +257,7 @@ pub fn update_transaction(
     .map_err(|e| e.to_string())
 }
 
-/// §178 — the body of `update_transaction`, inside a SQL transaction the
+/// The body of `update_transaction`, inside a SQL transaction the
 /// caller holds, so `update_transaction_with_splits` can refuse the edit and
 /// take its split lines back with it.
 #[allow(clippy::too_many_arguments)]
@@ -342,7 +342,7 @@ fn update_transaction_in(
     Ok(())
 }
 
-/// §178 — the payment a split transfer line's far row belongs to, as the
+/// The payment a split transfer line's far row belongs to, as the
 /// refusal names it: "a split in Checking (Summit Home Loans, 03/01/2026)". None when
 /// no line points at the row any more — the link was cut, and `verify_file`
 /// is where that is reported.
@@ -372,7 +372,7 @@ fn split_payment_of(conn: &Connection, far_id: &str) -> Result<Option<String>, S
     }))
 }
 
-/// §178 — the one shape every refusal on a far row takes, so the user is
+/// The one shape every refusal on a far row takes, so the user is
 /// sent to the same place — the payment — whichever button they pressed.
 pub(super) fn far_row_refusal(conn: &Connection, far_id: &str, then: &str) -> Result<String, String> {
     Ok(match split_payment_of(conn, far_id)? {
@@ -385,7 +385,7 @@ pub(super) fn far_row_refusal(conn: &Connection, far_id: &str, then: &str) -> Re
 /// Delete a transaction. If it is one half of a transfer, **both** halves go —
 /// a one-sided transfer would silently corrupt the other account's balance.
 ///
-/// §178 — the far row of a split transfer line is refused. Deleting it would
+/// The far row of a split transfer line is refused. Deleting it would
 /// leave the payment's line pointing at nothing (`ON DELETE SET NULL`) and
 /// the loan paid down by a line with no row behind it; the payment is the
 /// thing to delete or re-split. A far row no line points at any more is
@@ -421,7 +421,7 @@ pub fn delete_transaction(conn: &Conn, id: &str) -> Result<(), String> {
     // nothing — the bill gone from Upcoming and the forecast, the money never
     // moved.
     //
-    // §179 — either half, and FIRST. A scheduled transfer's occurrence points
+    // Either half, and FIRST. A scheduled transfer's occurrence points
     // at the SENDING half (`enter_occurrence`). Deleting the transfer from the
     // savings register — the receiving half — deleted the sending half below,
     // `ON DELETE SET NULL` blanked the mark's link, and by the time this ran
@@ -433,12 +433,12 @@ pub fn delete_transaction(conn: &Conn, id: &str) -> Result<(), String> {
     )
     .map_err(|e| e.to_string())?;
 
-    // §94: a split line that was a transfer wrote a row in another account.
+    // A split line that was a transfer wrote a row in another account.
     // Deleting the payment must take those with it, or the mortgage keeps a
     // principal reduction for a payment that no longer exists.
     delete_split_transfer_rows(&tx, id)?;
 
-    // §86 (the §71 follow-up): a buy, sell or swept dividend takes its
+    // And a buy, sell or swept dividend takes its
     // funding pair with it. The cash that paid for the buy came from
     // somewhere; with the buy gone, that transfer describes nothing. Rows
     // from before 0027 that the backfill could not link are found the same
@@ -502,14 +502,14 @@ pub fn delete_transaction(conn: &Conn, id: &str) -> Result<(), String> {
 /// the direction comes from the account arguments.
 ///
 /// Transfers are internal movement, not spending: neither row gets a category,
-/// so they never appear in a spending summary (see §8's note about excluding
-/// transfers). Returns the withdrawal side.
-/// §181 — a NEW link into or out of a closed account is refused.
+/// so they never appear in a spending summary (transfers are
+/// excluded from them). Returns the withdrawal side.
+/// A NEW link into or out of a closed account is refused.
 ///
 /// > "I see Demo Old Checking … in the transfer picker and I was able to
 /// >  transfer to it. Account is closed is checked."
 ///
-/// Closing an account (§6.1g) is how its history is kept while it gets out of
+/// Closing an account is how its history is kept while it gets out of
 /// the way; money moving into it afterwards is a mistake the pickers now
 /// prevent and this catches from anywhere else. Only NEW links: a transfer
 /// written before the account was closed still opens, edits and saves, so
@@ -576,7 +576,7 @@ pub(super) fn insert_transfer_pair(
 }
 
 /// The pair with a payee of the caller's choosing — a scheduled transfer
-/// (§57) keeps its rule's name ("401(k) contribution") so the register
+/// keeps its rule's name ("401(k) contribution") so the register
 /// says what it was.
 pub(crate) fn insert_transfer_pair_named(
     tx: &Connection,
@@ -684,7 +684,7 @@ pub fn update_transfer(
             |r| Ok((r.get(0)?, r.get(1)?)),
         )
         .map_err(|e| format!("the paired transaction is missing: {e}"))?;
-    // §181 — moving the other half to a different account is a new link, so
+    // Moving the other half to a different account is a new link, so
     // it may not land in (or leave from) a closed one. Keeping the account it
     // already has is not, even when that account has since been closed.
     if other_account_id != other_account {
@@ -748,7 +748,7 @@ pub fn update_transfer(
     .map_err(|e| e.to_string())
 }
 
-/// §168 — a new transaction WITH its split lines, as one operation.
+/// A new transaction WITH its split lines, as one operation.
 ///
 /// Enter on a split entry used to be two commands and therefore two undo
 /// steps — "add a transaction", then "change a split" — so Ctrl+Z took the
@@ -757,7 +757,7 @@ pub fn update_transfer(
 /// undone together. Lines that are refused take the row with them: one
 /// Enter makes a row or it makes none.
 ///
-/// §178 — one SQL transaction, not a create followed by a delete when the
+/// One SQL transaction, not a create followed by a delete when the
 /// lines were refused. The delete could itself fail and leave the row, and
 /// in between the file held a row whose lines never arrived.
 pub fn create_transaction_with_splits(conn: &Conn, p: &crate::models::NewTransaction) -> Result<Transaction, String> {
@@ -786,13 +786,13 @@ pub fn create_transaction_with_splits(conn: &Conn, p: &crate::models::NewTransac
     .map_err(|e| e.to_string())
 }
 
-/// §168 — an edit WITH its split lines, as one operation. The lines go first:
+/// An edit WITH its split lines, as one operation. The lines go first:
 /// `set_splits` is the one call that may move a split row's total (the parent
 /// follows its lines), and `update_transaction` refuses to change the amount
 /// of a row that has lines, so the amount the edit then carries is already
 /// the row's. `None` leaves the lines alone; `Some(empty)` clears them.
 ///
-/// §178 — both halves in ONE SQL transaction. The lines used to commit on
+/// Both halves in ONE SQL transaction. The lines used to commit on
 /// their own before the edit was checked, so an edit that was then refused
 /// (a transfer half, a total that disagreed with the lines) left the new
 /// lines — and their rows in other accounts — written anyway.
@@ -821,7 +821,7 @@ pub fn update_transaction_with_splits(conn: &Conn, p: &crate::models::UpdateTran
     .map_err(|e| e.to_string())
 }
 
-/// §167 — link a day's reallocation rows to each other as an EXCHANGE within
+/// Link a day's reallocation rows to each other as an EXCHANGE within
 /// the account: every Add Shares row of the day points at its first Remove
 /// Shares row, and every Remove Shares row at the first Add Shares row. The
 /// lot engine reads a `transfer_id` that points into the same account as an
@@ -871,7 +871,7 @@ pub fn link_same_day_exchanges(conn: &Conn, account_id: &str, out_memo: &str, in
     Ok(linked)
 }
 
-/// §179 — every exchange row (§167) on the same account and day as `id`, when
+/// Every exchange row on the same account and day as `id`, when
 /// `id` is one of them; `None` for any other row.
 ///
 /// An exchange is not a pair. `link_same_day_exchanges` points every Add
@@ -883,11 +883,11 @@ pub fn link_same_day_exchanges(conn: &Conn, account_id: &str, out_memo: &str, in
 /// voided a Remove from a different fund.
 ///
 /// WHY THE WHOLE DAY. The lot engine pools an exchange by (account, date)
-/// and shares the pool out by the value each in-row brought (§167), so the
-/// day's rows are one event that has to add up — the reason §167 already
-/// refuses editing one of them. Removing a single row does not fail; it
+/// and shares the pool out by the value each in-row brought, so the
+/// day's rows are one event that has to add up — the reason the exchange rules already
+/// refuse editing one of them. Removing a single row does not fail; it
 /// silently moves basis from one fund to another, or turns an in-row into a
-/// purchase at that day's price, which is exactly what §167 was built to
+/// purchase at that day's price, which is exactly what those rules were built to
 /// stop. Deleting or voiding an exchange therefore takes the day's exchange,
 /// the same way deleting one half of a transfer takes both.
 pub(crate) fn exchange_day_of(conn: &Connection, id: &str) -> Result<Option<Vec<String>>, String> {
@@ -916,7 +916,7 @@ pub(crate) fn exchange_day_of(conn: &Connection, id: &str) -> Result<Option<Vec<
     Ok(rows.iter().any(|r| r == id).then_some(rows))
 }
 
-/// §179 — delete a day's exchange rows, inside the caller's transaction.
+/// Delete a day's exchange rows, inside the caller's transaction.
 /// Every link pointing at any of them is cut first, so the order of the
 /// deletes cannot trip the foreign key however the day was linked.
 fn delete_exchange_day_in(tx: &Connection, ids: &[String]) -> Result<(), String> {
@@ -947,12 +947,12 @@ fn delete_exchange_day_in(tx: &Connection, ids: &[String]) -> Result<(), String>
     Ok(())
 }
 
-/// §164 — turn an ordinary transaction into a transfer to `other_account_id`.
+/// Turn an ordinary transaction into a transfer to `other_account_id`.
 ///
 /// A bank file cannot say where a transfer went: the row arrives as a plain
 /// transaction, with the bank's own "Transfer" as its category, and the only
-/// way to make it a real transfer was to delete it and enter the pair by hand
-/// (§20.2), losing its cleared state and whatever else had been typed on it.
+/// way to make it a real transfer was to delete it and enter the pair by hand,
+/// losing its cleared state and whatever else had been typed on it.
 /// This writes the partner row in the other account, links the two, clears
 /// this row's category (a transfer has none), and moves the other account's
 /// balance. This account's balance already carries the row.
@@ -960,8 +960,8 @@ fn delete_exchange_day_in(tx: &Connection, ids: &[String]) -> Result<(), String>
 /// The row keeps its payee, date, notes, Num and cleared mark; the partner
 /// takes the same payee and notes, the negated amount, and is void if this
 /// row is. Refused: a row that is already a transfer, an investment row, a
-/// split row (its lines can be transfers themselves — §94), a zero amount,
-/// and the same account. §178: and the far row of a split transfer line — it
+/// split row (its lines can be transfers themselves), a zero amount,
+/// and the same account. And the far row of a split transfer line — it
 /// is already the other side of a transfer, the payment's, and a second
 /// partner would move the money twice.
 pub fn convert_to_transfer(conn: &Conn, id: &str, other_account_id: &str) -> Result<Transaction, String> {
@@ -1000,7 +1000,7 @@ pub fn convert_to_transfer(conn: &Conn, id: &str, other_account_id: &str) -> Res
     if exists == 0 {
         return Err("the other account does not exist".to_string());
     }
-    // §181 — becoming a transfer writes a new row in the other account.
+    // Becoming a transfer writes a new row in the other account.
     refuse_new_link_to_closed(conn, &[other_account_id, this_account.as_str()])?;
 
     let other_id = Uuid::new_v4().to_string();
@@ -1037,7 +1037,7 @@ pub fn convert_to_transfer(conn: &Conn, id: &str, other_account_id: &str) -> Res
     .map_err(|e| e.to_string())
 }
 
-/// §164 — the reverse: a transfer becomes an ordinary transaction in THIS
+/// The reverse: a transfer becomes an ordinary transaction in THIS
 /// account, filed under `category_id` (or nothing). The partner row is
 /// deleted and its account's balance unwound; this row keeps everything else
 /// it had. Refused on a row that is not a transfer.
@@ -1084,7 +1084,7 @@ pub fn convert_from_transfer(conn: &Conn, id: &str, category_id: Option<&str>) -
     .map_err(|e| e.to_string())
 }
 
-/// Void or un-void a transaction (§6.1h).
+/// Void or un-void a transaction.
 ///
 /// The row stays exactly as it is — date, payee, amount, category — but stops
 /// counting. `accounts.balance_cents` is maintained incrementally, so voiding
@@ -1094,10 +1094,10 @@ pub fn convert_from_transfer(conn: &Conn, id: &str, category_id: Option<&str>) -
 /// Both halves of a transfer are voided together, for the same reason both are
 /// deleted together: a one-sided void silently corrupts the other account.
 ///
-/// §178 — and so are the far rows of a split payment's transfer lines (§94),
+/// And so are the far rows of a split payment's transfer lines,
 /// which `transfer_id` does not reach: voiding a mortgage payment in checking
 /// used to leave the principal paid off the loan and the escrow sitting in
-/// the escrow account (§177 found it; this is the fix). Every row is set to
+/// the escrow account. Every row is set to
 /// the requested state only if it is not in it already, so un-voiding a
 /// payment whose lines were re-split while it was void — `set_splits` writes
 /// those far rows void — brings them back with it.
@@ -1118,7 +1118,7 @@ pub fn set_void(conn: &Conn, id: &str, is_void: bool) -> Result<(), String> {
     }
 
     // The row, its transfer partner, and the far rows of its split lines.
-    // §179 — or, for a §167 exchange row, the day's exchange: its
+    // Or, for an exchange row, the day's exchange: its
     // `transfer_id` names the day's first row of the other kind, which may
     // be another fund's (see `exchange_day_of`).
     let mut ids: Vec<String> = vec![id.to_string()];
@@ -1192,7 +1192,7 @@ mod tests {
 
         assert_eq!(balance(&c, &acct), 95_750);
 
-        // Every write path must maintain payee_id (§13/§16) — the bug this
+        // Every write path must maintain payee_id — the bug this
         // assertion exists to catch left it NULL for a month.
         let payees = list_payees(&c).expect("list_payees");
         assert_eq!(payees.len(), 1);
@@ -1420,7 +1420,7 @@ mod tests {
                 ins.execute(params![format!("t{i}"), acct, date.to_string(), "Payee", amount, void as i64]).unwrap();
             }
         }
-        // §182: raw inserts move no balance, so the account is brought up to
+        // Raw inserts move no balance, so the account is brought up to
         // its rows the way `create_transaction` would have kept it.
         tx.execute(
             "UPDATE accounts SET balance_cents = (SELECT COALESCE(SUM(amount_cents), 0) FROM transactions WHERE account_id = ?1 AND is_void = 0) WHERE id = ?1",
@@ -1484,7 +1484,7 @@ mod tests {
     //
     // The column landed in migration 0011 and `RegisterGrid` has rendered it
     // ever since, but nothing could ever set it — no command, payload or form
-    // field. These pin the write path now that it exists (§10.2 item 3).
+    // field. These pin the write path now that it exists.
 
     fn num_of(conn: &Conn, account_id: &str, txn_id: &str) -> Option<String> {
         get_register(conn, account_id)
@@ -1553,7 +1553,7 @@ mod tests {
 
     #[test]
     fn editing_a_transaction_can_set_clear_and_change_the_num() {
-        // The same shape as the §15 category bug: an edit must be able to put
+        // The same shape as an old category bug: an edit must be able to put
         // a value in, change it, and take it out again.
         let db = TestDb::new("num-update");
         let c = db.conn();
@@ -1604,7 +1604,7 @@ mod tests {
     }
 
     // -----------------------------------------------------------------------
-    // §38 — what the review found
+    // What the review found
     // -----------------------------------------------------------------------
 
     #[test]
@@ -1666,7 +1666,7 @@ mod tests {
         assert_eq!(balance(&c, &acct), 0);
     }
 
-    // §164 — an imported row can become a transfer, and a transfer an
+    // An imported row can become a transfer, and a transfer an
     // ordinary row again, without deleting anything by hand.
     #[test]
     fn convert_to_transfer_writes_the_partner_and_can_be_undone_by_hand() {
@@ -1739,7 +1739,7 @@ mod tests {
         assert_eq!(balance(&c, &sav), 50_000);
     }
 
-    /// §181 — "it's also in the transfer picker and I was able to transfer to
+    /// "it's also in the transfer picker and I was able to transfer to
     /// it. Account is closed is checked." A new transfer, a transfer moved to
     /// a closed account, and a row converted into one are refused, with the
     /// account named; nothing is written.

@@ -1,4 +1,4 @@
-// Money's Autobudget (§51): "Money takes up to a year of history plus your
+// Money's Autobudget: "Money takes up to a year of history plus your
 // scheduled bills, proposes an amount per common category, and you accept
 // per line." The backend proposes; this is the accept-per-line table. Each
 // line can be unticked or its amount edited before Apply, and the accepted
@@ -12,9 +12,9 @@ import type { AutobudgetLine } from "../lib/types";
 interface Props {
   /** "YYYY-MM" — the month the Budget view is showing. */
   month: string;
-  /** §129 — which proposal to accept per line.
+  /** Which proposal to accept per line.
    *
-   *  `"history"` is §51's: every expense category that has been spent in,
+   *  `"history"` is the original proposal: every expense category that has been spent in,
    *  which on a real file is dozens of lines and is the right answer when you
    *  already budget and want the numbers refreshed.
    *

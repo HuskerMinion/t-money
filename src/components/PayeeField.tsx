@@ -1,4 +1,4 @@
-// The Payee field (§82) — free text with Money's completion: as you type, the
+// The Payee field — free text with Money's completion: as you type, the
 // payees you have used before drop down, best match first, and **Tab or
 // Enter takes the highlighted one** and moves on. Typing a name nobody has
 // used is still fine; the list is an offer, not a constraint.
@@ -118,7 +118,7 @@ export default function PayeeField({
     }
     if (e.key === "Escape" && open) {
       setOpen(false);
-      // §183 — only a list on screen takes the Escape. `open` stays true after
+      // Only a list on screen takes the Escape. `open` stays true after
       // any keystroke, with or without matches, and swallowing Escape then
       // made the row's Esc-to-cancel (and the split dialog's) need two presses.
       if (showing) {

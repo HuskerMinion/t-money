@@ -1,4 +1,4 @@
-// §156 — the box Ctrl+F lands in on a screen that is a table of named lines.
+// The box Ctrl+F lands in on a screen that is a table of named lines.
 //
 // It registers for `edit.find` at a higher priority than the shell's header
 // search for exactly as long as it is on screen, so Ctrl+F on the Budget tab

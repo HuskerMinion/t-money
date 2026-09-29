@@ -1,4 +1,4 @@
-// The Bills screen's pure helpers (§32).
+// The Bills screen's pure helpers.
 //
 // The screen itself is covered by App.nav.test.tsx; what is worth testing
 // directly is how an occurrence's state is PRESENTED, because that is where a
@@ -82,9 +82,9 @@ describe("isOpen", () => {
   });
 });
 
-// §181 — N9: "I see Demo Old Checking in the account picker of the Bills
+// N9: "I see Demo Old Checking in the account picker of the Bills
 // forecast Next 90 Days."
-describe("§181 — a closed account on the Bills screen", () => {
+describe("A closed account on the Bills screen", () => {
   const acct = (id: string, name: string, is_closed = false): Account => ({
     id, name, type: "checking", balance_cents: 0, holdings_value_cents: 0, tax_included: true,
     is_favorite: false, is_closed, updated_at: "", institution: null, account_number: null,
@@ -126,8 +126,8 @@ describe("§181 — a closed account on the Bills screen", () => {
   });
 });
 
-// §183 — what the code review found on the rule form.
-describe("§183 — the Bills rule form", () => {
+// What the code review found on the rule form.
+describe("The Bills rule form", () => {
   const acct: Account = {
     id: "a-chk", name: "Demo Checking", type: "checking", balance_cents: 0, holdings_value_cents: 0, tax_included: true,
     is_favorite: false, is_closed: false, updated_at: "", institution: null, account_number: null,
@@ -224,10 +224,10 @@ describe("§183 — the Bills rule form", () => {
   });
 });
 
-// §186 — "I do see a need to be able to edit scheduled things." Editing was
+// "I do see a need to be able to edit scheduled things." Editing was
 // only reachable from the short list under the form and from the calendar;
 // the upcoming list, where the user works, offered Enter and Skip and nothing else.
-describe("§186 — editing a schedule from the upcoming list", () => {
+describe("Editing a schedule from the upcoming list", () => {
   const acct: Account = {
     id: "acc-1", name: "Checking", type: "checking", balance_cents: 0, holdings_value_cents: 0, tax_included: true,
     is_favorite: false, is_closed: false, updated_at: "", institution: null, account_number: null,

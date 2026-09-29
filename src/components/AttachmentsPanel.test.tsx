@@ -1,4 +1,4 @@
-// §170 — the attachments panel: lists what is attached, adds through the
+// The attachments panel: lists what is attached, adds through the
 // file dialog and a path handed to Rust, opens, saves a copy, removes.
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -29,7 +29,7 @@ describe("labels", () => {
   });
 });
 
-describe("AttachmentsPanel (§170)", () => {
+describe("AttachmentsPanel", () => {
   beforeEach(() => {
     resetIpc();
     dialog.open.mockReset();
@@ -116,7 +116,7 @@ describe("AttachmentsPanel (§170)", () => {
   });
 });
 
-describe("§183 — attachments and the Edit menu, and a partial add", () => {
+describe("Attachments and the Edit menu, and a partial add", () => {
   beforeEach(() => {
     resetIpc();
     dialog.open.mockReset();

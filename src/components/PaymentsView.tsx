@@ -1,4 +1,4 @@
-// Bills — scheduled money in and out, and where the balance is heading (§32).
+// Bills — scheduled money in and out, and where the balance is heading.
 //
 // Two panels:
 //
@@ -38,7 +38,7 @@ import type {
 
 /** The horizon the user asked for. */
 const HORIZON_DAYS = 90;
-/** §173 — whether the forecast also projects detected recurring charges;
+/** Whether the forecast also projects detected recurring charges;
  *  "off" turns it off, anything else (or nothing) leaves it on. */
 export const DETECTED_KEY = "forecast.detected";
 
@@ -87,7 +87,7 @@ export default function PaymentsView() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [forecast, setForecast] = useState<CashForecast | null>(null);
   const [forecastAccount, setForecastAccount] = useState<string>("");
-  // §173 — also project the recurring charges the detector has noticed.
+  // Also project the recurring charges the detector has noticed.
   // On by default; the choice follows the file (a UI setting), like the
   // Home card's ignore list it respects.
   const [includeDetected, setIncludeDetected] = useState(true);
@@ -105,10 +105,10 @@ export default function PaymentsView() {
     setIncludeDetected(on);
     void api.setUiSetting(DETECTED_KEY, on ? "on" : "off").catch(() => {});
   }
-  // A forecast from before §173 (or a stub) may carry no list at all.
+  // A forecast from an older build (or a stub) may carry no list at all.
   const detected = forecast?.detected ?? [];
   const covered = forecast?.covered_by_bills ?? [];
-  // §183 — a message says where it belongs. A refusal used to land in one
+  // A message says where it belongs. A refusal used to land in one
   // line under every card, styled the same as "Scheduled.", so a save that
   // failed read as a save that worked. Now it is a Notice beside the part of
   // the screen that failed: the rule form, the bill list, or the forecast.
@@ -123,20 +123,20 @@ export default function PaymentsView() {
   const payeeRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLElement>(null);
   const [amount, setAmount] = useState("");
-  // §183 — "Every" as typed. Held as text so clearing the box to type 3 does
+  // "Every" as typed. Held as text so clearing the box to type 3 does
   // not snap it back to 1 and leave "13"; it is read into a number on save.
   const [intervalText, setIntervalText] = useState("1");
   const [direction, setDirection] = useState<"out" | "in">("out");
-  // Money's bill calendar (§52): the same occurrences as a month grid.
+  // Money's bill calendar: the same occurrences as a month grid.
   const [billsView, setBillsView] = useState<"list" | "calendar">("list");
   const [calMonth, setCalMonth] = useState(() => today().slice(0, 7));
   const [calItems, setCalItems] = useState<Occurrence[]>([]);
-  // Scheduled transfers (§57): a goal that watches the receiving account.
+  // Scheduled transfers: a goal that watches the receiving account.
   const [goals, setGoals] = useState<Goal[]>([]);
 
   /** Accounts as combo items, grouped the way the account list groups them so
    *  a long list still reads as Banking / Credit Cards / Investments. */
-  // §181 — closed accounts stay out, except the ones the rule being edited
+  // Closed accounts stay out, except the ones the rule being edited
   // already names: its picker has to show its own value.
   const editingRule = editingId ? rules.find((r) => r.id === editingId) : undefined;
   const accountItems: ComboItem[] = useMemo(
@@ -179,7 +179,7 @@ export default function PaymentsView() {
 
   useEffect(() => {
     if (!forecastAccount) return;
-    // §183 — only the answer for the account still picked counts. Switching
+    // Only the answer for the account still picked counts. Switching
     // accounts quickly could otherwise let the first, slower forecast land
     // last and draw Checking's projection under "Savings".
     let canceled = false;
@@ -244,7 +244,7 @@ export default function PaymentsView() {
     setDirection(r.amount_cents < 0 ? "out" : "in");
     setAmount((Math.abs(r.amount_cents) / 100).toFixed(2));
     setIntervalText(String(r.interval_n));
-    // §183 — a twice-a-month rule saved with no second day (the form used to
+    // A twice-a-month rule saved with no second day (the form used to
     // show 15 while sending nothing) is loaded as it is: the box stays empty
     // with a note, so the user sees it runs once a month and can fix it.
     setDraft({
@@ -264,7 +264,7 @@ export default function PaymentsView() {
     });
   }
 
-  /** §186 — open an upcoming row's schedule in the form, and take the user
+  /** Open an upcoming row's schedule in the form, and take the user
    *  there. *"I do see a need to be able to edit scheduled things"*: editing
    *  existed, but only from the short "Scheduled items" list under the form
    *  and from the calendar, and the list the user works in offered Enter and Skip
@@ -283,8 +283,8 @@ export default function PaymentsView() {
     payeeRef.current?.focus();
   }
 
-  // §102 — File → New → Scheduled bill or deposit, when the Bills screen is
-  // in front (§97 priority); off screen, the shell navigates here first.
+  // File → New → Scheduled bill or deposit, when the Bills screen is
+  // in front (command priority); off screen, the shell navigates here first.
   useCommand(
     "new.recurrence",
     () => {
@@ -358,7 +358,7 @@ export default function PaymentsView() {
             value={forecastAccount}
             onChange={(e) => setForecastAccount(e.target.value)}
           >
-            {/* §181 — N9: a closed account is not forecast. */}
+            {/* N9: a closed account is not forecast. */}
             {pickableAccounts(accounts, [forecastAccount]).map((a) => (
               <option key={a.id} value={a.id}>
                 {a.name}
@@ -399,7 +399,7 @@ export default function PaymentsView() {
               </div>
             )}
             <ForecastChart points={forecast.points} lowDate={forecast.low_date} />
-            {/* §173 — the recurring charges the detector noticed, projected
+            {/* The recurring charges the detector noticed, projected
                 alongside the scheduled bills; the switch turns them off,
                 and a charge you have told the Home card to ignore is never
                 here. Each line names its next date, so a projection that
@@ -502,7 +502,7 @@ export default function PaymentsView() {
                     <tr
                       key={`${o.recurrence_id}:${o.due_date}`}
                       className={s.tone}
-                      // §186 — the row whose schedule is in the form is marked,
+                      // The row whose schedule is in the form is marked,
                       // so what Save will change is visible from the list.
                       style={o.recurrence_id === editingId ? { background: "var(--tm-ms-row-active)" } : undefined}
                       onDoubleClick={(e) => {
@@ -585,7 +585,7 @@ export default function PaymentsView() {
                               Undo
                             </button>
                           )}
-                          {/* §186 — on every row, open or settled: a paid
+                          {/* On every row, open or settled: a paid
                               bill's amount is still the one next month uses. */}
                           <button
                             type="button"
@@ -611,7 +611,7 @@ export default function PaymentsView() {
       <section className="aero-card" ref={formRef}>
         <div className="aero-card-title flex items-center gap-2">
           <TmIcon name="calendar" size={15} />{" "}
-          {/* §186 — which schedule, by the payee it was opened with rather
+          {/* Which schedule, by the payee it was opened with rather
               than the Payee box, so the title does not change as a rename
               is typed. */}
           {editingId
@@ -667,7 +667,7 @@ export default function PaymentsView() {
             Account
             {/* Type to find it. A native select only jumps by first letter,
                 which stops being useful somewhere around a dozen accounts —
-                the same reason the category field is a combo (§38). */}
+                the same reason the category field is a combo. */}
             <CategoryCombo
               className="aero-field mt-1 w-full"
               label="Account"
@@ -727,7 +727,7 @@ export default function PaymentsView() {
                 value={draft.freq}
                 onChange={(e) => {
                   const freq = e.target.value as Recurrence["freq"];
-                  // §183 — the second day the box shows is the one that is
+                  // The second day the box shows is the one that is
                   // saved. It showed `?? 15` over a null, the null went to
                   // the backend, and schedule.rs scheduled the start day only.
                   const second_day =

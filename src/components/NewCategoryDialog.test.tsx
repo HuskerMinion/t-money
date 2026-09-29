@@ -1,4 +1,4 @@
-// The mid-entry "add a category" wizard (§18).
+// The mid-entry "add a category" wizard.
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";

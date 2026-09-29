@@ -1,4 +1,4 @@
-// §102 — Favorites → Organize favorites…
+// Favorites → Organize favorites…
 //
 // The Favorites menu lists your starred accounts, and until now the only way
 // to change that list was to open each account and star it. This is the one
@@ -16,15 +16,15 @@ import type { Account } from "../lib/types";
 
 interface Props {
   accounts: readonly Account[];
-  /** §183 — may return the write's promise; a rejection is shown here. */
+  /** May return the write's promise; a rejection is shown here. */
   onToggle: (id: string) => void | Promise<void>;
-  /** §169 — the accounts in a new order, the whole list. Omit and the rows
+  /** The accounts in a new order, the whole list. Omit and the rows
    *  cannot be moved. */
   onReorder?: (ids: string[]) => void | Promise<void>;
   onClose: () => void;
 }
 
-/** §169 — `ids` with the one at `from` moved to `to`. Exported for the test. */
+/** `ids` with the one at `from` moved to `to`. Exported for the test. */
 export function moved(ids: readonly string[], from: number, to: number): string[] {
   const out = [...ids];
   if (from < 0 || from >= out.length || to < 0 || to >= out.length) return out;
@@ -37,13 +37,13 @@ export default function OrganizeFavoritesDialog({ accounts, onToggle, onReorder,
   // Closed accounts are left out: a closed account in the Favorites menu is a
   // shortcut to something you are done with.
   //
-  // §169 — the rows are in the order the store holds them, which is the
+  // The rows are in the order the store holds them, which is the
   // order every list of accounts uses; ▲ and ▼ move a row and write the
   // whole arrangement back, so the account bar, the Home page and the
   // Favorites menu all follow. Closed accounts keep their place at the end.
   const open = accounts.filter((a) => !a.is_closed);
   const starred = open.filter((a) => a.is_favorite).length;
-  // §183 — one write at a time, and a refusal said here. Neither callback had
+  // One write at a time, and a refusal said here. Neither callback had
   // a catch, and ▼ stayed live while the order was being written: two quick
   // presses each computed a move from the SAME old order, so the second
   // undid the first rather than moving the row twice.

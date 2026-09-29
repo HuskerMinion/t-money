@@ -2,7 +2,7 @@
 // register's own entry row: the split grid, the reconcile dialogs, the payee
 // default and the budget form.
 //
-// Two things it centralizes, both from §6.1e:
+// Two things it centralizes:
 //   1. Options show the FULL name — "Auto : Fuel" — because a bare "Fuel"
 //      appearing twice under different parents is unusable.
 //   2. `kind` filters the list. Money never offers an income category for a
@@ -13,21 +13,21 @@
 // It is now a thin adapter over `CategoryCombo` rather than a `<select>`.
 // A native select only jumps by first letter, which is useless against 96
 // categories that mostly read "Parent : Child" — so the register's entry form
-// grew a type-ahead combobox (§17) and every OTHER picker kept the select,
-// which §18.5 flagged as an inconsistency users would notice. Keeping the name
+// grew a type-ahead combobox and every OTHER picker kept the select,
+// which was flagged as an inconsistency users would notice. Keeping the name
 // and the props here means all four call sites gained type-ahead at once, and
 // the full-name and `kind` rules still live in exactly one file.
 import type { CSSProperties } from "react";
 import CategoryCombo, { type ComboItem } from "./CategoryCombo";
 import type { Account, Category, CategoryKind } from "../lib/types";
 
-/** §102 — how a transfer is spelled inside a category picker.
+/** How a transfer is spelled inside a category picker.
  *
  *  Money has no separate "transfer" control: you pick "Transfer : Savings" in
  *  the Category field and it writes the paired row for you. The register's
  *  entry row has always done that with a `transfer:<id>` value; the split grid
  *  could not, so a split line could never be a transfer even though the
- *  database, the Rust and the ledger have supported it since §94.
+ *  database, the Rust and the ledger have long supported it.
  *
  *  The prefix lives here now, with the picker that produces it, rather than
  *  privately in one component. */

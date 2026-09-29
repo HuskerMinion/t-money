@@ -79,7 +79,7 @@ fn get_recurrence(conn: &Conn, id: &str) -> Result<Recurrence, String> {
 /// rather than a constraint error.
 pub fn create_recurrence(conn: &Conn, r: &NewRecurrence) -> Result<Recurrence, String> {
     validate_recurrence(conn, r)?;
-    // §181 — a new scheduled transfer may not start or end in a closed account.
+    // A new scheduled transfer may not start or end in a closed account.
     if let (Some(to), Some(from)) = (
         r.transfer_account_id.as_deref().filter(|t| !t.is_empty()),
         r.account_id.as_deref().filter(|f| !f.is_empty()),
@@ -104,7 +104,7 @@ pub fn create_recurrence(conn: &Conn, r: &NewRecurrence) -> Result<Recurrence, S
 
 pub fn update_recurrence(conn: &Conn, id: &str, r: &NewRecurrence) -> Result<Recurrence, String> {
     validate_recurrence(conn, r)?;
-    // §181 — the same for an edit, but only for an account the rule did not
+    // The same for an edit, but only for an account the rule did not
     // already name: a schedule written before its account was closed can
     // still be edited (to stop it, say) without being refused.
     if let (Some(to), Some(from)) = (
@@ -149,7 +149,7 @@ fn validate_recurrence(conn: &Conn, r: &NewRecurrence) -> Result<(), String> {
     if r.amount_cents == 0 {
         return Err("a scheduled item needs an amount".to_string());
     }
-    // A scheduled transfer (§57): money leaves account_id for
+    // A scheduled transfer: money leaves account_id for
     // transfer_account_id, so it needs both, different, and a negative amount.
     if let Some(to) = r.transfer_account_id.as_deref().filter(|t| !t.is_empty()) {
         let Some(from) = r.account_id.as_deref().filter(|f| !f.is_empty()) else {
@@ -287,7 +287,7 @@ pub fn occurrences_between(
                                     AND (?4 IS NULL OR t.account_id = ?4)
                                     AND CASE WHEN ?6 IS NULL
                                              THEN lower(trim(t.payee)) = lower(trim(?3))
-                                             -- A scheduled transfer (§57): a transfer row to the
+                                             -- A scheduled transfer: a transfer row to the
                                              -- right account, under the rule's name or the plain one.
                                              ELSE t.amount_cents < 0
                                                   AND (lower(trim(t.payee)) = lower(trim(?3)) OR t.payee = 'Transfer Money')
@@ -395,11 +395,11 @@ pub fn enter_occurrence(
     // listed as due — and paying it again would have entered it twice.
     let tx = conn.unchecked_transaction().map_err(|e| e.to_string())?;
     let txn_id = match r.transfer_account_id.as_deref().filter(|t| !t.is_empty()) {
-        // A scheduled transfer (§57): the linked pair, the sending half is
+        // A scheduled transfer: the linked pair, the sending half is
         // the one the occurrence points at; the receiving half is tagged
         // for the goal when the rule names one.
         Some(to) => {
-            // §181 — entering it writes a new transfer, so a schedule whose
+            // Entering it writes a new transfer, so a schedule whose
             // account has been closed since stops here with a sentence
             // rather than moving money into an account nobody is watching.
             refuse_new_link_to_closed(&tx, &[account.as_str(), to])?;
@@ -463,7 +463,7 @@ pub fn cash_forecast(
     cash_forecast_with(conn, account_id, from, days, false)
 }
 
-/// §173 — the recurring charges the subscription detector (§60) finds in ONE
+/// The recurring charges the subscription detector finds in ONE
 /// account: the same test the Home card applies, over the last two years,
 /// scoped to the account being projected. Only charges still being made
 /// (`active`) are returned, newest-first is not needed: the caller projects
@@ -499,14 +499,14 @@ pub fn detected_charges(conn: &Conn, account_id: &str, asof: NaiveDate) -> Resul
     }
     Ok(groups
         .into_iter()
-        // §173.1 — with the amount test relaxed: the forecast wants the
+        // With the amount test relaxed: the forecast wants the
         // power bill too, at the median of its last three.
         .filter_map(|(name, charges)| crate::db::reports::detect_recurring(&charges, asof, true).map(|s| (name, s)))
         .filter(|(_, s)| s.active)
         .collect())
 }
 
-/// §173 — `cash_forecast`, and with `include_detected` the recurring charges
+/// `cash_forecast`, and with `include_detected` the recurring charges
 /// the detector has noticed in this account as well.
 ///
 /// > *"Quicken and Monarch also project from recurring history it detects
@@ -517,8 +517,8 @@ pub fn detected_charges(conn: &Conn, account_id: &str, asof: NaiveDate) -> Resul
 /// cadence, on every day inside the window; one that was expected before
 /// the window opened and has not come lands on day one, like an overdue
 /// bill. A payee that already has an active scheduled rule in this account
-/// is left to the rule (and named in `covered_by_bills`). §173.3: a payee on
-/// the Home card's ignore list (§76, `ui.subscriptions.ignored`) is
+/// is left to the rule (and named in `covered_by_bills`). A payee on
+/// the Home card's ignore list (`ui.subscriptions.ignored`) is
 /// projected all the same and flagged — the Help tells the user to put the
 /// mortgage on that list ("not a reminder"), and leaving it out of the
 /// forecast silently made a $1,800 hole every month.
@@ -586,15 +586,15 @@ pub fn cash_forecast_with(
         .collect();
     for o in &upcoming {
         let day = if o.due_date < from_s { from_s.clone() } else { o.due_date.clone() };
-        // A scheduled transfer (§57) leaves one account and lands in the
+        // A scheduled transfer leaves one account and lands in the
         // other: the receiving account sees it coming in.
         let delta = if o.account_id.as_deref() == Some(account_id) { o.amount_cents } else { -o.amount_cents };
         *deltas.entry(day).or_insert(0) += delta;
     }
 
-    // §173 — what the detector has noticed, projected the same way.
+    // What the detector has noticed, projected the same way.
     let mut detected: Vec<DetectedCharge> = Vec::new();
-    // §173.2 — the payees the detector found but left to their scheduled
+    // The payees the detector found but left to their scheduled
     // bills, named so the list does not look as if it missed the mortgage.
     let mut covered_by_bills: Vec<String> = Vec::new();
     if include_detected {
@@ -765,7 +765,7 @@ mod tests {
         assert_eq!(nov.status, "due");
     }
 
-    // ── scheduled bills: matching and the forecast (§32) ─────────────────
+    // ── scheduled bills: matching and the forecast ─────────────────
 
     #[test]
     fn an_upcoming_bill_is_due_until_something_happens_to_it() {
@@ -1104,7 +1104,7 @@ mod tests {
     }
 
     // -----------------------------------------------------------------------
-    // §38 — what the review found
+    // What the review found
     // -----------------------------------------------------------------------
 
     #[test]
@@ -1140,7 +1140,7 @@ mod tests {
         assert!(f.points.len() <= 3_661);
     }
 
-    // §173 — the forecast also projects the recurring charges the detector
+    // The forecast also projects the recurring charges the detector
     // has noticed, and never twice, and never one the user ignored.
     #[test]
     fn the_forecast_projects_detected_charges_but_not_scheduled_or_ignored_ones() {
@@ -1176,11 +1176,11 @@ mod tests {
         create_recurrence(&c, &bill(&acct, "Netflix", -1_599, "2026-09-03")).unwrap();
         let f = cash_forecast_with(&c, &acct, from, 90, true).unwrap();
         assert_eq!(f.detected.iter().map(|d| d.payee.as_str()).collect::<Vec<_>>(), vec!["Spotify"]);
-        assert_eq!(f.covered_by_bills, vec!["Netflix"], "§173.2 — named, so it does not look missed");
+        assert_eq!(f.covered_by_bills, vec!["Netflix"], "Named, so it does not look missed");
         let sep3 = f.points.iter().find(|p| p.date == "2026-09-03").unwrap();
         assert_eq!(sep3.delta_cents, -1_599 - 1_099, "Netflix once, from the rule");
 
-        // §173.3 — one on the Home card's ignore list is still projected
+        // One on the Home card's ignore list is still projected
         // (money still leaves), and says so.
         set_setting(&c, "ui.subscriptions.ignored", "[\"Spotify\"]").unwrap();
         let f = cash_forecast_with(&c, &acct, from, 90, true).unwrap();
@@ -1194,9 +1194,9 @@ mod tests {
         assert_eq!(spotify.dates, vec!["2026-09-10", "2026-10-03"]);
     }
 
-    // ── §179 ─────────────────────────────────────────────────────────────
+    // ── Scheduled transfers ──────────────────────────────────────────────
 
-    /// §179 — the occurrence points at the sending half; deleting the
+    /// The occurrence points at the sending half; deleting the
     /// receiving half left it paid.
     #[test]
     fn deleting_the_receiving_half_of_a_scheduled_transfer_puts_the_occurrence_back() {
@@ -1223,7 +1223,7 @@ mod tests {
         }
     }
 
-    /// §181 — a scheduled transfer: none new to a closed account, an old one
+    /// A scheduled transfer: none new to a closed account, an old one
     /// still edits, and entering one that now points at a closed account
     /// stops with the sentence rather than writing the pair.
     #[test]

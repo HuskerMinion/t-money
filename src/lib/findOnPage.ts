@@ -1,4 +1,4 @@
-// §156 — Ctrl+F on the Budget tab finds a budget LINE, not a transaction.
+// Ctrl+F on the Budget tab finds a budget LINE, not a transaction.
 //
 // Found at S9: typing "heating oil" while looking at the year plan jumped to
 // the header search box and found a transaction, when the thing on screen was

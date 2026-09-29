@@ -1,5 +1,5 @@
-// The in-place transaction form (§6.1b), on its own. The register's own
-// tests drive it through AccountRegister; these pin down what §183 fixed in
+// The in-place transaction form, on its own. The register's own
+// tests drive it through AccountRegister; these pin down what was fixed in
 // the form itself.
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -52,7 +52,7 @@ beforeEach(() => {
   resetIpc();
 });
 
-describe("Enter saves once (§183)", () => {
+describe("Enter saves once", () => {
   it("two quick Enters by key write one transaction and open one next line", async () => {
     let finish: () => void = () => {};
     const onCommit = vi.fn((_d: TransactionDraft) => new Promise<void>((r) => (finish = r)));
@@ -97,7 +97,7 @@ describe("Enter saves once (§183)", () => {
   });
 });
 
-describe("an unreadable date (§183)", () => {
+describe("an unreadable date", () => {
   it("is refused, not saved as the last date that parsed on the way", async () => {
     const { onCommit } = setup();
     const date = screen.getByLabelText("Date");
@@ -112,7 +112,7 @@ describe("an unreadable date (§183)", () => {
   });
 });
 
-describe("Common Transactions (§183)", () => {
+describe("Common Transactions", () => {
   async function openMenu() {
     await userEvent.click(screen.getByRole("button", { name: /Common Transactions/ }));
     return screen.findByRole("menu", { name: "Common transactions" });

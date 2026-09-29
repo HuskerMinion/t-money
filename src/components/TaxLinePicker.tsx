@@ -1,4 +1,4 @@
-// A picker over the fixed tax-line list (§43). Empty = no line. A value not
+// A picker over the fixed tax-line list. Empty = no line. A value not
 // on the list (older files, hand-typed) is shown as its own option so it is
 // never silently rewritten; "Other…" lets one be typed.
 import { useState } from "react";

@@ -3,10 +3,10 @@
 // Rebuilt 2026-08-30 against reference/ms-money-02-account-register.png. The
 // previous version was written from memory and had the wrong column model
 // (a single signed Amount column, a Category column Money does not show, and
-// an invented totals footer). §6.1a has the full list.
+// an invented totals footer).
 //
-// The grid itself lives in RegisterGrid so the reconcile clearing view (§6.1d)
-// and the split dialog (§6.1e) can reuse it rather than growing a second grid.
+// The grid itself lives in RegisterGrid so the reconcile clearing view
+// and the split dialog can reuse it rather than growing a second grid.
 import { useEffect, useRef, useState } from "react";
 import RegisterGrid, { type RegisterGroup } from "./RegisterGrid";
 import { categoryKey } from "./CategoryCombo";
@@ -48,7 +48,7 @@ import { samePicks } from "./ClassPicker";
 import { noteChanged } from "../lib/undo";
 import type { Classification, ClearedState, CommonTransaction, Goal, NewInvestmentTransaction, NewSplit, Security, Statement } from "../lib/types";
 
-/** Money's register views (§6.1d, §40). `view` is the Show
+/** Money's register views. `view` is the Show
  *  half; dates and sort ride alongside in `viewOpts`. Reconcile drives the
  *  grouped one. */
 export type RegisterView = RegisterShow;
@@ -98,40 +98,40 @@ export default function AccountRegister() {
   const [showForms, setShowForms] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [addingNew, setAddingNew] = useState(false);
-  // §161 — Enter on a new transaction opens the NEXT one, as Money's
+  // Enter on a new transaction opens the NEXT one, as Money's
   // register does: the caret lands in the Date of a fresh entry (today or
-  // the last date entered — §71 — so Tab moves straight on to the Payee
+  // the last date entered — so Tab moves straight on to the Payee
   // when the date is already right), and Escape closes it. The key forces a
   // fresh form rather than the old one with its fields cleared.
   const [entrySerial, setEntrySerial] = useState(0);
-  // §61: after a check is entered the next new transaction offers the next
+  // After a check is entered the next new transaction offers the next
   // number (deletable); anything else entered in between switches it off.
   const [lastWasCheck, setLastWasCheck] = useState(false);
-  // §71: the date of the last transaction entered here; the next new one
+  // The date of the last transaction entered here; the next new one
   // starts on it (and the entry line shows it) instead of today.
   const [lastEntryDate, setLastEntryDate] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  // Investment accounts (§41): New opens the investment form; "New cash
+  // Investment accounts: New opens the investment form; "New cash
   // entry" opens the ordinary one for a contribution or a fee.
   const [newKind, setNewKind] = useState<"investment" | "cash">("investment");
-  // §91: a cash entry started from the investment Activity list arrives with
+  // A cash entry started from the investment Activity list arrives with
   // its payee and category already chosen.
   const [cashPreset, setCashPreset] = useState<{ payee: string; categoryId: string | null; side: "deposit" | "payment" } | null>(null);
   const [updatingHoldings, setUpdatingHoldings] = useState(false);
-  // §84: Find duplicate transactions.
+  // Find duplicate transactions.
   const [dupesOpen, setDupesOpen] = useState(false);
-  // §163: Find in this register — Money's Edit → Find, over the register.
+  // Find in this register — Money's Edit → Find, over the register.
   const [findOpen, setFindOpen] = useState(false);
-  // §70: "Mark reconciled through…" — the date, and how many rows it would touch.
+  // "Mark reconciled through…" — the date, and how many rows it would touch.
   const [reconcileThrough, setReconcileThrough] = useState<string | null>(null);
   const [reconcileCount, setReconcileCount] = useState<number | null>(null);
-  // §181 — a notice has a tone. A refusal (§178's far rows) and a failed
+  // A notice has a tone. A refusal (on a far row, say) and a failed
   // export are errors and draw red; "added to favorites" is not.
   const [notice, setNoticeState] = useState<{ text: string; tone: "info" | "error" } | null>(null);
-  // §171 — a notice can carry one button: "Remember" on the offer to make a
+  // A notice can carry one button: "Remember" on the offer to make a
   // rule from a category you just filed by hand. Cleared with the notice.
   const [noticeAction, setNoticeAction] = useState<{ label: string; run: () => Promise<void> | void } | null>(null);
-  // §183 — every new notice drops the old one's button. Only the dismiss
+  // Every new notice drops the old one's button. Only the dismiss
   // path cleared it, so "Saved 12 rows to…" arriving after a rule offer kept
   // a Remember button that would make a rule nobody was being asked about.
   // `offerRule` sets its button AFTER its text, so it still gets one.
@@ -143,7 +143,7 @@ export default function AccountRegister() {
     setNoticeState({ text, tone: "error" });
     setNoticeAction(null);
   };
-  // §73: the open form's save-on-leave hook (TransactionEditRow /
+  // The open form's save-on-leave hook (TransactionEditRow /
   // InvestmentEditRow set it while mounted).
   const leaveRef = useRef<(() => Promise<"saved" | "clean" | "failed">) | null>(null);
 
@@ -155,20 +155,20 @@ export default function AccountRegister() {
     const r = await leave();
     return r !== "failed";
   }
-  // Money's "add / remove a single transaction to a tax line" (§53): the
+  // Money's "add / remove a single transaction to a tax line": the
   // row whose tax line is being chosen.
   const [taxLineFor, setTaxLineFor] = useState<string | null>(null);
   const [securities, setSecurities] = useState<Security[]>([]);
-  // Savings goals that watch an account (§46): the ones this register's
+  // Savings goals that watch an account: the ones this register's
   // rows, or a transfer out of it, can count toward.
   const [goals, setGoals] = useState<Goal[]>([]);
   const [classifications, setClassifications] = useState<Classification[]>([]);
   const [busy, setBusy] = useState(false);
-  // §183 — a commit is on its way to the backend. `busy` is state: it grays
+  // A commit is on its way to the backend. `busy` is state: it grays
   // the Enter button on the next render, and says nothing to a commit that
   // arrives before then or by another road (a keystroke, a save-on-leave).
   const committing = useRef(false);
-  // §183 — the split lines loaded for the row being edited, tagged with the
+  // The split lines loaded for the row being edited, tagged with the
   // row they belong to and a token for this load. The lines used to be a bare
   // array, cleared only when the NEXT load answered, and the edit row was
   // keyed on their count: going straight from split A to split B with the same
@@ -179,28 +179,28 @@ export default function AccountRegister() {
   const splitsToken = useRef(0);
   const editingSplits = splitsLoad && splitsLoad.id === editingId ? splitsLoad.lines : [];
   const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
-  // --- reconcile (§6.1f) ---
+  // --- reconcile ---
   const [stage, setStage] = useState<ReconcileStage | null>(null);
   const [statement, setStatement] = useState<Statement | null>(null);
   const [lastStatement, setLastStatement] = useState<Statement | null>(null);
   const [autoHint, setAutoHint] = useState<string | null>(null);
   const [reconcileError, setReconcileError] = useState<string | null>(null);
-  // §183 — Next pressed twice finished the statement once and then asked
+  // Next pressed twice finished the statement once and then asked
   // again, and the second answer ("already balanced") was drawn in red over
   // a reconcile that had worked.
   const finishing = useRef(false);
-  // §183 — "Mark reconciled through…" and the tax-line dialog are modal; a
+  // "Mark reconciled through…" and the tax-line dialog are modal; a
   // refusal from either is drawn inside it, not in the strip behind it.
   const [throughError, setThroughError] = useState<string | null>(null);
   const [taxLineError, setTaxLineError] = useState<string | null>(null);
-  // Saved entry templates (§31), loaded once per account view.
+  // Saved entry templates, loaded once per account view.
   const [commons, setCommons] = useState<CommonTransaction[]>([]);
   const reconcileRequest = useAccountStore((s) => s.reconcileRequest);
   const ackReconcileRequest = useAccountStore((s) => s.ackReconcileRequest);
   const pendingRowId = useAccountStore((s) => s.pendingRowId);
   const focusRow = useAccountStore((s) => s.focusRow);
 
-  // A Search result asked for a row (§38): select it once it is on screen,
+  // A Search result asked for a row: select it once it is on screen,
   // scroll to it, and drop the request so it cannot fire again later.
   useEffect(() => {
     if (!pendingRowId) return;
@@ -215,14 +215,14 @@ export default function AccountRegister() {
 
   const account = accounts.find((a) => a.id === selectedAccountId) ?? null;
   const isInvestment = account?.type === "investment" || account?.type === "retirement";
-  // §93: a house or a car is worth what it is worth; its balance is not the
+  // A house or a car is worth what it is worth; its balance is not the
   // sum of anything.
   const isAsset = !!account && isValuedAsset(account.type);
-  // §120 — a mortgage's columns are Increase / Decrease, not Payment /
+  // A mortgage's columns are Increase / Decrease, not Payment /
   // Deposit. Every other account type is untouched.
   const columnLabels = registerColumnLabels(account?.type ?? "");
   const [valuing, setValuing] = useState(false);
-  // §94 — a loan's terms, and a payment split into interest, principal and escrow.
+  // A loan's terms, and a payment split into interest, principal and escrow.
   const isLoan = !!account && isAmortizable(account.type);
   const [editingTerms, setEditingTerms] = useState(false);
   const [payingLoan, setPayingLoan] = useState(false);
@@ -231,16 +231,16 @@ export default function AccountRegister() {
     if (selectedAccountId) loadRegister(selectedAccountId);
     setLastWasCheck(false);
     setLastEntryDate(null);
-    // §96: a header-click sort is for the question you are asking right now —
+    // A header-click sort is for the question you are asking right now —
     // what did I spend the most on, where is that check. Leaving the register
     // ends the question, so the next account opens in date order with a
     // running balance that means something, every time.
     setSort(DEFAULT_VIEW.sort);
   }, [selectedAccountId, loadRegister]);
 
-  // §61: the register opens at the bottom, where the newest rows and the
+  // The register opens at the bottom, where the newest rows and the
   // entry line are — unless a search hit asked for a particular row.
-  // Also after balancing ends or the view changes (§69): the grouped
+  // Also after balancing ends or the view changes: the grouped
   // clearing view giving way to the full register used to land at the top.
   const registerCount = register.length;
   const balancing = stage !== null;
@@ -261,7 +261,7 @@ export default function AccountRegister() {
     if (isInvestment) void loadSecurities();
   }, [isInvestment]);
 
-  // §112: the file's classification axes, for the entry form and the split
+  // The file's classification axes, for the entry form and the split
   // dialog. A file with none never sees the field.
   async function loadClassifications() {
     try {
@@ -291,7 +291,7 @@ export default function AccountRegister() {
     return goals.filter((g) => g.account_id === selectedAccountId || (transferTo !== null && g.account_id === transferTo));
   }
 
-  /** §112: write the row's classification values after it is saved, the way
+  /** Write the row's classification values after it is saved, the way
    *  the goal and the tax line are written — one small command rather than a
    *  wider create/update payload, so an import or a scheduled entry that
    *  knows nothing about classifications is unaffected. */
@@ -356,13 +356,13 @@ export default function AccountRegister() {
     return s.id;
   }
 
-  // Categories fill the entry form's Category picker (§6.1b).
+  // Categories fill the entry form's Category picker.
   useEffect(() => {
     loadCategories();
     loadPayees();
   }, [loadCategories, loadPayees]);
 
-  // §183 — what was open when the account changed. Clicking another account in
+  // What was open when the account changed. Clicking another account in
   // the rail does not remount the register: the store swaps the account and
   // empties its rows in one step, so by the time an effect runs, the form for
   // an existing row has already unmounted (its row is gone) and a new entry's
@@ -380,7 +380,7 @@ export default function AccountRegister() {
   }
   shownAccount.current.name = accounts.find((a) => a.id === selectedAccountId)?.name ?? null;
 
-  // Changing account closes any open form — §73, saving it first, as a click
+  // Changing account closes any open form, saving it first, as a click
   // on another row does.
   useEffect(() => {
     const pending = leaveOnSwitch.current;
@@ -398,7 +398,7 @@ export default function AccountRegister() {
     }
     setEditingId(null);
     setAddingNew(false);
-    // §183 — and a reconcile belongs to the account it was started on. It
+    // And a reconcile belongs to the account it was started on. It
     // used to survive the switch: the C clicks marked the new account's rows,
     // and "Automatically adjust" finished the OLD statement with an adjustment
     // sized from the new account's register. Leaving is Postpone once a
@@ -457,7 +457,7 @@ export default function AccountRegister() {
   // above zero forever and the wizard reopened on every remount of this
   // component: switching Banking → Bills → Banking, or picking an account
   // after visiting another rail item. Reported as "clicking between the bills
-  // and banking tab triggered the reconcile dialog" (§26.1).
+  // and banking tab triggered the reconcile dialog".
   useEffect(() => {
     if (reconcileRequest === 0) return;
     // Consume it either way. An unconsumed request is what made this sticky,
@@ -487,7 +487,7 @@ export default function AccountRegister() {
   }, [selectedAccountId]);
 
   // Load the edited transaction's existing split lines so the dialog reopens
-  // with them (§6.1e).
+  // with them.
   useEffect(() => {
     let canceled = false;
     setSplitsLoad(null);
@@ -501,7 +501,7 @@ export default function AccountRegister() {
           // `set_splits` REPLACES the whole set on any save — even one that
           // never opened the split dialog — so a field dropped here is a
           // field deleted from the file the next time the date is changed.
-          // That is how a split transfer's far row and (§112) a line's
+          // That is how a split transfer's far row and a line's
           // classification were both being silently thrown away.
           setSplitsLoad({
             id: editingId,
@@ -527,28 +527,28 @@ export default function AccountRegister() {
 
   async function commitDraft(draft: TransactionDraft) {
     if (!selectedAccountId) return;
-    // §183 — one commit at a time. Throwing (not returning) matters: the form
+    // One commit at a time. Throwing (not returning) matters: the form
     // treats a quiet return as saved, and would close or clear itself over
     // what was typed.
     if (committing.current) throw "Still saving the last change — press Enter again in a moment.";
     committing.current = true;
-    // §183 — the account this form was typed in. A form saved on the way out
+    // The account this form was typed in. A form saved on the way out
     // of an account (the switch above) finishes after the register has moved
     // on, and must not reset the new account's entry state or close a form
     // opened there since.
     const accountId = selectedAccountId;
     const stillHere = () => useAccountStore.getState().selectedAccountId === accountId;
-    // §171 — what the row was before this edit, for the rule offer below.
+    // What the row was before this edit, for the rule offer below.
     const before = draft.id ? register.find((r) => r.id === draft.id) : undefined;
     setBusy(true);
     try {
-      // §164 — an existing row changing its nature: the partner row is
+      // An existing row changing its nature: the partner row is
       // written (or removed) first, and the ordinary edit below then runs
       // against a row that already is what the form says it is. Balances in
       // the other account moved, so the account list is reloaded.
       if (draft.id && draft.convert === "to_transfer" && draft.transfer_to_account_id) {
         await api.convertToTransfer(draft.id, draft.transfer_to_account_id);
-        // §183 — each conversion is its own undo step.
+        // Each conversion is its own undo step.
         noteChanged();
         await useAccountStore.getState().loadAccounts();
       } else if (draft.id && draft.convert === "from_transfer") {
@@ -558,10 +558,10 @@ export default function AccountRegister() {
       }
 
       // A transfer is one action that writes two linked rows; it never goes
-      // through create_transaction (§10.2 item 5).
+      // through create_transaction.
       if (draft.transfer_to_account_id && draft.id) {
         // Editing an existing transfer moves BOTH halves, and can move the
-        // other half to a different account (§20).
+        // other half to a different account.
         await useAccountStore
           .getState()
           .editTransfer(
@@ -571,7 +571,7 @@ export default function AccountRegister() {
             draft.amount_cents,
             draft.notes
           );
-        // §183 — "edit a transfer" is an undo step, and the store's
+        // "edit a transfer" is an undo step, and the store's
         // `editTransfer` does not say so the way `editTransaction` does.
         noteChanged();
         await applyGoal(draft.id, draft);
@@ -608,7 +608,7 @@ export default function AccountRegister() {
         return;
       }
 
-      // §168 — the split lines travel WITH the row, in the same command and
+      // The split lines travel WITH the row, in the same command and
       // the same undo step. They used to be a second call (`set_splits`)
       // after the row was written, which made Enter on a split entry two
       // Ctrl+Zs: the first took the lines off and left the row, and read as
@@ -646,7 +646,7 @@ export default function AccountRegister() {
         });
         txnId = created.id;
       }
-      // §117.4 — these two write AFTER the register has already reloaded:
+      // These two write AFTER the register has already reloaded:
       // `editTransaction` and `addTransaction` reload inside the store, and
       // the goal and the classification are separate commands that run once
       // the row exists. Whatever they change therefore has to be reloaded
@@ -655,13 +655,13 @@ export default function AccountRegister() {
       // perfectly well read as one that would not stick.
       const wroteGoal = txnId ? await applyGoal(txnId, draft) : false;
       const wroteClasses = txnId ? await applyClasses(txnId, draft) : false;
-      // §183 — "change a classification" is a step of its own, after the
+      // "change a classification" is a step of its own, after the
       // row's; the menu's label moves on to it.
       if (wroteClasses) noteChanged();
       if (wroteGoal || wroteClasses) {
         await loadRegister(accountId);
       }
-      // §171 — learning from an edit: a row that HAD no category (an import
+      // Learning from an edit: a row that HAD no category (an import
       // the rules did not know) just got one by hand. Offer to remember it.
       if (!stillHere()) return;
       if (draft.id && draft.category_id && !draft.transfer_to_account_id && (draft.splits ?? []).length === 0 && before?.category_id === null) {
@@ -675,8 +675,8 @@ export default function AccountRegister() {
     }
   }
 
-  /** §171 — "File every X under Y from now on?" with a Remember button that
-   *  makes a §84 rule for the payee. Not offered when a rule already covers
+  /** "File every X under Y from now on?" with a Remember button that
+   *  makes a rule for the payee. Not offered when a rule already covers
    *  the payee: the user chose over it, and a second rule would only shadow
    *  the first. The rule is the payee exactly as written; Banking → Payees
    *  is where it can be broadened to a substring. */
@@ -713,7 +713,7 @@ export default function AccountRegister() {
   async function beginReconcile() {
     if (!selectedAccountId) return;
     const accountId = selectedAccountId;
-    // §183 — §73's save-on-leave, as every other way out of a form does. This
+    // Save-on-leave, as every other way out of a form does. This
     // closed the form outright, and an entry typed but not yet entered was
     // gone the moment Balance was pressed.
     if (!(await leaveOpenForm())) return;
@@ -739,7 +739,7 @@ export default function AccountRegister() {
     const accountId = selectedAccountId;
     try {
       const st = await api.startStatement({ accountId, ...draft });
-      // §183 — the account changed while the statement was being started:
+      // The account changed while the statement was being started:
       // it is not this register's to balance.
       if (useAccountStore.getState().selectedAccountId !== accountId) {
         await api.discardStatement(st.id).catch(() => {});
@@ -756,7 +756,7 @@ export default function AccountRegister() {
     }
   }
 
-  /** Void or un-void. The row stays; the money leaves every balance (§6.1h).
+  /** Void or un-void. The row stays; the money leaves every balance.
    *  A voided row is also uncleared — it is not on any statement. */
   async function toggleVoid(id: string) {
     if (!selectedAccountId) return;
@@ -765,7 +765,7 @@ export default function AccountRegister() {
     setBusy(true);
     try {
       await api.setVoid(id, !row.is_void);
-      // §101: voiding is undoable too, so the Edit menu has to hear about it.
+      // Voiding is undoable too, so the Edit menu has to hear about it.
       noteChanged();
       if (!row.is_void && row.cleared_state !== "") {
         await api.setCleared(id, "");
@@ -773,9 +773,9 @@ export default function AccountRegister() {
       await loadRegister(selectedAccountId);
       await useAccountStore.getState().loadAccounts();
     } catch (e) {
-      // §178: a refusal (a loan payment's principal row, voided on its own)
+      // A refusal (a loan payment's principal row, voided on its own)
       // says where to go instead; it used to vanish as an unhandled rejection
-      // and the click simply did nothing. §181: in red, since it is a no.
+      // and the click simply did nothing. In red, since it is a no.
       setRefusal(String(e));
     } finally {
       setBusy(false);
@@ -785,7 +785,7 @@ export default function AccountRegister() {
 
   /** Toggle a row's cleared mark. This is an EVERYDAY action — Ctrl-M or the
    *  right-click menu, in the ordinary register — not something reconcile owns.
-   *  Reconcile only changes how the mark is drawn (§6.1f).
+   *  Reconcile only changes how the mark is drawn.
    *
    *  Anything marked goes back to blank; blank becomes "C". That includes an
    *  already-reconciled "R" row: rare, but banks do correct things after a
@@ -803,7 +803,7 @@ export default function AccountRegister() {
       await api.setCleared(id, next);
       await loadRegister(selectedAccountId);
     } catch (e) {
-      // §183 — a refused mark was an unhandled rejection: the C click, Ctrl+M
+      // A refused mark was an unhandled rejection: the C click, Ctrl+M
       // and the menu item all simply did nothing.
       setRefusal(String(e));
     }
@@ -872,9 +872,9 @@ export default function AccountRegister() {
     setShowForms(true);
   }
 
-  /** §91: Contribution / Employer Contribution / Deposit / Withdrawal / Fee
+  /** Contribution / Employer Contribution / Deposit / Withdrawal / Fee
    *  from the investment register's Activity list. Each is an ordinary cash
-   *  row in this account — the same row §90's import writes beside a
+   *  row in this account — the same row the importer writes beside a
    *  purchase, with the same category — so the form opens seeded and the
    *  only thing left to type is the amount. */
   async function startCashActivity(key: string) {
@@ -884,7 +884,7 @@ export default function AccountRegister() {
     if (kind.category) {
       const [top, child] = kind.category.split(":").map((p) => p.trim());
       const full = child ? `${top} : ${child}` : top;
-      // §162 — matched on the normalized spelling, as every category field is.
+      // Matched on the normalized spelling, as every category field is.
       const found = categories.find(
         (c) => categoryKey(c.full_name) === categoryKey(full) || (!child && categoryKey(c.name) === categoryKey(top) && !c.parent_id)
       );
@@ -907,7 +907,7 @@ export default function AccountRegister() {
     setShowForms(true);
   }
 
-  // §85: the register as shown, to a CSV file.
+  // The register as shown, to a CSV file.
   async function exportCsv() {
     if (!account) return;
     try {
@@ -921,9 +921,9 @@ export default function AccountRegister() {
     }
   }
 
-  /** §102 — File → Export → This register to QIF. The command existed in the
+  /** File → Export → This register to QIF. The command existed in the
    *  menu and nothing served it, so it was grayed out everywhere; the backend
-   *  (`export_qif`, §54) has been there since long before the menu was.
+   *  (`export_qif`) has been there since long before the menu was.
    *
    *  Unlike the CSV export this is the WHOLE register, not the filtered view:
    *  a QIF is meant to be re-imported somewhere, and a file that silently
@@ -936,7 +936,7 @@ export default function AccountRegister() {
         filters: [{ name: "QIF", extensions: ["qif"] }],
       });
       if (!path) return;
-      // §183 — the second number is the voided rows LEFT OUT (`export_qif`
+      // The second number is the voided rows LEFT OUT (`export_qif`
       // returns records written and voids skipped), not prices: a register
       // with three voids reported "and 3 prices".
       const [rows, voided] = await api.exportQif(account.id, path);
@@ -950,7 +950,7 @@ export default function AccountRegister() {
     }
   }
 
-  /** §102 — Favorites → Add / Remove this account. Each is enabled only when
+  /** Favorites → Add / Remove this account. Each is enabled only when
    *  it would do something, so the pair reads as one truthful statement about
    *  the account you are looking at. */
   async function setFavorite(on: boolean) {
@@ -959,7 +959,7 @@ export default function AccountRegister() {
       await useAccountStore.getState().toggleFavorite(account.id);
       setNotice(on ? `${account.name} added to favorites.` : `${account.name} removed from favorites.`);
     } catch (e) {
-      // §183 — refused, it used to vanish as an unhandled rejection.
+      // Refused, it used to vanish as an unhandled rejection.
       setRefusal(`Could not change favorites: ${e}`);
     }
   }
@@ -972,7 +972,7 @@ export default function AccountRegister() {
       if (selectedRowId === id) setSelectedRowId(null);
       closeForm();
     } catch (e) {
-      // §178: the same for a delete that is refused.
+      // The same for a delete that is refused.
       setRefusal(String(e));
     } finally {
       setBusy(false);
@@ -987,12 +987,12 @@ export default function AccountRegister() {
    *  too eager: you cannot look at a row, or pick one to clear or delete,
    *  without it unfolding under the cursor. Opening now always takes a
    *  deliberate second action — a second click on the already-selected row,
-   *  a double-click, or the Edit button (§26.2).
+   *  a double-click, or the Edit button.
    *
    *  Ticking "Show transaction forms" while a row is selected still opens
    *  that row, which is what the toggle is for. */
   async function handleSelect(id: string) {
-    // §73: moving to another row SAVES the open form first, as Money did —
+    // Moving to another row SAVES the open form first, as Money did —
     // a change followed by a click elsewhere is not thrown away. If it
     // cannot be saved the form stays open with its error.
     if (!(await leaveOpenForm())) return;
@@ -1006,8 +1006,8 @@ export default function AccountRegister() {
   }
 
   // The view: Show, dates and sort applied to the rows the backend gave us.
-  // The grouped reconcile view keeps its own grouping (§6.1d).
-  // §97 — what the register can do, offered to the menu bar. These are
+  // The grouped reconcile view keeps its own grouping.
+  // What the register can do, offered to the menu bar. These are
   // registered here rather than lifted into App because they ARE the
   // register's: Print prints this view, Export CSV exports these rows, Delete
   // deletes the selected row. Leave the register and every one of them grays
@@ -1020,11 +1020,11 @@ export default function AccountRegister() {
   useCommand("fav.add", () => void setFavorite(true), !!account && !account.is_favorite);
   useCommand("fav.remove", () => void setFavorite(false), !!account && account.is_favorite);
   useCommand("tools.duplicates", () => setDupesOpen(true), stage === null);
-  // §163 — Ctrl+F with a register on screen finds IN it, over the shell's
-  // header search (priority 0); the Budget tab's find-on-page (§156) is
+  // Ctrl+F with a register on screen finds IN it, over the shell's
+  // header search (priority 0); the Budget tab's find-on-page is
   // never mounted at the same time as a register.
   useCommand("edit.find", () => setFindOpen(true), !!account && stage === null, 5);
-  // §183 — through `beginReconcile`, like the button: setting the stage
+  // Through `beginReconcile`, like the button: setting the stage
   // directly skipped the check for a statement left open and the open form.
   useCommand("edit.reconcile", () => void beginReconcile(), stage === null);
   useCommand("new.transaction", () => void startNew("cash"));
@@ -1044,7 +1044,7 @@ export default function AccountRegister() {
       ? groupByDepositsAndWithdrawals(shown)
       : [{ label: null, rows: shown }];
 
-  // §123 — the register is a list you walk with the arrow keys, as Money's
+  // The register is a list you walk with the arrow keys, as Money's
   // was. Up and down move the selection through the rows AS SHOWN: the
   // flattened groups, so a grouped or re-sorted register steps in the order
   // on the screen rather than the order in the store.
@@ -1097,7 +1097,7 @@ export default function AccountRegister() {
     return () => window.removeEventListener("keydown", onKey);
   }, [groups, selectedRowId, editingId, addingNew]);
 
-  // §154 — BELOW every hook, not above the menu-bar ones. This used to sit
+  // BELOW every hook, not above the menu-bar ones. This used to sit
   // before the `useCommand` block and the arrow-key effect, which is an early
   // return with hooks after it: fine while the account is there on the first
   // render and stays there, and a crash the moment it goes. `reloadAll` —
@@ -1128,7 +1128,7 @@ export default function AccountRegister() {
       ? register[register.length - 1].running_balance_cents
       : account.balance_cents;
 
-  // §118: the newest appraisal, for the banner above a valued asset. The
+  // The newest appraisal, for the banner above a valued asset. The
   // register is in date order, so the last revaluation row is the current one.
   const lastValuation = [...register].reverse().find((r) => r.is_revaluation && !r.is_void) ?? null;
 
@@ -1143,7 +1143,7 @@ export default function AccountRegister() {
       <div className="tm-print-only" data-print={`${account.name} — ${describeView(viewOpts)}. Printed ${formatDateUS(today())}. Ending balance ${formatMoney(endingBalanceCents)}.`} />
 
       {/* View selector — Money's register is driven by a saved view that sets
-          filter, grouping and sort together (§6.1d). */}
+          filter, grouping and sort together. */}
       <div className="flex items-center gap-2 px-2 py-1 flex-wrap">
         <label htmlFor="register-view">View:</label>
         <select
@@ -1195,7 +1195,7 @@ export default function AccountRegister() {
         </span>
       </div>
 
-      {/* §118 — a house or a car is not a checking account, and its register
+      {/* A house or a car is not a checking account, and its register
           used to look exactly like one: rows, a New button, and "Update
           value…" hidden in the strip along the bottom. Reported as "it just
           looks like another account register … I start a new transaction to
@@ -1224,7 +1224,7 @@ export default function AccountRegister() {
         </div>
       )}
 
-      {/* §183 — while the wizard's dialog is up this strip is under its
+      {/* While the wizard's dialog is up this strip is under its
           backdrop; the dialog shows the error itself then. */}
       {reconcileError && (stage === null || stage === "clearing") && <Notice tone="error">Reconcile: {reconcileError}</Notice>}
       {notice && (
@@ -1255,12 +1255,12 @@ export default function AccountRegister() {
         </Notice>
       )}
 
-      {/* §69: while clearing, the balance panel is a strip HERE, above the
+      {/* While clearing, the balance panel is a strip HERE, above the
           register, so every row stays clickable and the difference is always
           in view. The other stages are still the centered dialog below. */}
       {stage === "clearing" && account && (
         <>
-          {/* §181 — the hint is a warning: the statement and the register
+          {/* The hint is a warning: the statement and the register
               disagree and the user has to go and look. */}
           {autoHint && <Notice tone="error">{autoHint}</Notice>}
           <ReconcileDialog
@@ -1290,7 +1290,7 @@ export default function AccountRegister() {
       {/* Ctrl-M marks the selected row cleared, as in Money — bound from the
           menu table now (Edit → Mark as cleared), not here. A shortcut with a
           private listener is a shortcut nothing can print, which is how this
-          one stayed invisible; the same mistake F1 made in §97. §123's arrow
+          one stayed invisible; the same mistake F1 once made. The arrow
           keys are bound on the window, not here — the container would have to
           hold focus to hear them, and taking focus is what would pull the
           caret out of an open form. */}
@@ -1342,7 +1342,7 @@ export default function AccountRegister() {
                 busy={busy}
               />
             ) : splitsLoad?.id !== r.id ? (
-              // §183 — the row's own lines are still on their way; the form
+              // The row's own lines are still on their way; the form
               // waits for them rather than mounting on what was there before.
               <tr className="tm-edit-loading" aria-busy="true">
                 <td colSpan={isInvestment ? 10 : 9} className="tm-text-muted">
@@ -1363,7 +1363,7 @@ export default function AccountRegister() {
                 payees={payees}
                 onCreateCategory={createCategoryInline}
                 initialSplits={editingSplits}
-                // §181 — open accounts, plus a closed one this row or its
+                // Open accounts, plus a closed one this row or its
                 // split lines already transfer to (N9).
                 transferTargets={pickableAccounts(accounts, [
                   r.transfer_account_id,
@@ -1421,7 +1421,7 @@ export default function AccountRegister() {
                       categories={categories}
                       payees={payees}
                       onCreateCategory={createCategoryInline}
-                      // §181 — a new entry: open accounts only (N9).
+                      // A new entry: open accounts only (N9).
                       transferTargets={pickableAccounts(accounts).filter((a) => a.id !== selectedAccountId)}
                       onCommit={commitDraft}
                       onCancel={closeForm}
@@ -1438,7 +1438,7 @@ export default function AccountRegister() {
         )}
       </div>
 
-      {/* §163 — Find, over the register. No backdrop: the register stays
+      {/* Find, over the register. No backdrop: the register stays
           visible and the chosen row scrolls into view behind the window,
           and closing it leaves that row selected. */}
       {findOpen && account && (
@@ -1457,11 +1457,11 @@ export default function AccountRegister() {
       )}
 
       {/* Footer strip. Money shows no per-column totals here — the previous
-          deposits/withdrawals/net tfoot was invented (§6.1a #9). */}
+          deposits/withdrawals/net tfoot was invented. */}
       <div className="register-footer">
         {/* Reads statements.reconciled_on once migration 0010 lands — the
-            same value dialog [B] shows as "Last statement reconciled"
-            (§6.1c, §6.1f). Until then there is nothing to show. */}
+            same value dialog [B] shows as "Last statement reconciled".
+            Until then there is nothing to show. */}
         <span>
           Balanced on:{" "}
           {lastStatement?.reconciled_on ? formatDateUS(lastStatement.reconciled_on) : "—"}
@@ -1754,7 +1754,7 @@ export default function AccountRegister() {
       )}
 
       {/* Reconcile wizard. During clearing the dialog STAYS OPEN and the grid
-          above switches to the grouped, checkable view (§6.1f). */}
+          above switches to the grouped, checkable view. */}
       {stage && stage !== "clearing" && account && (
         <>
           <div className="tm-dialog-backdrop" onClick={leaveReconcile} />
@@ -1862,7 +1862,7 @@ export default function AccountRegister() {
                         .then(() => {
                           if (selectedAccountId) void loadRegister(selectedAccountId);
                         })
-                        // §183 — a refusal said nothing at all.
+                        // A refusal said nothing at all.
                         .catch((e) => setRefusal(String(e)));
                       setMenu(null);
                     }}
@@ -1901,7 +1901,7 @@ export default function AccountRegister() {
             await api.setTransactionTaxLine(row.id, line);
             await loadRegister(account.id);
           } catch (e) {
-            // §183 — refused, the radio simply did not move.
+            // Refused, the radio simply did not move.
             setTaxLineError(String(e));
           } finally {
             setBusy(false);
@@ -1950,7 +1950,7 @@ export default function AccountRegister() {
   );
 }
 
-/** Money offers the next statement one month after the last one (§6.1c). */
+/** Money offers the next statement one month after the last one. */
 function nextStatementDate(last: Statement | null): string {
   const base = last ? new Date(`${last.statement_date}T00:00:00`) : new Date();
   if (last) base.setMonth(base.getMonth() + 1);
@@ -1959,13 +1959,13 @@ function nextStatementDate(last: Statement | null): string {
   ).padStart(2, "0")}`;
 }
 
-/** Money's reconcile grouping: Deposits / Checks / Other Withdrawals (§6.1d).
+/** Money's reconcile grouping: Deposits / Checks / Other Withdrawals.
  *  A withdrawal whose Num is a check number (digits) is a Check; every
  *  other withdrawal — ATM, EFT, a card swipe — is Other. Rows already
  *  reconciled (`R`) are not on this statement and are left out, which is
  *  what "unreconciled" in the view's name means. Money states an empty group
  *  inline in its header rather than as a row. */
-/** §61: the check number to offer next — one past the highest numeric Num
+/** The check number to offer next — one past the highest numeric Num
  *  in the account, whatever came between. Null when no check has been
  *  written here. */
 export function nextCheckNumber(rows: readonly { check_number?: string | null }[]): string | null {

@@ -67,7 +67,7 @@ export function parseMoneyToCents(input: string): number | null {
 }
 
 /**
- * "5.875" -> 5_875_000 (§94). A rate is stored in millionths of a percent so
+ * "5.875" -> 5_875_000. A rate is stored in millionths of a percent so
  * a mortgage's 5.875% and a card's 24.99% are both exact integers, for the
  * same reason money is cents: `5.875 / 12` in floating point is not
  * `5.875 / 12`, and interest computed from it drifts a cent at a time.
@@ -99,7 +99,7 @@ export function formatRate(micro: number): string {
  * grid Money shows dates as M/D/YYYY, Payment/Deposit as bare numbers with no
  * currency symbol and no sign, and Balance in accounting parens — also with no
  * currency symbol. The `$` only appears in the footer's Ending Balance.
- * (§6.1a) */
+ * */
 
 /** "2026-08-30" -> "8/30/2026". Returns the input unchanged if unparseable. */
 export function formatDateUS(iso: string): string {

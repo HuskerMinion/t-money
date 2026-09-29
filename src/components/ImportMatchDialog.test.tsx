@@ -1,4 +1,4 @@
-// §89 — the import review: confident pairings are ticked, the user can
+// The import review: confident pairings are ticked, the user can
 // overrule any of them, and Import sends one decision per row.
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -75,7 +75,7 @@ const summary = {
   notes: [],
 };
 
-describe("ImportMatchDialog (§89)", () => {
+describe("ImportMatchDialog", () => {
   beforeEach(() => resetIpc());
 
   it("ticks the confident pairing, leaves the weak one to import, and sends a decision per row", async () => {
@@ -165,7 +165,7 @@ describe("ImportMatchDialog (§89)", () => {
   });
 });
 
-/** The picker is a type-ahead combobox (§23), not a <select>: focus it, type
+/** The picker is a type-ahead combobox, not a <select>: focus it, type
  *  enough to filter, then click the option. */
 async function pickCategory(dlg: HTMLElement, label: string, option: string) {
   const box = within(dlg).getByLabelText(label);
@@ -174,7 +174,7 @@ async function pickCategory(dlg: HTMLElement, label: string, option: string) {
   await userEvent.click(await screen.findByRole("option", { name: option }));
 }
 
-describe("§159 — rows with no category are asked about", () => {
+describe("Rows with no category are asked about", () => {
   beforeEach(() => resetIpc());
   const categories = [
     { id: "c-auto", name: "Automobile", parent_id: null, kind: "expense" as const, tax_line: null, full_name: "Automobile", usage_count: 0 },
@@ -247,16 +247,16 @@ describe("§159 — rows with no category are asked about", () => {
     const rule = invokeCalls.findIndex((c) => c.cmd === "create_payee_rule");
     const imp = invokeCalls.findIndex((c) => c.cmd === "import_with_decisions");
     expect(rule).toBeGreaterThanOrEqual(0);
-    // §183 — after, not before: a refused import must not leave rules behind.
+    // After, not before: a refused import must not leave rules behind.
     expect(rule).toBeGreaterThan(imp);
     expect(invokeCalls[rule].args).toEqual({ matchText: "GAS STATION 0001", payeeName: "GAS STATION 0001", categoryId: "c-fuel", minCents: null, maxCents: null, memoContains: null, accountId: null });
   });
 });
 
-// §183 — "remember" made its rules one row at a time BEFORE importing, and the
+// "remember" made its rules one row at a time BEFORE importing, and the
 // backend refuses a second rule for the same text. Two rows from one payee
 // aborted the import; a failed import left rules saved, so retries failed too.
-describe("§183 — remembering a payee never costs the import", () => {
+describe("Remembering a payee never costs the import", () => {
   beforeEach(() => resetIpc());
   const categories = [
     { id: "c-auto", name: "Automobile", parent_id: null, kind: "expense" as const, tax_line: null, full_name: "Automobile", usage_count: 0 },

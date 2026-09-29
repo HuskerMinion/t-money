@@ -269,7 +269,7 @@ describe("budget commands", () => {
     });
   });
 
-  // §139 — the year plan. The mask is a STRING and travels as one: sending
+  // The year plan. The mask is a STRING and travels as one: sending
   // twelve booleans would be twelve chances to disagree about which end is
   // January.
   it("getYearPlan sends a numeric year", async () => {
@@ -286,7 +286,7 @@ describe("budget commands", () => {
         year: 2027,
         annualCents: 120000,
         months: "111000000011",
-        // §143 — omitted by the caller, sent as "spent" rather than left
+        // Omitted by the caller, sent as "spent" rather than left
         // undefined: the two readings of the mask are far enough apart that
         // the wire should always say which one it means.
         spread: "spent",
@@ -294,7 +294,7 @@ describe("budget commands", () => {
     });
   });
 
-  // §143 — and the other reading goes over the same call.
+  // And the other reading goes over the same call.
   it("setBudgetPlan carries an aside spread when asked for one", async () => {
     await api.setBudgetPlan("cat-1", 2027, 120000, "100000000000", "aside");
     expect(lastCall()).toEqual({
@@ -352,7 +352,7 @@ describe("module commands", () => {
     });
   });
 
-  // The payment wrappers were retired by §32: migration 0019 folded one-off
+  // The payment wrappers are retired: migration 0019 folded one-off
   // payments into recurrence rules, so there is one list of upcoming money.
   it("createRecurrence nests the rule payload untouched", async () => {
     const payload: NewRecurrence = {
@@ -453,7 +453,7 @@ describe("module commands", () => {
     await api.backupDatabase("C:\\b.db");
     expect(lastCall()).toEqual({ cmd: "backup_database", args: { path: "C:\\b.db" } });
 
-    // `key` is null unless the backup came from another machine (§34).
+    // `key` is null unless the backup came from another machine.
     await api.restoreDatabase("C:\\b.db");
     expect(lastCall()).toEqual({
       cmd: "restore_database",
@@ -493,23 +493,23 @@ describe("coverage of the registered command set", () => {
   const registered = [...block.matchAll(/commands::(\w+)/g)].map((m) => m[1]).sort();
   const wrapped = [...ipcTs.matchAll(/invoke<[^>]*>\(\s*"(\w+)"/g)].map((m) => m[1]).sort();
 
-  // 73. The original 56, plus `seed_demo_data` (§24 — registered
+  // 73. The original 56, plus `seed_demo_data` (registered
   // unconditionally because `generate_handler!` cannot take a `cfg` on an
-  // entry, and refused at runtime in release), `refresh_investment_prices`
-  // (§27), four for Common Transactions (§31), ten for scheduled bills (§32 —
+  // entry, and refused at runtime in release), `refresh_investment_prices`,
+  // four for Common Transactions, ten for scheduled bills (the change
   // which RETIRED the four one-off payment commands), and five for key
-  // recovery and automatic backup (§34), `create_payee` (§37.4), and
-  // `search_transactions` (§38), and `list_reports`, `run_report` `get_transaction_account` and the three saved-report commands (§39) — which retired `get_report_summary`.
-  // 88 (§41): the four flat-holdings commands retired, twelve for
+  // recovery and automatic backup, `create_payee`, and
+  // `search_transactions`, and `list_reports`, `run_report` `get_transaction_account` and the three saved-report commands — which retired `get_report_summary`.
+  // 88: the four flat-holdings commands retired, twelve for
   // securities, prices, investment transactions, lots and the portfolio.
-  // 89 (§45): create_share_transfer. 91 (§46): set_transaction_goal, contribute_to_goal. 92 (§48): set_account_tax_included. 93 (§49): merge_accounts. 94 (§50): update_holdings. 96 (§51): autobudget, apply_autobudget. 97 (§52): get_occurrences. 98 (§53): set_transaction_tax_line. 99 (§54): export_qif. 101 (§55): get_ui_setting, set_ui_setting. 102 (§56): get_roi. 103 (§70): reconcile_through. 104 (§75): fill_symbols_from_names. 105 (§81): set_account_value_rounding. 106 (§83): verify_file. 111 (§84): list/create/delete_payee_rule, apply_payee_rules, find_duplicates. 112 (§85): write_text_file. 114 (§88): preview_csv, import_csv. 116 (§89): preview_import, import_with_decisions. 119 (§93): set_account_value, set_account_security, debts_by_asset. 125 (§94): get_loan_terms, set_loan_terms, clear_loan_terms, loan_schedule, next_loan_payment, record_loan_payment. 129 (§98): current_file, list_recent_files, forget_file, open_file. 132 (§101): undo_status, undo_last, redo_last. 133 (§102): startup_note. 145 (§112): list/create/rename/delete_classification, create/rename/delete_classification_value, set_transaction_classes. 146 (§115): price_status. 147 (§128): create_sample_file. 149 (§129): get_budget_grid, get_budget_starter. 151 (§133): preview_category_merge. 154 (§139): get_year_plan, set_budget_plan, clear_budget_plan. 156 (§141): plan_from_history, apply_year_plan.
-  // §148 — 155, down from 156: `set_budget_line` went when the month screen
+  // 89: create_share_transfer. 91: set_transaction_goal, contribute_to_goal. 92: set_account_tax_included. 93: merge_accounts. 94: update_holdings. 96: autobudget, apply_autobudget. 97: get_occurrences. 98: set_transaction_tax_line. 99: export_qif. 101: get_ui_setting, set_ui_setting. 102: get_roi. 103: reconcile_through. 104: fill_symbols_from_names. 105: set_account_value_rounding. 106: verify_file. 111: list/create/delete_payee_rule, apply_payee_rules, find_duplicates. 112: write_text_file. 114: preview_csv, import_csv. 116: preview_import, import_with_decisions. 119: set_account_value, set_account_security, debts_by_asset. 125: get_loan_terms, set_loan_terms, clear_loan_terms, loan_schedule, next_loan_payment, record_loan_payment. 129: current_file, list_recent_files, forget_file, open_file. 132: undo_status, undo_last, redo_last. 133: startup_note. 145: list/create/rename/delete_classification, create/rename/delete_classification_value, set_transaction_classes. 146: price_status. 147: create_sample_file. 149: get_budget_grid, get_budget_starter. 151: preview_category_merge. 154: get_year_plan, set_budget_plan, clear_budget_plan. 156: plan_from_history, apply_year_plan.
+  // 155, down from 156: `set_budget_line` went when the month screen
   // stopped writing. The count only ever goes up by design, so a DROP is
   // worth the sentence.
-  // 158: list_split_descriptions (§160), convert_to_transfer and
-  // convert_from_transfer (§164), set_account_order (§169) — and set_splits
-  // RETIRED in §168, when the lines started traveling in the create and
-  // edit payloads and nothing called it any more. 159: get_performance (§172). 164: the five attachment commands (§170).
+  // 158: list_split_descriptions, convert_to_transfer and
+  // convert_from_transfer, set_account_order — and set_splits
+  // RETIRED when the lines started traveling in the create and
+  // edit payloads and nothing called it any more. 159: get_performance. 164: the five attachment commands.
   it("finds the 164 registered commands", () => {
     expect(registered.length).toBe(164);
     expect(new Set(registered).size).toBe(164);

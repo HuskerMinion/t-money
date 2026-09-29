@@ -30,7 +30,7 @@ fn db_path(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
     Ok(dir.join("t-money.db"))
 }
 
-/// A scratch data directory, if one was asked for (§38).
+/// A scratch data directory, if one was asked for.
 ///
 /// `--data-dir <dir>` / `--data-dir=<dir>` on the command line, or the
 /// `T_MONEY_DATA_DIR` environment variable. The database lives at
@@ -57,7 +57,7 @@ pub fn scratch_data_dir<I: IntoIterator<Item = String>>(
         .map(std::path::PathBuf::from)
 }
 
-/// §105 — the file Windows handed us, if it did.
+/// The file Windows handed us, if it did.
 ///
 /// Double-clicking a `.tmny` in Explorer runs the app with the file's path as
 /// an argument. That is the whole mechanism: the association registered in
@@ -102,7 +102,7 @@ pub fn file_argument<I: IntoIterator<Item = String>>(args: I) -> Option<std::pat
 /// nothing on screen. Every `eprintln!` in this file goes nowhere. This is the
 /// only trace a user — or the next session — would otherwise have, so it is
 /// written to a file beside the database.
-/// §102 — may the remembered file be opened at all?
+/// May the remembered file be opened at all?
 ///
 /// Pure so the rules can be tested without a Tauri app, a keyring or a
 /// database. Two refusals, both learned the hard way:
@@ -128,7 +128,7 @@ fn remembered_problem(exists: bool, has_key: bool) -> Option<&'static str> {
 /// Names the file, says why, and says what it did instead — a message that
 /// leaves any of those three out just makes the user uneasy.
 ///
-/// §118 — what it does instead CHANGED, and the wording with it. It used to
+/// What it does instead CHANGED, and the wording with it. It used to
 /// fall back to the app's own database, which is how "a week of transactions
 /// in the wrong file" happens: a screen full of somebody's accounts looks
 /// exactly like a screen full of yours until you look at the numbers. Now
@@ -141,7 +141,7 @@ fn fallback_note(path: &std::path::Path, why: &str) -> String {
     )
 }
 
-/// §118 — with no file remembered, may the app open its OWN database?
+/// With no file remembered, may the app open its OWN database?
 ///
 /// Once, yes, always: startup fell back to it and you got a full screen of
 /// accounts whether or not they were the accounts you meant. That is the
@@ -149,7 +149,7 @@ fn fallback_note(path: &std::path::Path, why: &str) -> String {
 /// own database looking exactly like a working file.
 ///
 /// But there is one install for which the app's own database IS the user's
-/// file: the one that predates §98 and has never opened anything else. Its
+/// file: the old one that predates opening files of your own and has never opened anything else. Its
 /// recents list is empty and its own database is sitting there full of data,
 /// and showing that person a start screen would look exactly like their money
 /// had been lost. So: open it only for that install, and only then.
@@ -162,17 +162,17 @@ fn open_own_database_unasked(own_database_exists: bool, has_recents: bool) -> bo
     own_database_exists && !has_recents
 }
 
-/// §124 — which file, if any, startup should treat as "the one you had open".
+/// Which file, if any, startup should treat as "the one you had open".
 ///
 /// Two rules, and the second is the one that was broken:
 ///
-/// 1. A file named on the command line wins (§105) — you double-clicked THAT
+/// 1. A file named on the command line wins — you double-clicked THAT
 ///    file, whatever it is, including the app's own database if that is what
 ///    you picked.
 /// 2. The recents list is offered only when it does not name the app's own
 ///    database. T-Money's own file is not a file the user chose; treating it
 ///    as remembered is how the start screen gets skipped, which is precisely
-///    what §118 set out to stop.
+///    what an earlier fix set out to stop.
 ///
 /// Rule 2 was `p != &default_db_path`, a raw `PathBuf` comparison, and on
 /// Windows the two spellings are never equal — see `files::is_same`. So the
@@ -188,12 +188,12 @@ fn startup_file(
     opened_with.or_else(|| last_opened.filter(|p| !files::is_same(p, default_db)))
 }
 
-/// §180 — why a file was not opened when the keyring would not answer.
+/// Why a file was not opened when the keyring would not answer.
 /// Written as a clause because `fallback_note` puts it in parentheses.
 const KEYRING_UNREACHABLE: &str =
     "the Windows credential store could not be reached, so this file's key cannot be read or saved";
 
-/// §180 — the key startup opens `exists`'s file with, as `(key, created)`.
+/// The key startup opens `exists`'s file with, as `(key, created)`.
 ///
 /// It used to call `ensure_key_in` for every file and, when that failed,
 /// generate a key, IGNORE whether storing it worked, and log that it had been
@@ -250,14 +250,14 @@ fn fatal(dir: Option<&std::path::Path>, msg: String) -> Box<dyn std::error::Erro
 /// Application entry point.
 pub fn run() {
     tauri::Builder::default()
-        // §108 — one copy of the app.
+        // One copy of the app.
         //
         // FIRST, before every other plugin: this one decides whether the
         // process lives at all, and anything set up ahead of it is set up in a
         // process that is about to exit.
         //
         // Two copies open on the same file are two writers against one SQLite
-        // database. The file association (§105) makes that easy to do by
+        // database. The file association makes that easy to do by
         // accident — double-click a .tmny while T-Money is running and Windows
         // starts a second process — so the second process hands its arguments
         // to the first and exits.
@@ -278,11 +278,11 @@ pub fn run() {
             };
             // Already on it — say nothing rather than reloading the file the
             // user is looking at.
-            // §180: through `files::is_same`, not `PathBuf` equality. A file
+            // Through `files::is_same`, not `PathBuf` equality. A file
             // opened at startup is held in the recents list's `canonicalize`
             // spelling (`\\?\C:\…`) and Explorer passes `C:\…`, possibly in
             // another case — equal as files, never as `PathBuf`s, so the file
-            // on screen was reloaded under the user (§124's bug, again).
+            // on screen was reloaded under the user (the path-comparison bug, again).
             let already = app
                 .try_state::<AppState>()
                 .and_then(|s| s.db_path.lock().ok().map(|p| files::is_same(&p, &path)))
@@ -308,7 +308,7 @@ pub fn run() {
             let handle = app.handle().clone();
 
             // 1) DB path under the OS app-data dir — or a scratch directory,
-            //    with its own keyring entry, when asked for (§38).
+            //    with its own keyring entry, when asked for.
             let scratch = scratch_data_dir(
                 std::env::args_os().skip(1).map(|a| a.to_string_lossy().to_string()),
                 std::env::var("T_MONEY_DATA_DIR").ok(),
@@ -325,7 +325,7 @@ pub fn run() {
                 None => db_path(&handle).map_err(|e| fatal(None, e))?,
             };
 
-            // §98: the app's own config directory holds `files.json` — the
+            // The app's own config directory holds `files.json` — the
             // list of databases, which cannot live inside any of them.
             let config_dir = handle
                 .path()
@@ -335,7 +335,7 @@ pub fn run() {
             // Open the file that was open last, if it is still there, and the
             // app's own otherwise. A scratch run ignores the list entirely:
             // the whole point of `--data-dir` is that it touches nothing real.
-            // §105 — a file named on the command line wins over the recents
+            // A file named on the command line wins over the recents
             // list: you double-clicked THAT file, and "it opened the one I had
             // open last instead" would be indefensible. A scratch run still
             // ignores both.
@@ -349,12 +349,12 @@ pub fn run() {
             }
 
             // 2) Ensure a master key exists for THIS file. Each file has its
-            //    own (§98); the app's own database keeps the original account
+            //    own; the app's own database keeps the original account
             //    name so every install that predates this still opens.
             //
             // 3) Open the encrypted DB, apply the key, run migrations.
             //
-            //    §102 — THE REMEMBERED FILE CANNOT BE ALLOWED TO BRICK STARTUP.
+            //    THE REMEMBERED FILE CANNOT BE ALLOWED TO BRICK STARTUP.
             //    This used to be one path and one `fatal`, which meant a file
             //    that had moved, lost its key, or been written by a build that
             //    is no longer installed made the app unstartable: it opened a
@@ -366,7 +366,7 @@ pub fn run() {
             let mut note: Option<String> = None;
             let open = |p: &std::path::PathBuf| -> Result<(db::pool::DbPool, String), String> {
                 let account = keyring::account_for(p, Some(&default_db_path));
-                // §102 — NEVER invent a key for a file that already exists.
+                // NEVER invent a key for a file that already exists.
                 //
                 // `ensure_key_in` generates one when the keyring has none,
                 // which is right for a database being created and disastrous
@@ -376,7 +376,7 @@ pub fn run() {
                 // pointed at a file whose key lives under another account, so
                 // it made up a new key and then failed to open its own work.
                 //
-                // `open_file` has refused this since §98. Startup has to
+                // `open_file` already refuses this. Startup has to
                 // refuse it too, and the refusal is a message, not a death.
                 if let Some(why) = remembered_problem(true, keyring::has_key_in(&account)) {
                     if p.exists() {
@@ -421,13 +421,13 @@ pub fn run() {
                     },
                 }
             }
-            // §118 — and if nothing was opened, NOTHING IS OPENED.
+            // And if nothing was opened, NOTHING IS OPENED.
             //
             // The app used to fall back to its own database here, which is
             // where "it now defaults to opening without a database" came
             // from: after File → Close there is no remembered file, so the
             // next launch quietly opened T-Money's own empty database and
-            // showed a complete, working, wrong set of accounts. §117 built a
+            // showed a complete, working, wrong set of accounts. There is a
             // start screen for exactly this moment; startup should use it
             // rather than guess. So the pool stays empty, `current_file`
             // reports `is_open: false`, and the start screen offers the file
@@ -437,7 +437,7 @@ pub fn run() {
             // to open. The first real open happens when the user picks one,
             // and it reports its own errors, on screen, with a way back.
             if opened.is_none() && note.is_none() && scratch.is_none() {
-                // The pre-§98 install whose only file IS the app's database.
+                // The old install whose only file IS the app's database.
                 if open_own_database_unasked(default_db_path.exists(), !files::recent(&config_dir).is_empty()) {
                     match open(&default_db_path) {
                         Ok(v) => {
@@ -463,7 +463,7 @@ pub fn run() {
             //
             //    Before the pool is handed to Tauri, and deliberately soft: a
             //    backup that cannot be written must never stop the app opening.
-            //    The whole point is that this happens without being asked (§34).
+            //    The whole point is that this happens without being asked.
             //
             //    Never from a scratch run: a real backup restored into the
             //    scratch directory carries the real backup folder in its
@@ -485,13 +485,13 @@ pub fn run() {
             // 5) Bind into Tauri managed state (pool behind a Mutex<Option> so
             //    restore / master-key change can drop and rebuild it in place).
             // Remember what we opened, so next launch comes back to it —
-            // only when something WAS opened (§118): recording a file the app
+            // only when something WAS opened: recording a file the app
             // did not open is how the start screen would be skipped next time.
-            // §124 — and never the app's OWN database. Recents is the list of
+            // And never the app's OWN database. Recents is the list of
             // files the user chose; T-Money's own is not one of them, and once
             // it is in the list every later launch reads it back as the file
             // that was open last. That is how this became sticky rather than a
-            // one-off: the pre-§98 exemption below opens it, step 5 wrote it
+            // one-off: the old-install exemption below opens it, step 5 wrote it
             // down, and from then on it was "remembered".
             if scratch.is_none() && pool.is_some() && !files::is_same(&path, &default_db_path) {
                 let now = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S").to_string();
@@ -514,7 +514,7 @@ pub fn run() {
             Ok(())
         })
         .plugin(tauri_plugin_dialog::init())
-        // §170 — opens an attachment in whatever the OS uses for the type.
+        // Opens an attachment in whatever the OS uses for the type.
         .plugin(tauri_plugin_opener::init())
         // Window size / position / maximized state survive a restart: saved
         // on close to `.window-state.json` in the app config dir, restored
@@ -581,7 +581,7 @@ pub fn run() {
             commands::set_budget,
             commands::list_budgets,
             commands::delete_budget,
-            // §139 — the year plan
+            // The year plan
             commands::get_year_plan,
             commands::set_budget_plan,
             commands::clear_budget_plan,
@@ -616,7 +616,7 @@ pub fn run() {
             commands::record_loan_payment,
             commands::set_transaction_goal,
             commands::contribute_to_goal,
-            // Classifications (§112)
+            // Classifications
             commands::list_classifications,
             commands::create_classification,
             commands::rename_classification,
@@ -625,9 +625,9 @@ pub fn run() {
             commands::rename_classification_value,
             commands::delete_classification_value,
             commands::set_transaction_classes,
-            // Prices (§115)
+            // Prices
             commands::price_status,
-            // Scheduled bills and income (§32) — these replaced the one-off
+            // Scheduled bills and income — these replaced the one-off
             // payment commands, which migration 0019 folded into rules.
             commands::list_recurrences,
             commands::create_recurrence,
@@ -639,7 +639,7 @@ pub fn run() {
             commands::skip_occurrence,
             commands::clear_occurrence,
             commands::get_cash_forecast,
-            // Investments (§41)
+            // Investments
             commands::list_securities,
             commands::create_security,
             commands::update_security,
@@ -673,7 +673,7 @@ pub fn run() {
             commands::change_master_key,
             commands::export_master_key,
             commands::save_master_key,
-            // Automatic backup (§34)
+            // Automatic backup
             commands::get_backup_config,
             commands::set_backup_config,
             commands::backup_now,
@@ -713,7 +713,7 @@ pub fn run() {
         ])
         .build(tauri::generate_context!())
         .expect("error while building T-Money")
-        // §135 — the backup on the way out.
+        // The backup on the way out.
         //
         // `ExitRequested` and not `Exit`: the managed state is still alive
         // here, which is the only reason there is a pool to VACUUM from. It is
@@ -728,7 +728,7 @@ pub fn run() {
         });
 }
 
-/// §135 — take the exit backup, and never let it stop the app closing.
+/// Take the exit backup, and never let it stop the app closing.
 ///
 /// Every branch here is a reason to do nothing rather than to fail: a lock we
 /// cannot take, a file that is not open, a scratch run. Scratch is excluded for
@@ -763,7 +763,7 @@ mod tests {
         list.iter().map(|s| s.to_string()).collect()
     }
 
-    /// §180 — an existing file is read its key and never given one; the
+    /// An existing file is read its key and never given one; the
     /// keyring failing is an error either way, not an unstored key.
     #[test]
     fn startup_never_invents_a_key_and_never_opens_with_an_unstored_one() {
@@ -806,12 +806,12 @@ mod tests {
         assert_eq!(scratch_data_dir(args(&["--data-dir"]), Some("  ".into())), None);
     }
 
-    /// §102 — the rules that decide whether the file you left the app on is
+    /// The rules that decide whether the file you left the app on is
     /// opened at all. One installed build died on the second of these:
     /// it was pointed at a file whose key was under another account, invented
     /// a key, and SQLCipher answered "file is not a database" — every launch,
     /// with no way back to the user's own data from inside the app.
-    /// §105 — double-clicking a .tmny in Explorer runs the app with the path
+    /// Double-clicking a .tmny in Explorer runs the app with the path
     /// as an argument. Which arguments count is the part worth pinning: an
     /// app that opens whatever is on its command line ends up trying to
     /// decrypt its own log file.
@@ -853,7 +853,7 @@ mod tests {
         assert_eq!(remembered_problem(false, false), Some("it is no longer there"));
     }
 
-    /// §124 — the bug that was hit: File → Close, exit, relaunch, and up came
+    /// The bug that was hit: File → Close, exit, relaunch, and up came
     /// t-money.db again.
     ///
     /// `last_opened` returns what `canonicalize` stored, and on Windows that
@@ -881,7 +881,7 @@ mod tests {
         let real = PathBuf::from(r"\\?\E:\Money\Sam.tmny");
         assert_eq!(startup_file(None, Some(real.clone()), default_db), Some(real));
 
-        // §105 — a file named on the command line wins over the list, and is
+        // A file named on the command line wins over the list, and is
         // NOT filtered: double-clicking a file is choosing it, even that one.
         let named = PathBuf::from(r"E:\Money\Other.tmny");
         assert_eq!(
@@ -906,7 +906,7 @@ mod tests {
         );
         assert!(note.contains("Sam.tmny"), "name the file: {note}");
         assert!(note.contains("no master key"), "say why: {note}");
-        // §118: what it did is now "nothing" — the start screen asks. The old
+        // What it did is now "nothing" — the start screen asks. The old
         // wording promised a fallback that no longer happens, and a message
         // that says the app opened something when it did not is worse than no
         // message at all.
@@ -920,11 +920,11 @@ mod tests {
     #[test]
     fn the_app_opens_its_own_database_unasked_only_for_the_install_that_has_no_other(
     ) {
-        // The pre-§98 install: its own database is the file, and a start
+        // The old install: its own database is the file, and a start
         // screen would look like the money had gone.
         assert!(open_own_database_unasked(true, false));
         // A user who has opened their own file: an empty app database is
-        // NOT what they meant by launching. §117's start screen asks instead.
+        // NOT what they meant by launching. The start screen asks instead.
         assert!(!open_own_database_unasked(true, true));
         // Fresh install, nothing anywhere: there is nothing to open, so ask.
         assert!(!open_own_database_unasked(false, false));

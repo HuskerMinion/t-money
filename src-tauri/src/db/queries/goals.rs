@@ -66,7 +66,7 @@ fn check_goal_account(conn: &Connection, account_id: Option<&str>) -> Result<(),
 }
 
 /// `saved_cents` is the STARTING amount; with an `account_id` the goal's
-/// progress grows with every row tagged for it (§46).
+/// progress grows with every row tagged for it.
 pub fn create_goal(
     conn: &Conn,
     name: &str,
@@ -129,7 +129,7 @@ pub fn delete_goal(conn: &Conn, id: &str) -> Result<(), String> {
 /// goal's account — or be the other half of a transfer INTO it, in which
 /// case the half in the goal's account is the one tagged, so "move $200 from
 /// checking for the roof" can be said from either register.
-/// Money's per-transaction tax line (§53). `None` follows the category
+/// Money's per-transaction tax line. `None` follows the category
 /// again; `Some("")` takes the row out of the tax reports; `Some(line)`
 /// puts it on that line whatever its category says.
 pub fn set_transaction_tax_line(conn: &Conn, transaction_id: &str, tax_line: Option<&str>) -> Result<(), String> {
@@ -203,7 +203,7 @@ pub fn contribute_to_goal(
         return Err("the contribution must be more than zero".to_string());
     }
     parse_date(date)?;
-    // §181 — a contribution is a new transfer.
+    // A contribution is a new transfer.
     refuse_new_link_to_closed(conn, &[from_account_id, to.as_str()])?;
     let note = notes.map(str::to_string).unwrap_or_else(|| format!("For {}", goal.name));
     let tx = conn.unchecked_transaction().map_err(|e| e.to_string())?;
@@ -301,7 +301,7 @@ mod tests {
     use super::*;
     use crate::db::queries::test_support::*;
 
-    // ── goals that watch an account (§46) ────────────────────────────────
+    // ── goals that watch an account ────────────────────────────────
 
     #[test]
     fn a_linked_goal_grows_with_tagged_rows_and_an_unlinked_one_does_not() {

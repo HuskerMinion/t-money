@@ -10,7 +10,7 @@
 // longer needed, so it is gone.
 declare module "node:fs" {
   export function readFileSync(path: string, encoding: string): string;
-  /** §102 — `menuCoverage.test.ts` walks src/ looking for registrations. */
+  /** `menuCoverage.test.ts` walks src/ looking for registrations. */
   export function readdirSync(path: string): string[];
   export function statSync(path: string): { isDirectory(): boolean };
 }

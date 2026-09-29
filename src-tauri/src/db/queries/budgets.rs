@@ -12,7 +12,7 @@ use super::*;
 
 pub fn get_spending_summary(conn: &Conn, month: &str) -> Result<Vec<CategoryBudget>, String> {
     // month is "YYYY-MM". Spending comes from CATEGORY_LINES so a split
-    // transaction is counted against each of its categories (§6.1e).
+    // transaction is counted against each of its categories.
     //
     // Budgets are keyed by category_id since migration 0014, so a renamed
     // category keeps its budget instead of silently orphaning it.
@@ -58,9 +58,9 @@ pub fn get_spending_summary(conn: &Conn, month: &str) -> Result<Vec<CategoryBudg
     Ok(out)
 }
 
-/// §129 — the Budget screen, in one answer.
+/// The Budget screen, in one answer.
 ///
-/// # A parent is the envelope for the whole category (§130)
+/// # A parent is the envelope for the whole category
 ///
 /// > *"adding all the childs into the main category makes more sense … to
 /// > ensure the whole category is accounted for"*
@@ -71,7 +71,7 @@ pub fn get_spending_summary(conn: &Conn, month: &str) -> Result<Vec<CategoryBudg
 /// still counts against Automobile — the child line just says how much of the
 /// $600 is meant for fuel.
 ///
-/// §129 shipped the opposite rule for a day (a budgeted child *carved itself
+/// An earlier version shipped the opposite rule for a day (a budgeted child *carved itself
 /// out* of its parent) because that is what was asked for then. It is a
 /// defensible model and it is not this one; the difference is whether a
 /// parent means "everything under here" or "everything under here that I have
@@ -106,7 +106,7 @@ pub fn budget_grid(conn: &Conn, month: &str) -> Result<crate::models::BudgetGrid
              WHERE substr(date, 1, 7) = ?1 AND category_id IS NOT NULL
              GROUP BY category_id
         ), year_lines AS (
-            -- §131: a yearly line is measured against the calendar year, so
+            -- A yearly line is measured against the calendar year, so
             -- the same spending is needed on a second basis.
             SELECT category_id,
                    SUM(CASE WHEN amount_cents < 0 THEN -amount_cents ELSE 0 END) AS spent
@@ -124,7 +124,7 @@ pub fn budget_grid(conn: &Conn, month: &str) -> Result<crate::models::BudgetGrid
                b.target_cents,
                b.period,
                COALESCE(m.spent, 0) AS own_cents,
-               -- §130: EVERY child rolls up, budgeted or not. The parent is
+               -- EVERY child rolls up, budgeted or not. The parent is
                -- the whole category. A leaf has no children and gets 0.
                COALESCE((
                    SELECT SUM(COALESCE(cm.spent, 0))
@@ -143,7 +143,7 @@ pub fn budget_grid(conn: &Conn, month: &str) -> Result<crate::models::BudgetGrid
                -- parent is inside that envelope and must not be added again.
                (c.parent_id IS NOT NULL
                 AND EXISTS(SELECT 1 FROM bud pb WHERE pb.category_id = c.parent_id)) AS parent_budgeted,
-               -- §131: the same two spends again, over the calendar year.
+               -- The same two spends again, over the calendar year.
                COALESCE(y.spent, 0) AS own_year_cents,
                COALESCE((
                    SELECT SUM(COALESCE(cy.spent, 0))
@@ -179,7 +179,7 @@ pub fn budget_grid(conn: &Conn, month: &str) -> Result<crate::models::BudgetGrid
             let yearly = period == "yearly";
             let target = target.unwrap_or(0);
             let spent_month = own + rolled;
-            // §131: measured over its own period. A yearly line spent in one
+            // Measured over its own period. A yearly line spent in one
             // month has not overspent that month; it has spent its year.
             let spent = if yearly { own_year + rolled_year } else { spent_month };
             Ok(crate::models::BudgetLine {
@@ -204,11 +204,11 @@ pub fn budget_grid(conn: &Conn, month: &str) -> Result<crate::models::BudgetGrid
         .collect::<Result<_, _>>()
         .map_err(|e| e.to_string())?;
 
-    // §130 — each BRANCH counted once, at its top. A budgeted child under a
+    // Each BRANCH counted once, at its top. A budgeted child under a
     // budgeted parent is already inside that parent's envelope, in both the
     // target and the spend; adding it again reports a household budgeting and
     // spending twice what it did.
-    // §131 — the strip is a MONTHLY view, so every row contributes its
+    // The strip is a MONTHLY view, so every row contributes its
     // monthly equivalent and this month's spending, whatever period it is
     // kept in. A yearly line adds a twelfth, not the whole thing.
     let budgeted: i64 = lines.iter().filter(|l| l.counts_in_total).map(|l| l.monthly_cents).sum();
@@ -224,7 +224,7 @@ pub fn budget_grid(conn: &Conn, month: &str) -> Result<crate::models::BudgetGrid
     })
 }
 
-/// §129 — a budget to start from, built out of what this household actually
+/// A budget to start from, built out of what this household actually
 /// spends.
 ///
 /// > *"maybe there needs to be kind of a default categories and maybe if
@@ -240,15 +240,15 @@ pub fn budget_grid(conn: &Conn, month: &str) -> Result<crate::models::BudgetGrid
 ///
 /// # Why the median and not the average
 ///
-/// `autobudget` (§51) proposes the mean of the months that had spending, which
+/// `autobudget` proposes the mean of the months that had spending, which
 /// is Money's rule and is badly thrown by one bad month: a $3,000 transmission
 /// makes a $4,800 Automobile budget out of a household that normally spends
 /// $380. The median ignores it. The mean is still the right answer when there
 /// are only one or two months to look at — there is no middle to take — so
 /// below three months this falls back to it.
 ///
-/// Scheduled bills still win when they are larger, for the same reason §51
-/// gave: an annual insurance premium paid once is not spread by history, and
+/// Scheduled bills still win when they are larger, for a simple
+/// reason: an annual insurance premium paid once is not spread by history, and
 /// the schedule is the only place that knows it is coming.
 pub fn budget_starter(
     conn: &Conn,
@@ -379,7 +379,7 @@ fn middle(months: &[i64]) -> i64 {
     }
 }
 
-/// §131 — `cents` as a monthly figure. A yearly budget is a twelfth, rounded
+/// `cents` as a monthly figure. A yearly budget is a twelfth, rounded
 /// to the nearest cent: $100 a year is $8.33 a month. Twelve of those do not
 /// come back to exactly $100, which is fine — a budget is a intention, not a
 /// schedule of payments.
@@ -391,7 +391,7 @@ pub fn monthly_equivalent(cents: i64, period: &str) -> i64 {
     }
 }
 
-/// §130 — the next whole ten STRICTLY above `cents`.
+/// The next whole ten STRICTLY above `cents`.
 ///
 /// > *"increase it to a whole ten above the total since its a budget amount
 /// > it should always land slightly higher (my preference a whole ten number)
@@ -401,8 +401,8 @@ pub fn monthly_equivalent(cents: i64, period: &str) -> i64 {
 /// $610.00. A parent merely equal to the sum of its parts leaves nothing for
 /// the things nobody itemized, which is the whole reason the parent exists.
 ///
-/// §146 — BUT NEVER BY MORE THAN A TENTH, which is the same correction
-/// §144 had to make to the monthly figure.
+/// BUT NEVER BY MORE THAN A TENTH, which is the same correction
+/// an earlier fix had to make to the monthly figure.
 ///
 /// Found by walking B4b: *"I gave the child Interest a 60 annual amount and
 /// the parent changed to 120, that's not correct it should have been 70 at
@@ -414,7 +414,7 @@ pub fn monthly_equivalent(cents: i64, period: &str) -> i64 {
 /// At $600 a month, rounding to $610 is a rounding. At $5 a month, rounding
 /// to $10 is a decision, and not one anybody made. So: the next whole ten
 /// when that costs a tenth or less, the next whole DOLLAR otherwise — still
-/// strictly above, because §130's headroom is the point and $5 must not
+/// strictly above, because the envelope's headroom is the point and $5 must not
 /// stay $5.
 pub fn next_ten_above(cents: i64) -> i64 {
     if cents < 0 {
@@ -429,13 +429,13 @@ pub fn next_ten_above(cents: i64) -> i64 {
     (cents / 100 + 1) * 100
 }
 
-/// §130 — keep one parent's budget above what its children have claimed.
+/// Keep one parent's budget above what its children have claimed.
 ///
 /// Called after any write that could have pushed a category's children past
 /// it.
 ///
-/// §137 — and it now CREATES the envelope when the parent has none. §130
-/// deliberately did not: "inventing one because a child was budgeted would
+/// And it now CREATES the envelope when the parent has none. The first
+/// envelope rule deliberately did not: "inventing one because a child was budgeted would
 /// put a number on the screen that nobody typed." Driving it settled the
 /// argument the other way. The user's words: *"my goal here is to mainly budget off
 /// of parent categories but be able to see the child categories as well"* —
@@ -469,7 +469,7 @@ fn raise_parent_to_cover_children(
     raise_budget_to_cover_children(conn, &parent_id, &parent_name, month)
 }
 
-/// §142 — the envelope itself, for a parent named directly.
+/// The envelope itself, for a parent named directly.
 ///
 /// Split out of `raise_parent_to_cover_children` because the invariant has
 /// two ways to stop being true and only one was checked. See
@@ -482,7 +482,7 @@ fn raise_budget_to_cover_children(
 ) -> Result<Option<crate::models::RaisedParent>, String> {
     let parent_id = parent_id.to_string();
     let parent_name = parent_name.to_string();
-    // §131 — in MONTHLY cents, so a yearly child counts as its twelfth
+    // In MONTHLY cents, so a yearly child counts as its twelfth
     // rather than swamping a monthly parent with an annual figure.
     let claims: Vec<i64> = conn
         .prepare(
@@ -497,13 +497,13 @@ fn raise_budget_to_cover_children(
         .map_err(|e| e.to_string())?
         .collect::<Result<Vec<i64>, _>>()
         .map_err(|e| e.to_string())?;
-    // §155 — how many children HAVE a budget, apart from what they claim. A
+    // How many children HAVE a budget, apart from what they claim. A
     // child at zero claims nothing and still has one, and its parent shows
     // that zero rather than nothing (Z1).
     let children_budgeted = claims.len();
     let claimed: i64 = claims.iter().sum();
 
-    // §150 — what the user asked for, if they ever asked for anything.
+    // What the user asked for, if they ever asked for anything.
     let existing: Option<(i64, String, Option<i64>)> = conn
         .query_row(
             "SELECT target_cents, period, asked_for_cents FROM budgets
@@ -514,10 +514,10 @@ fn raise_budget_to_cover_children(
         .optional()
         .map_err(|e| e.to_string())?;
 
-    // §150 — the whole rule, in one line: the envelope is the LARGER of the
+    // The whole rule, in one line: the envelope is the LARGER of the
     // figure the user asked for and the figure its children need.
     //
-    // §131's floor is what the children need; `asked_for` is the user's own. Neither
+    // The floor is what the children need; `asked_for` is the user's own. Neither
     // overwrites the other, so a parent grows to cover its children and then
     // settles back onto the user's figure when they shrink — which is what was chosen
     // when shown the two designs:
@@ -534,7 +534,7 @@ fn raise_budget_to_cover_children(
         .and_then(|(_, period, a)| a.map(|a| monthly_equivalent(a, period)));
     let want = floor.max(asked.unwrap_or(0));
 
-    // Nothing wanted and nothing asked for: no envelope. §137's rule, now
+    // Nothing wanted and nothing asked for: no envelope. The empty-envelope rule, now
     // falling out of the arithmetic rather than being a special case.
     let Some((current, parent_period, _)) = existing else {
         if want <= 0 && children_budgeted == 0 {
@@ -546,7 +546,7 @@ fn raise_budget_to_cover_children(
             params![Uuid::new_v4().to_string(), parent_id, want, month],
         )
         .map_err(|e| e.to_string())?;
-        // §155 — a zero seeded from a child at zero is written silently.
+        // A zero seeded from a child at zero is written silently.
         if want <= 0 {
             return Ok(None);
         }
@@ -558,7 +558,7 @@ fn raise_budget_to_cover_children(
         }));
     };
 
-    // §154 — `asked` is `Some(0)` for a zero the user TYPED, and that is a budget
+    // `asked` is `Some(0)` for a zero the user TYPED, and that is a budget
     // of nothing rather than no budget: it stays. Only an envelope nobody
     // asked for (`None`) goes when the children stop claiming.
     if want <= 0 && asked.is_none() && children_budgeted == 0 {
@@ -589,7 +589,7 @@ fn raise_budget_to_cover_children(
         params![parent_id, month, raised],
     )
     .map_err(|e| e.to_string())?;
-    // §155 — settling back onto a zero is not a raise either.
+    // Settling back onto a zero is not a raise either.
     if want <= 0 {
         return Ok(None);
     }
@@ -601,7 +601,7 @@ fn raise_budget_to_cover_children(
     }))
 }
 
-/// §142 — the envelope rule applied to the line that was actually written,
+/// The envelope rule applied to the line that was actually written,
 /// whichever end of the relationship it sits on. The monthly twin of
 /// `plan::enforce_envelope`; the reasoning is written out there.
 ///
@@ -632,13 +632,13 @@ fn enforce_budget_envelope(
     Ok(mine.or(theirs))
 }
 
-/// §130 — every parent in a month, brought back above its children.
+/// Every parent in a month, brought back above its children.
 ///
 /// For the writes that set many lines at once (`apply_autobudget`), where
 /// enforcing per row would raise the same parent repeatedly on the way to the
 /// same answer. Returns how many parents moved.
 pub fn raise_all_parents(conn: &Conn, month: &str) -> Result<u32, String> {
-    // §142 — the parent's own name comes back with it, so this no longer has
+    // The parent's own name comes back with it, so this no longer has
     // to find "any one child" purely to name the parent to the old helper.
     let parents: Vec<(String, String)> = conn
         .prepare(
@@ -668,7 +668,7 @@ fn round_up_to(cents: i64, step: i64) -> i64 {
     ((cents + step - 1) / step) * step
 }
 
-/// Money's Autobudget (§51): "takes up to a year of history plus scheduled
+/// Money's Autobudget: "takes up to a year of history plus scheduled
 /// bills, proposes an amount per common category, you accept per line".
 ///
 /// For each expense category with spending in the `lookback` months before
@@ -775,7 +775,7 @@ pub fn apply_autobudget(
             if *cents < 0 {
                 return Err("a budget cannot be negative".into());
             }
-            // §179 — a line the user accepted is a figure they ASKED FOR (§150), the
+            // A line the user accepted is a figure they ASKED FOR, the
             // same as one they typed. Written without `asked_for_cents`, the
             // parent rule below read it as an envelope nobody asked for:
             // accept Automobile at $600 and Gasoline at $200 in Budget
@@ -794,7 +794,7 @@ pub fn apply_autobudget(
         }
     }
     tx.commit().map_err(|e| e.to_string())?;
-    // §130 — a run that budgeted children may have pushed them past their
+    // A run that budgeted children may have pushed them past their
     // parents. Reconciled once at the end rather than per row, which would
     // raise the same parent repeatedly on the way to the same answer.
     for k in 0..months as i64 {
@@ -843,7 +843,7 @@ fn map_budget(row: &Row) -> rusqlite::Result<Budget> {
 /// Takes a category **id**, not a name: the old name-keyed version happily
 /// created a junk category from whatever was typed, and a later rename
 /// orphaned the budget.
-/// §130 — `set_budget`, then keep the parent above its children.
+/// `set_budget`, then keep the parent above its children.
 ///
 /// The Budget screen writes through this rather than `set_budget` so the rule
 /// holds wherever a person types, and so the screen can say what it did. The
@@ -886,7 +886,7 @@ pub fn set_budget(
         return Err("category not found".into());
     }
     let id = Uuid::new_v4().to_string();
-    // §150 — a figure written HERE is what the user ASKED FOR, and it is kept even
+    // A figure written HERE is what the user ASKED FOR, and it is kept even
     // while the children push the envelope above it. It is the floor the
     // parent returns to when they stop claiming.
     conn.execute(
@@ -920,7 +920,7 @@ pub fn list_budgets(conn: &Conn, month_year: &str) -> Result<Vec<Budget>, String
 
 /// Delete a single budget entry.
 pub fn delete_budget(conn: &Conn, id: &str) -> Result<(), String> {
-    // §155 — Z2. The row's parent is re-checked after it goes: an envelope
+    // Z2. The row's parent is re-checked after it goes: an envelope
     // this child alone was holding up comes back down to what the user asked for,
     // or goes if they never asked and nothing else is claiming.
     let owner: Option<(String, String)> = conn
@@ -994,11 +994,11 @@ mod tests {
         assert!(autobudget(&c, "2026-9", 12).is_err());
     }
 
-    /// §129 — every expense category is a row, budgeted or not, because
+    /// Every expense category is a row, budgeted or not, because
     /// setting a budget has to be typing into a row you can already see.
     ///
-    /// (The rollup rule this test used to pin was §129's carve-out. §130
-    /// replaced it; `a_parent_carries_all_of_its_childrens_spending_even_when_they_budget`
+    /// (The rollup rule this test used to pin was an earlier carve-out. The
+    /// envelope rule replaced it; `a_parent_carries_all_of_its_childrens_spending_even_when_they_budget`
     /// is where that behavior is asserted now.)
     #[test]
     fn every_expense_category_is_a_row_whether_or_not_it_is_budgeted() {
@@ -1021,10 +1021,10 @@ mod tests {
         assert!(g.total_lines >= 2);
     }
 
-    /// §130 — a parent is the envelope for the WHOLE category, and its
+    /// A parent is the envelope for the WHOLE category, and its
     /// children are allocations inside it rather than escapes from it.
     ///
-    /// This reverses §129's carve-out, which shipped for a day. Both are
+    /// This reverses an earlier carve-out, which shipped for a day. Both are
     /// defensible; the user looked at it running and chose this one.
     #[test]
     fn a_parent_carries_all_of_its_childrens_spending_even_when_they_budget() {
@@ -1060,9 +1060,9 @@ mod tests {
         assert_eq!(g.budgeted_cents, 60_000, "not 80,000 — the child is inside the parent");
         assert_eq!(g.spent_cents, 17_000, "and the same money is still counted once");
 
-        // §137 — a budgeted child under an UNBUDGETED parent no longer counts
+        // A budgeted child under an UNBUDGETED parent no longer counts
         // on its own: the write gives the parent an envelope ($30 of children
-        // -> $40), and the child is inside it like any other. §130 left the
+        // -> $40), and the child is inside it like any other. The first envelope rule left the
         // parent empty and let the child stand alone; the user drove it and asked
         // for the envelope, because "mainly budget off of parent categories"
         // does not work when a parent's box is blank and the top total is
@@ -1072,7 +1072,7 @@ mod tests {
         let w = set_budget_line(&c, &novels, 3_000, "2026-09", "monthly").unwrap();
         let made = w.raised.expect("the parent should have been given an envelope");
         assert!(made.created, "created, not raised");
-        // §146 — $31, not $40. A $30 child does not justify a $40 envelope.
+        // $31, not $40. A $30 child does not justify a $40 envelope.
         assert_eq!(made.target_cents, 3_100);
         let g = budget_grid(&c, "2026-09").unwrap();
         assert!(!line(&g, &novels).counts_in_total, "it is inside Books now");
@@ -1080,7 +1080,7 @@ mod tests {
         assert_eq!(g.budgeted_cents, 63_100, "$600 of Automobile plus $31 of Books");
     }
 
-    /// §147 — the Bills sequence from walkthrough B4.
+    /// The Bills sequence from walkthrough B4.
     ///
     /// The Bills parent was set to 200, then Cellular 100 and Electricity 150
     /// raised it, then a larger Mortgage raised it again. Setting Mortgage
@@ -1125,20 +1125,20 @@ mod tests {
         assert_eq!(at(&bills), 26_000, "the parent corrects; it used to stay at 1,460");
         assert!(w.raised.is_some(), "and it says so");
 
-        // §150 — every child back to nothing, and the typed 200 COMES BACK.
+        // Every child back to nothing, and the typed 200 COMES BACK.
         // It was never overwritten, only outgrown:
         //
         // The better behavior: the original amount comes back.
         //
-        // §147 threw the 200 away the moment the children outgrew it, so
+        // An earlier version threw the 200 away the moment the children outgrew it, so
         // this used to leave Bills with no envelope at all.
         set_budget_line(&c, &cell, 0, "2026-09", "monthly").unwrap();
         set_budget_line(&c, &power, 0, "2026-09", "monthly").unwrap();
         assert_eq!(at(&bills), 20_000, "back to the 200 typed in the first place");
     }
 
-    /// §150 — and a parent nobody ever typed still disappears, because there
-    /// is no figure to fall back to. §137's rule, falling out of the
+    /// And a parent nobody ever typed still disappears, because there
+    /// is no figure to fall back to. The empty-envelope rule, falling out of the
     /// arithmetic rather than being a special case.
     #[test]
     fn an_envelope_nobody_asked_for_goes_when_its_children_stop_claiming() {
@@ -1147,12 +1147,12 @@ mod tests {
         let home = create_category(&c, "Home", "expense", None, None).unwrap().id;
         let rent = create_category(&c, "Rent", "expense", Some(&home), None).unwrap().id;
 
-        // Home has never been typed into. Budgeting Rent seeds it (§137).
+        // Home has never been typed into. Budgeting Rent seeds it.
         set_budget_line(&c, &rent, 150_000, "2026-09", "monthly").unwrap();
         let g = budget_grid(&c, "2026-09").unwrap();
         assert!(g.lines.iter().find(|l| l.category_id == home).unwrap().has_budget);
 
-        // §155 — Rent at ZERO is still a budget, and Home shows that zero (Z1).
+        // Rent at ZERO is still a budget, and Home shows that zero (Z1).
         let w = set_budget_line(&c, &rent, 0, "2026-09", "monthly").unwrap();
         let g = budget_grid(&c, "2026-09").unwrap();
         let home_line = g.lines.iter().find(|l| l.category_id == home).unwrap();
@@ -1168,7 +1168,7 @@ mod tests {
         );
     }
 
-    /// §154 — a zero someone typed into a parent is a budget of nothing, not no
+    /// A zero someone typed into a parent is a budget of nothing, not no
     /// budget. The branch above used to delete it too, reading "nothing
     /// wanted" as "nothing asked for"; only a NULL `asked_for` is that.
     #[test]
@@ -1192,17 +1192,17 @@ mod tests {
         set_budget_line(&c, &rent, 0, "2026-09", "monthly").unwrap();
         assert_eq!(home_line(), (true, 0), "the typed zero is still underneath");
 
-        // §155 — Z2: cleared rather than zeroed, and it is still the typed zero.
+        // Z2: cleared rather than zeroed, and it is still the typed zero.
         let w = set_budget_line(&c, &rent, 150_000, "2026-09", "monthly").unwrap();
         assert_eq!(home_line().1, 151_000);
         delete_budget(&c, &w.budget.id).unwrap();
         assert_eq!(home_line(), (true, 0), "clearing the child ran no envelope check before");
     }
 
-    /// §147 — and the other half, which is why this could not simply be
+    /// And the other half, which is why this could not simply be
     /// "the parent always equals its children": deliberate headroom survives.
     ///
-    /// §130's whole point is that a parent covers the things nobody
+    /// The envelope rule's whole point is that a parent covers the things nobody
     /// itemized. A figure someone typed is raised when the children outgrow it and
     /// is never reduced.
     #[test]
@@ -1236,9 +1236,9 @@ mod tests {
         set_budget_line(&c, &fuel, 0, "2026-09", "monthly").unwrap();
         assert_eq!(at(&auto), 90_000);
 
-        // It still gives way when the children outgrow it — but §150 keeps
+        // It still gives way when the children outgrow it — but it now keeps
         // the typed 900 underneath, so when they shrink it settles back onto THAT
-        // figure rather than onto theirs. §147 returned 310 here, having
+        // figure rather than onto theirs. It used to return 310 here, having
         // discarded the 900 on the way up.
         set_budget_line(&c, &fuel, 200_000, "2026-09", "monthly").unwrap();
         assert_eq!(at(&auto), 201_000, "the children need more than was asked for");
@@ -1246,7 +1246,7 @@ mod tests {
         assert_eq!(at(&auto), 90_000, "and the typed 900 is still underneath it");
     }
 
-    /// §130 — the user's rule: the parent lands on a whole ten STRICTLY above what
+    /// The user's rule: the parent lands on a whole ten STRICTLY above what
     /// its children claim, so there is always something left for the things
     /// nobody itemized.
     #[test]
@@ -1254,7 +1254,7 @@ mod tests {
         assert_eq!(next_ten_above(61_234), 62_000, "$612.34 of children -> $620.00");
         assert_eq!(next_ten_above(61_000), 62_000, "exactly $610.00 still goes up");
 
-        // §146 — and never by more than a tenth. Walking B4b: a $60-a-year
+        // And never by more than a tenth. Walking B4b: a $60-a-year
         // child is $5 a month, and the next whole ten above $5 is $10 — a
         // parent at DOUBLE its only child, which is not what "land slightly
         // higher" means. Above it still goes; by a whole dollar, not a whole
@@ -1275,9 +1275,9 @@ mod tests {
         let w = set_budget_line(&c, &fuel, 20_000, "2026-09", "monthly").unwrap();
         assert!(w.raised.is_none(), "$200 of a $600 envelope needs no help");
 
-        // §131 — the parent must be at least the next whole ten ABOVE what
+        // The parent must be at least the next whole ten ABOVE what
         // its children claim, not merely more than the bare total. $650.00 of
-        // children makes the parent $660.00 even from $655.00, which §130
+        // children makes the parent $660.00 even from $655.00, which the first envelope rule
         // would have left alone because 655 > 650.
         set_budget(&c, &auto, 65_500, "2026-09").unwrap();
         let w = set_budget_line(&c, &repairs, 45_000, "2026-09", "monthly").unwrap();
@@ -1294,8 +1294,8 @@ mod tests {
         assert_eq!(g.lines.iter().find(|l| l.category_id == auto).unwrap().target_cents, 66_000);
         assert_eq!(g.budgeted_cents, 66_000, "the envelope, not the envelope plus its parts");
 
-        // §137 — a parent with NO budget is given one, on the same floor a
-        // raise would land on. This reverses §130's refusal to invent a
+        // A parent with NO budget is given one, on the same floor a
+        // raise would land on. This reverses the old refusal to invent a
         // number; see the note on `raise_parent_to_cover_children`.
         let home = create_category(&c, "Home", "expense", None, None).unwrap().id;
         let rent = create_category(&c, "Rent", "expense", Some(&home), None).unwrap().id;
@@ -1313,9 +1313,9 @@ mod tests {
         let w = set_budget_line(&c, &rent, 150_000, "2026-09", "monthly").unwrap();
         assert!(w.raised.is_none(), "$1,510 already clears the floor");
 
-        // §137 — nothing claimed, nothing to cover: a child at zero must not
+        // Nothing claimed, nothing to cover: a child at zero must not
         // leave a $10 envelope behind, and must not push a deliberate $0
-        // parent up to $10 either. §155 (Z1) — it DOES give its parent a
+        // parent up to $10 either. It DOES give its parent a
         // zero, silently, so the two rows read the same; only clearing the
         // child takes that away.
         let empty = create_category(&c, "Gifts", "expense", None, None).unwrap().id;
@@ -1331,7 +1331,7 @@ mod tests {
         assert!(!g.lines.iter().find(|l| l.category_id == empty).unwrap().has_budget, "cleared: gone");
     }
 
-    /// §142 — the monthly twin of `plan::typing_into_a_parent_below_its_
+    /// The monthly twin of `plan::typing_into_a_parent_below_its_
     /// children_raises_it_back`: the rule above fired when a CHILD was
     /// written and never when the parent itself was.
     ///
@@ -1370,9 +1370,9 @@ mod tests {
         assert_eq!(g.lines.iter().find(|l| l.category_id == auto).unwrap().target_cents, 90_000);
     }
 
-    /// §142 — a yearly parent typed too low is raised IN ITS OWN PERIOD, so
-    /// correcting the figure never quietly converts it to a monthly one
-    /// (§131). The stored number is annual; the floor it has to clear is
+    /// A yearly parent typed too low is raised IN ITS OWN PERIOD, so
+    /// correcting the figure never quietly converts it to a monthly one.
+    /// The stored number is annual; the floor it has to clear is
     /// monthly.
     #[test]
     fn a_yearly_parent_raised_to_cover_its_children_stays_yearly() {
@@ -1394,7 +1394,7 @@ mod tests {
         assert_eq!(p.target_cents, 132_000);
     }
 
-    /// §142 — `set_budget`, the pre-§130 command, wrote the row and ran no
+    /// `set_budget`, the command from before the envelope rule, wrote the row and ran no
     /// envelope rule at all. Two registered commands writing the same table
     /// with different rules is the kind of thing that is only ever found by
     /// whichever caller picked the wrong one.
@@ -1418,7 +1418,7 @@ mod tests {
         );
     }
 
-    /// §131 — a cost you only ever know annually.
+    /// A cost you only ever know annually.
     ///
     /// > *"I know tracking under Automobile is about 100 per year but that
     /// > ends up in the monthly budget and is wrong"*
@@ -1454,12 +1454,12 @@ mod tests {
         assert_eq!(r.remaining_cents, 0);
 
         // The strip is monthly, so nothing here counts $100 of budget in a
-        // month that saw none of it. §137: Automobile had no envelope and now
+        // month that saw none of it. Automobile had no envelope and now
         // has one — the next whole ten above the child's $8.33 twelfth — so
         // the strip reads $9.00 of Automobile rather than the bare $8.33 of
         // Registration.
         //
-        // §146 — this used to read $20.00, and the comment here used to argue
+        // This used to read $20.00, and the comment here used to argue
         // that the overshoot was "the direction the user wants budgets to err in".
         // The user drove it (B4b) and said otherwise: *"that's not correct, it
         // should have been 70 at most right?"* A rule that lands slightly
@@ -1479,7 +1479,7 @@ mod tests {
         assert_eq!(r.spent_month_cents, 10_000);
     }
 
-    /// §131 — a yearly child counts as a twelfth when its parent's envelope is
+    /// A yearly child counts as a twelfth when its parent's envelope is
     /// checked, or one annual figure would swamp a monthly parent.
     #[test]
     fn a_yearly_child_claims_only_a_twelfth_of_its_parents_envelope() {
@@ -1522,7 +1522,7 @@ mod tests {
         assert_eq!(g.budgeted_lines, 1, "the zero counts as budgeted; the empty one does not");
     }
 
-    /// §129 — the starter proposes TOP-LEVEL categories from real spending,
+    /// The starter proposes TOP-LEVEL categories from real spending,
     /// and uses the middle month rather than the average so one bad month
     /// does not set the figure for the year.
     #[test]
@@ -1571,9 +1571,9 @@ mod tests {
         assert_eq!(round_up_to(0, 500), 0);
     }
 
-    // ── §179 ─────────────────────────────────────────────────────────────
+    // ── Asked-for figures and the parent rule ────────────────────────────
 
-    /// §179 — a line accepted in Budget starter is a figure asked for.
+    /// A line accepted in Budget starter is a figure asked for.
     #[test]
     fn an_accepted_starter_line_is_asked_for_and_the_parent_rule_keeps_it() {
         let db = TestDb::new("autobudget-asked");
@@ -1587,7 +1587,7 @@ mod tests {
         assert_eq!(budget_of(&c, &auto, "2026-10"), Some(60_000));
     }
 
-    /// §179 — a plan's month rows carry what the plan asked for, so the month
+    /// A plan's month rows carry what the plan asked for, so the month
     /// rule does not delete a parent the plan says is there on purpose.
     #[test]
     fn a_planned_parents_month_survives_a_childs_month_being_deleted() {

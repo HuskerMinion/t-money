@@ -1,4 +1,4 @@
-// The one viewer behind every report (§39).
+// The one viewer behind every report.
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -99,7 +99,7 @@ describe("drill-through", () => {
     });
   });
 
-  // §68: a category row opens a quick look first; the full report is a button in it.
+  // A category row opens a quick look first; the full report is a button in it.
   const txnReport: Report = {
     kind: "transactions_by_category", title: "Transactions by category", subtitle: "8/1/2026 through 8/31/2026", chart: null,
     columns: [{ label: "Date", kind: "text" }, { label: "Num", kind: "text" }, { label: "Payee", kind: "text" }, { label: "Account", kind: "text" }, { label: "Memo", kind: "text" }, { label: "Amount", kind: "money" }, { label: "C", kind: "text" }],
@@ -135,8 +135,8 @@ describe("drill-through", () => {
   });
 });
 
-// §166 — a click on a chart's bar is a click on its row.
-describe("chart clicks (§166)", () => {
+// A click on a chart's bar is a click on its row.
+describe("chart clicks", () => {
   it("clicking a bar opens the quick look for that category", async () => {
     const txn: Report = { ...report, kind: "transactions_by_category", title: "Transactions by category", chart: null, rows: [{ key: "c-auto", key_kind: "category", label: "Automobile", level: 0, style: "header", cells: [] }] };
     setIpcHandlers({ run_report: (args) => ((args as { request: { kind: string } }).request.kind === "transactions_by_category" ? txn : report) });
@@ -150,7 +150,7 @@ describe("chart clicks (§166)", () => {
   });
 });
 
-describe("the scope every report honors (§113)", () => {
+describe("the scope every report honors", () => {
   it("sends absent filters as nulls, and set ones as themselves", () => {
     expect(filtersOf(spec)).toEqual({
       payee_ids: null,
@@ -257,7 +257,7 @@ describe("the scope every report honors (§113)", () => {
   });
 });
 
-describe("classification reports (§114)", () => {
+describe("classification reports", () => {
   it("a value row opens its transactions; the unclassified row opens the ones with none", () => {
     const row = { key: "v-cos", key_kind: "class_value" as const, label: "Maple", level: 0, style: "normal" as const, cells: [] };
     expect(drillFor(spec, row)).toEqual({ kind: "transactions_by_classification", classValueIds: ["v-cos"] });
@@ -290,7 +290,7 @@ describe("the page", () => {
         detail: null,
         security_ids: null,
         tax_scope: false,
-        // §113 — the rest of the scope rides on every request, absent
+        // The rest of the scope rides on every request, absent
         // meaning "no filter". Listed here so that adding a filter without
         // wiring it through `filtersOf` fails loudly.
         payee_ids: null,
@@ -333,7 +333,7 @@ describe("the page", () => {
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
 
-  it("Customize narrows the accounts and the request carries them, on Apply (§118)", async () => {
+  it("Customize narrows the accounts and the request carries them, on Apply", async () => {
     useAccountStore.setState({
       accounts: [{ id: "a-1", name: "Checking" } as never, { id: "a-2", name: "Visa" } as never],
     });
@@ -349,7 +349,7 @@ describe("the page", () => {
     expect(onSpec).toHaveBeenCalledWith(expect.objectContaining({ accountIds: ["a-2"] }));
   });
 
-  it("a second click unticks, and Cancel throws the whole edit away (§118)", async () => {
+  it("a second click unticks, and Cancel throws the whole edit away", async () => {
     useAccountStore.setState({
       accounts: [{ id: "a-1", name: "Checking" } as never, { id: "a-2", name: "Visa" } as never],
     });
@@ -367,7 +367,7 @@ describe("the page", () => {
     expect(screen.queryByRole("region", { name: "Customize report" })).not.toBeInTheDocument();
   });
 
-  it("the period sits above the report, not under it (§118)", async () => {
+  it("the period sits above the report, not under it", async () => {
     setup();
     const title = await screen.findByRole("heading", { name: "Spending by category" });
     const range = screen.getByRole("group", { name: "Report period" });
@@ -377,7 +377,7 @@ describe("the page", () => {
     expect(range.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it("a half-typed custom date does not re-run the report (§118)", async () => {
+  it("a half-typed custom date does not re-run the report", async () => {
     const { onSpec } = setup();
     await screen.findByRole("heading", { name: "Spending by category" });
     const from = screen.getByLabelText("From");
@@ -426,7 +426,7 @@ describe("the page", () => {
     expect(next.savedId).toBeUndefined();
   });
 
-  it("Customize's Rows and Chart choices reshape the table and ride in the spec (§47)", async () => {
+  it("Customize's Rows and Chart choices reshape the table and ride in the spec", async () => {
     const { onSpec } = setup();
     await screen.findByRole("heading", { name: "Spending by category" });
     await userEvent.click(screen.getByRole("button", { name: "Customize…" }));
@@ -447,8 +447,8 @@ describe("the page", () => {
   });
 });
 
-// §183 — what the code review found in the viewer.
-describe("§183 — Customize, Save and Remove", () => {
+// What the code review found in the viewer.
+describe("Customize, Save and Remove", () => {
   it("lets At least be typed as $50, and reads it on Apply", async () => {
     const { onSpec } = setup();
     await screen.findByRole("heading", { name: "Spending by category" });

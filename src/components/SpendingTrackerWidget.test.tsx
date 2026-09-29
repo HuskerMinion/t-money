@@ -1,4 +1,4 @@
-// §183 — the Spending Tracker on Home. A load that failed read as a month
+// The Spending Tracker on Home. A load that failed read as a month
 // with no spending in it.
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -12,7 +12,7 @@ beforeEach(() => {
   useBudgetStore.setState({ month: "2026-09", summary: [], error: null });
 });
 
-describe("§183 — the Spending Tracker says when it could not load", () => {
+describe("The Spending Tracker says when it could not load", () => {
   it("shows the store's error instead of \"No spending recorded\"", () => {
     useBudgetStore.setState({ error: "database is locked" });
     render(<SpendingTrackerWidget onOpenReport={vi.fn()} />);

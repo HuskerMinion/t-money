@@ -1,4 +1,4 @@
-// §183 — Settings panes that failed in silence: the rounding and price-timer
+// Settings panes that failed in silence: the rounding and price-timer
 // choices had no status line, and "Change folder…" turned a switched-off
 // daily backup back on.
 import { render, screen, waitFor } from "@testing-library/react";
@@ -35,7 +35,7 @@ beforeEach(() => {
   stub();
 });
 
-describe("§183 — the Money panes say what happened", () => {
+describe("The Money panes say what happened", () => {
   it("a refused rounding puts the select back and shows the refusal", async () => {
     stub({
       set_ui_setting: () => {
@@ -65,7 +65,7 @@ describe("§183 — the Money panes say what happened", () => {
   });
 });
 
-describe("§183 — Change folder… keeps the backup switch where it was", () => {
+describe("Change folder… keeps the backup switch where it was", () => {
   it("moving the folder does not turn a switched-off daily backup back on", async () => {
     stub({ set_backup_config: (args) => ({ ...CFG, enabled: args.enabled, folder: args.folder }) });
     dialog.open.mockResolvedValue("E:\\New");

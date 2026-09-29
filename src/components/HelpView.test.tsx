@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// The Help tab (§62): every topic renders, links cross over, search finds.
+// The Help tab: every topic renders, links cross over, search finds.
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
@@ -68,7 +68,7 @@ describe("HelpView", () => {
   });
 });
 
-// §110 — help that has fallen behind the app is worse than no help, because
+// Help that has fallen behind the app is worse than no help, because
 // it is believed. These are the checks that would have caught the drift a user
 // found: the Themes page still said "seven looks" three sections after there
 // were fourteen of each, and nothing in Help mentioned files, undo, the TSP
@@ -76,7 +76,7 @@ describe("HelpView", () => {
 //
 // Deliberately mechanical. Nobody is going to remember to reread the help
 // after adding a look; a test will.
-describe("help keeps up with the app (§110)", () => {
+describe("help keeps up with the app", () => {
   const topic = (id: string) => HELP_TOPICS.find((t) => t.id === id);
 
   it("names every look and every theme that ships", async () => {

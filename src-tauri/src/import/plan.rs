@@ -1,4 +1,4 @@
-//! §90 — what a plan statement's memo means.
+//! What a plan statement's memo means.
 //!
 //! A 401(k) or 403(b) export is not a brokerage statement. The plan
 //! administrator writes only the share side: a `Buy` for every payroll
@@ -19,7 +19,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Treatment {
-    /// Exactly what the file says (what every import did before §90).
+    /// Exactly what the file says (what every import did before treatments existed).
     AsIs,
     /// A buy paid for by money that never passed through a tracked account —
     /// payroll deferral, employer match. The buy is written, and a deposit

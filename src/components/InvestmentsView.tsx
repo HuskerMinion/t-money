@@ -1,4 +1,4 @@
-// Investing — Money's Portfolio page (§41): every holding by account, at the
+// Investing — Money's Portfolio page: every holding by account, at the
 // latest prices, with the cost basis and gain that the LOTS say, not a
 // number anyone typed. A holding opens to show its lots; a security opens
 // to its price history. The register is where buys and sells are entered
@@ -38,17 +38,17 @@ export default function InvestmentsView({ onOpenAccount }: Props) {
   const [open, setOpen] = useState<string | null>(null);
   const [panel, setPanel] = useState<"none" | "securities">("none");
   const [roi, setRoi] = useState<RoiPeriod[] | null>(null);
-  // §172 — the two returns Money never had, by period. §172.2: for every
+  // The two returns Money never had, by period: for every
   // holding, or one fund (`perfFor` is its security id); loaded on its
   // own, after the page, so the holdings never wait for it.
   const [perf, setPerf] = useState<Performance[] | null>(null);
-  // §172.3 — two pickers: the account (every investment account, or one)
+  // Two pickers: the account (every investment account, or one)
   // and the holding (the whole of that, or one security in it). "My TSP is
   // all in the S Fund; I want the whole plan's return AND the fund's."
   const [perfAccount, setPerfAccount] = useState("");
   const [perfFor, setPerfFor] = useState("");
   const [perfSerial, setPerfSerial] = useState(0);
-  // §183 — a failed performance load is its own state. It used to become an
+  // A failed performance load is its own state. It used to become an
   // empty list, which read "Nothing held long enough to measure" — a claim
   // about the holdings, made when nothing had been measured at all.
   const [perfError, setPerfError] = useState<string | null>(null);
@@ -88,7 +88,7 @@ export default function InvestmentsView({ onOpenAccount }: Props) {
     };
   }, [perfAccount, perfFor, perfSerial]);
 
-  // §115 — how old the prices are. Shown beside the portfolio, because a
+  // How old the prices are. Shown beside the portfolio, because a
   // market value is only as current as the price under it, and this app
   // fetches only when asked.
   async function loadPriceStatus() {
@@ -125,7 +125,7 @@ export default function InvestmentsView({ onOpenAccount }: Props) {
       const s = await api.refreshInvestmentPrices(auto);
       const parts = [`${s.updated} updated`];
       if (s.skipped) parts.push(`${s.skipped} without a symbol`);
-      // §180 — a line with no symbol is about the run ("3 more not tried").
+      // A line with no symbol is about the run ("3 more not tried").
       for (const f of s.failures) parts.push(f.symbol ? `${f.symbol}: ${f.reason}` : f.reason);
       setMsg(parts.join(" · "));
       await load();
@@ -137,7 +137,7 @@ export default function InvestmentsView({ onOpenAccount }: Props) {
     }
   }
 
-  // §97: Tools → Update prices, offered only while the Portfolio is open and
+  // Tools → Update prices, offered only while the Portfolio is open and
   // there is a symbol to look up.
   useCommand("tools.update.prices", () => void refreshPrices(), !refreshing && securities.length > 0);
 
@@ -195,7 +195,7 @@ export default function InvestmentsView({ onOpenAccount }: Props) {
             </Notice>
           )}
           {msg && <div className="text-[12px] p-2">{msg}</div>}
-          {/* §96: rows the lot engine could not honor — a sale of more shares
+          {/* Rows the lot engine could not honor — a sale of more shares
               than were held, usually a stray fraction left by an import. They
               must never be hidden, but they are also not news after the first
               read, and a plan with a dozen of them pushed the holdings table
@@ -312,14 +312,14 @@ export default function InvestmentsView({ onOpenAccount }: Props) {
 
       {panel === "securities" && <SecuritiesPanel securities={securities} onChanged={load} />}
 
-      {/* §172 — performance: what the investments earned (time-weighted,
+      {/* Performance: what the investments earned (time-weighted,
           the number to hold against a benchmark) and what the investor
           earned (money-weighted, where the timing of the money counts). */}
       {positions.length > 0 && (
         <section className="aero-card">
           <div className="aero-card-title flex items-center justify-between gap-2 flex-wrap">
             <span>Performance</span>
-            {/* §172.3 — the account, then the holding within it. Both lists
+            {/* The account, then the holding within it. Both lists
                 are what is actually held. */}
             <span className="flex items-center gap-2 font-normal text-[11px]">
               <select
@@ -407,7 +407,7 @@ export default function InvestmentsView({ onOpenAccount }: Props) {
         </section>
       )}
 
-      {/* §172 — allocation: what kind of thing the money is in. The security
+      {/* Allocation: what kind of thing the money is in. The security
           type comes from Securities…; an imported one starts as Other. */}
       {positions.length > 0 && (() => {
         const labels: Record<string, string> = { stock: "Stocks", etf: "Exchange-traded funds", mutual_fund: "Mutual funds", bond: "Bonds", cd: "CDs", money_market: "Money market", other: "Other" };
@@ -676,10 +676,10 @@ function SecuritiesPanel({ securities, onChanged }: { securities: Security[]; on
   const [prices, setPrices] = useState<SecurityPrice[]>([]);
   const [priceDate, setPriceDate] = useState(today());
   const [priceText, setPriceText] = useState("");
-  // §183 — a write in flight. Add/Save could be pressed twice before the
+  // A write in flight. Add/Save could be pressed twice before the
   // first answer, and the second Add made the same security again.
   const [saving, setSaving] = useState(false);
-  // §183 — whose price history is on screen, read synchronously. A slow
+  // Whose price history is on screen, read synchronously. A slow
   // answer for the security clicked first used to land after the one clicked
   // second, putting its prices (and their Del buttons) under the other's name.
   const pricesForRef = useRef<string | null>(null);
@@ -755,7 +755,7 @@ function SecuritiesPanel({ securities, onChanged }: { securities: Security[]; on
     }
   }
 
-  // §75: Money's QIF carries no symbols. When the names ARE the tickers, one
+  // Money's QIF carries no symbols. When the names ARE the tickers, one
   // click copies them across so "Update prices" has something to fetch.
   const [fillMsg, setFillMsg] = useState<string | null>(null);
   const missing = securities.filter((s) => !s.symbol.trim()).length;

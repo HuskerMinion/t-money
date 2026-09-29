@@ -1,4 +1,4 @@
-//! Payees (migration 0011) and payee rules (§84).
+//! Payees (migration 0011) and payee rules.
 
 use crate::models::{Payee, PayeeRule, PayeeRuleChange, RuleConditions, UsedText};
 use rusqlite::{params, Connection, OptionalExtension, Row};
@@ -14,7 +14,7 @@ use super::*;
 ///
 /// EVERY path that writes `transactions.payee` must also go through this, or
 /// `payee_id` stays NULL and the payee never enters the `payees` table — which
-/// is precisely the bug §13 documents. An empty name yields `None`.
+/// is precisely a bug this app once had. An empty name yields `None`.
 pub(super) fn payee_id_for(
     conn: &Connection,
     name: &str,
@@ -50,10 +50,10 @@ const PAYEE_SELECT: &str = r#"
            (SELECT COUNT(*) FROM transactions t WHERE t.payee_id = pe.id) AS usage_count,
            pe.updated_at,
            -- The amount of this payee's most recent transaction. Money offers
-           -- it alongside the category when you re-enter a known payee (§17.4).
+           -- it alongside the category when you re-enter a known payee.
            --
            -- Derived rather than stored: a `payees.last_amount_cents` column
-           -- would have to be maintained by all five write paths (§16) and by
+           -- would have to be maintained by all five write paths and by
            -- delete, void and merge, and would go stale the first time one of
            -- them was missed. This cannot.
            --
@@ -79,7 +79,7 @@ pub fn list_payees(conn: &Conn) -> Result<Vec<Payee>, String> {
     Ok(out)
 }
 
-/// §160 — every description a split line has carried, most-used first, so
+/// Every description a split line has carried, most-used first, so
 /// the split dialog can complete one as it is typed the way the Payee field
 /// completes a payee. Case folds: "milk" and "Milk" are one entry.
 pub fn list_split_descriptions(conn: &Conn) -> Result<Vec<UsedText>, String> {
@@ -113,12 +113,12 @@ fn get_payee(conn: &Conn, id: &str) -> Result<Payee, String> {
 /// the old text. Renaming onto an existing payee is refused — that is a merge,
 /// and merging silently would be a surprising way to lose a payee.
 ///
-/// §186 — the copies of the name in scheduled bills, common transactions and
+/// The copies of the name in scheduled bills, common transactions and
 /// rename rules are rewritten too (`PAYEE_REFS`). They were left saying the
 /// old name, and each of them turns a name back into a payee when used, so
 /// the next bill entered from a schedule quietly recreated the payee just
 /// renamed away. And the rename is recorded for undo — it was not, and did
-/// not empty the stack either, so Ctrl+Z reached past it (§132).
+/// not empty the stack either, so Ctrl+Z reached past it.
 pub fn update_payee(
     conn: &Conn,
     id: &str,
@@ -197,7 +197,7 @@ pub fn update_payee(
     Ok((get_payee(conn, id)?, step))
 }
 
-/// §186 — how a column names a payee: by `payees.id`, or by the payee's
+/// How a column names a payee: by `payees.id`, or by the payee's
 /// name, which is how a template, a schedule and a rename rule store one.
 #[derive(Clone, Copy, PartialEq)]
 enum NamedBy {
@@ -205,7 +205,7 @@ enum NamedBy {
     Name,
 }
 
-/// §186 — every place in the schema that names a payee, as `(table, key
+/// Every place in the schema that names a payee, as `(table, key
 /// column, column to rewrite, column that picks the rows, how it names
 /// one)`.
 ///
@@ -214,7 +214,7 @@ enum NamedBy {
 /// The other three store the payee's NAME, and each of them turns back into
 /// a payee through `upsert_payee`, which matches on the name: entering a
 /// scheduled bill, using a common transaction, applying a rename rule. Before
-/// §186 the merge rewrote `transactions` alone, so merging Best Buy into
+/// this fix, the merge rewrote `transactions` alone, so merging Best Buy into
 /// Chewy left every schedule, template and rule still saying "Best Buy" —
 /// and the next time one of them wrote a transaction, `upsert_payee` quietly
 /// brought back the payee the merge had just retired.
@@ -229,7 +229,7 @@ const PAYEE_REFS: &[(&str, &str, &str, &str, NamedBy)] = &[
     ("payee_rules", "id", "payee_name", "payee_name", NamedBy::Name),
 ];
 
-/// §186 — every `PAYEE_REFS` cell that names payee `id` (called `name`), as
+/// Every `PAYEE_REFS` cell that names payee `id` (called `name`), as
 /// it is now and as it will be once it names `becomes_id` / `becomes_name`
 /// instead. The first is the undo, the second the write and the redo.
 ///
@@ -281,7 +281,7 @@ fn payee_ref_cells(
     Ok((before, after))
 }
 
-/// §186 — write photographed cells, row by row by key.
+/// Write photographed cells, row by row by key.
 ///
 /// By key rather than `WHERE payee_id = ?1`: both `transactions` entries in
 /// `PAYEE_REFS` pick their rows by that column, and the first UPDATE would
@@ -303,10 +303,10 @@ fn write_cells(tx: &Connection, cells: &[undo::Cells]) -> Result<(), String> {
 /// transaction and rename rule that names it — then delete the source payee.
 /// Returns the surviving payee and the step that puts it all back.
 ///
-/// §186 — undoable, the way §133 made a category merge: *"I merged Best Buy
+/// Undoable, the way a category merge is: *"I merged Best Buy
 /// into Chewy … CTRL+Z did not undo it."* Nothing was recorded and nothing
 /// was invalidated, so Ctrl+Z either did nothing or reached past the merge
-/// and took back whatever came before it (§132). Built from `undo::Cells`
+/// and took back whatever came before it. Built from `undo::Cells`
 /// for the same reason as `fold_category`: a merge changes one column on
 /// each row it touches and deletes nothing but the payee itself.
 ///
@@ -361,8 +361,8 @@ pub fn merge_payees(conn: &Conn, from_id: &str, into_id: &str) -> Result<(Payee,
 /// merged, not deleted — deleting would leave the register showing a name with
 /// no payee behind it.
 ///
-/// §186 — recorded for undo rather than emptying the stack. §132 allows
-/// either; this is one row that nothing points at, so the step is that row
+/// Recorded for undo rather than emptying the stack. The undo rules
+/// allow either; this is one row that nothing points at, so the step is that row
 /// and nothing else, and throwing away every earlier step on the stack to
 /// delete a typo would cost the user far more than recording it does.
 pub fn delete_payee(conn: &Conn, id: &str) -> Result<undo::Step, String> {
@@ -394,7 +394,7 @@ pub fn delete_payee(conn: &Conn, id: &str) -> Result<undo::Step, String> {
 }
 
 /// Ensure a payee row exists for `name` and remember the category it was filed
-/// under, so the next entry can autofill it (§6.1b).
+/// under, so the next entry can autofill it.
 ///
 /// Takes `&Connection`, not `&Conn`: the transfer, reconcile and import paths
 /// all hold a `rusqlite::Transaction`, and a payee written outside their
@@ -443,8 +443,7 @@ pub fn upsert_payee(
 /// Every payee until now arrived as a side effect of entering a transaction
 /// (`upsert_payee`), so the Payees screen could rename, merge and delete rows
 /// it had no way to create — you could not set up a payee and its category
-/// before the first transaction, which is exactly when you would want to
-/// (§37.4).
+/// before the first transaction, which is exactly when you would want to.
 ///
 /// Unlike `upsert_payee` this REFUSES a name that already exists, case
 /// insensitively. Quietly returning the existing row would look like success
@@ -480,7 +479,7 @@ pub fn create_payee(
 }
 
 // ---------------------------------------------------------------------------
-// Payee rules (§84)
+// Payee rules
 // ---------------------------------------------------------------------------
 
 const PAYEE_RULE_SELECT: &str = "SELECT r.id, r.match_text, r.payee_name, r.category_id, c.name, r.created_at,
@@ -504,7 +503,7 @@ fn map_rule(r: &Row) -> rusqlite::Result<PayeeRule> {
     })
 }
 
-/// Most specific first: §171's conditions count over the text's length, so
+/// Most specific first: a rule's conditions count over the text's length, so
 /// "AMAZON under $20" outranks "AMAZON", and "AMAZON PRIME" outranks
 /// "AMAZON" on a row that contains both. Ties by name.
 pub fn list_payee_rules(conn: &Connection) -> Result<Vec<PayeeRule>, String> {
@@ -518,7 +517,7 @@ pub fn list_payee_rules(conn: &Connection) -> Result<Vec<PayeeRule>, String> {
     Ok(out)
 }
 
-/// A rule: when a downloaded payee contains `match_text` — and, since §171,
+/// A rule: when a downloaded payee contains `match_text` — and
 /// meets `when` — call it `payee_name` and file it under `category_id` if
 /// the file gave none. Two rules on one text are allowed when their
 /// conditions differ; the same text with the same conditions is refused.
@@ -597,7 +596,7 @@ pub fn delete_payee_rule(conn: &Conn, id: &str) -> Result<(), String> {
 
 /// The rule for a downloaded row, if any: the first in `list_payee_rules`'
 /// order (most specific first) whose `match_text` the payee contains,
-/// case-insensitively, and whose §171 conditions the row meets — the
+/// case-insensitively, and whose conditions the row meets — the
 /// amount's size within the rule's range, the memo containing its text,
 /// the account being its account. A condition a rule does not set is met.
 pub fn rule_for<'a>(rules: &'a [PayeeRule], payee: &str, amount_cents: i64, memo: &str, account_id: &str) -> Option<&'a PayeeRule> {
@@ -614,7 +613,7 @@ pub fn rule_for<'a>(rules: &'a [PayeeRule], payee: &str, amount_cents: i64, memo
     })
 }
 
-/// §106 — what applying the rules WOULD do, row by row.
+/// What applying the rules WOULD do, row by row.
 ///
 /// The apply below used to be the only way to find out: you pressed a button
 /// and were told a number afterwards. On a file with ten years in it, "412
@@ -667,7 +666,7 @@ fn payee_rule_changes(conn: &Conn) -> Result<Vec<PayeeRuleChange>, String> {
         // about a name, and one that re-files something you categorized by
         // hand would be a rule you could not trust to run.
         //
-        // §178: a split row's empty category is not a gap to fill — its lines
+        // A split row's empty category is not a gap to fill — its lines
         // carry the categories (`set_splits` clears the row's own). Filing
         // one wrote a category onto the mortgage payment that no line had.
         // It is still renamed; the name is the row's.
@@ -697,7 +696,7 @@ fn payee_rule_changes(conn: &Conn) -> Result<Vec<PayeeRuleChange>, String> {
     Ok(out)
 }
 
-/// §106 — the preview, for the dialog.
+/// The preview, for the dialog.
 pub fn preview_payee_rules(conn: &Conn) -> Result<Vec<PayeeRuleChange>, String> {
     payee_rule_changes(conn)
 }
@@ -707,7 +706,7 @@ pub fn preview_payee_rules(conn: &Conn) -> Result<Vec<PayeeRuleChange>, String> 
 /// `only` limits it to the transaction ids the user left ticked in the
 /// preview; `None` means all of them, which is what the old button did.
 /// Returns the ids actually changed, so the caller can put them on the undo
-/// stack — this is one bulk edit and it has to come back as one step (§101).
+/// stack — this is one bulk edit and it has to come back as one step.
 ///
 /// The payee ROW created by a rename is left behind by an undo. That is
 /// deliberate and harmless: an unused payee in the list costs nothing, where
@@ -747,7 +746,7 @@ pub fn apply_payee_rules_to(conn: &Conn, only: Option<&[String]>) -> Result<Vec<
     Ok(changed)
 }
 
-/// The old signature, kept because §84's button and its tests use it.
+/// The old signature, kept because an older button and its tests use it.
 pub fn apply_payee_rules(conn: &Conn) -> Result<u32, String> {
     Ok(apply_payee_rules_to(conn, None)?.len() as u32)
 }
@@ -803,7 +802,7 @@ mod tests {
             .all(|r| r.payee == "Kroger"));
     }
 
-    /// §186 — *"I merged Best Buy into Chewy … CTRL+Z did not undo it."*
+    /// *"I merged Best Buy into Chewy … CTRL+Z did not undo it."*
     /// Undo brings back the payee and every reference to it, including the
     /// three that store its name rather than its id; redo lands where the
     /// merge did.
@@ -873,7 +872,7 @@ mod tests {
         merged("redo");
     }
 
-    /// §186 — a rename reaches the schedule, the common transaction and the
+    /// A rename reaches the schedule, the common transaction and the
     /// rename rule as well as the register, so none of them brings the old
     /// payee back when used; and undo and redo cover every one of them.
     #[test]
@@ -941,8 +940,8 @@ mod tests {
         assert!(!list_payees(&c).unwrap().iter().any(|x| x.name == "Best Buy"), "the old payee came back");
     }
 
-    /// §186 — undoing a merge after the old name was typed again is refused
-    /// (`UNIQUE (name)`), with words the shell's §183 notice can show, and
+    /// Undoing a merge after the old name was typed again is refused
+    /// (`UNIQUE (name)`), with words the shell's notice can show, and
     /// the refusal changes nothing: `restore` runs in one SQL transaction.
     #[test]
     fn undoing_a_merge_after_the_old_name_came_back_is_refused_and_changes_nothing() {
@@ -967,7 +966,7 @@ mod tests {
         assert!(!list_payees(&c).unwrap().iter().any(|p| p.id == from), "a refused undo put the old row back");
     }
 
-    /// §186 — `PAYEE_REFS` names every foreign key to `payees`. A migration
+    /// `PAYEE_REFS` names every foreign key to `payees`. A migration
     /// that adds one fails here rather than in a merge that leaves it behind.
     #[test]
     fn every_foreign_key_to_payees_is_one_the_merge_rewrites() {
@@ -990,7 +989,7 @@ mod tests {
         }
     }
 
-    /// §186 — deleting an unused payee is a step: undo puts the row back
+    /// Deleting an unused payee is a step: undo puts the row back
     /// with its default category, redo takes it away again.
     #[test]
     fn deleting_an_unused_payee_can_be_undone_and_redone() {
@@ -1033,12 +1032,12 @@ mod tests {
         create_transaction(&c, &acct, "2026-08-01", "Netflix", Some(cat.id.as_str()), -1_599, None, None)
             .expect("txn");
 
-        // This is what the entry form's autofill reads (§17.2).
+        // This is what the entry form's autofill reads.
         let payee = list_payees(&c).expect("payees").remove(0);
         assert_eq!(payee.last_category_id.as_deref(), Some(cat.id.as_str()));
     }
 
-    // ── payee amount recall (§17.4) ──────────────────────────────────────
+    // ── payee amount recall ──────────────────────────────────────
     //
     // `last_amount_cents` is derived in SQL rather than stored, so these test
     // the derivation: which transaction counts as "last", and which do not.
@@ -1156,7 +1155,7 @@ mod tests {
         assert_eq!(payee_named(&payees, "Paycheck").last_amount_cents, Some(250_000));
     }
 
-    // §160 — the split dialog completes a description from the ones used
+    // The split dialog completes a description from the ones used
     // before, most used first, one entry per spelling.
     #[test]
     fn split_descriptions_are_listed_most_used_first_and_case_folded() {
@@ -1179,7 +1178,7 @@ mod tests {
         assert_eq!(names, vec![("Milk".to_string(), 2), ("Bread".to_string(), 1)]);
     }
 
-    // §171 — a rule can look at the amount, the memo and the account, and a
+    // A rule can look at the amount, the memo and the account, and a
     // rule with a condition outranks one without.
     #[test]
     fn rules_with_conditions_match_by_amount_memo_and_account_and_outrank_plain_ones() {

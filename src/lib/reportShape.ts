@@ -1,4 +1,4 @@
-// Money's Customize → Rows and Chart tabs (§47), applied on the viewer's
+// Money's Customize → Rows and Chart tabs, applied on the viewer's
 // side to a report the engine already produced: sort the rows of each
 // section, fold the small ones into "Other", pick the chart kind. The
 // engine's numbers are never changed — a block moves or merges whole, and
@@ -12,9 +12,9 @@ export interface ReportOptions {
   /** Rows under this share of their section's absolute total fold into
    *  "Other". Basis points; 0 = off. */
   combineUnderBps: number;
-  /** auto = what the engine chose; otherwise one of the viewer's styles (§59). */
+  /** auto = what the engine chose; otherwise one of the viewer's styles. */
   chart: "auto" | ChartStyle;
-  /** Money-style depth on the chart (§59). */
+  /** Money-style depth on the chart. */
   depth: boolean;
   /** Investment reports: which securities. Empty = all. */
   securityIds: string[];
@@ -43,7 +43,7 @@ interface Block {
   amount: number;
 }
 
-/** What the row at `at` is worth in cell `i`. §180: a row that carries a
+/** What the row at `at` is worth in cell `i`. A row that carries a
  *  number already includes the rows beneath it — the engine prints a
  *  parent's amount and then its breakdown (reports.rs's asset-allocation
  *  lines) — so its own cell is the answer and adding the children would

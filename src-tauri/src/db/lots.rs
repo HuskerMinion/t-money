@@ -1,5 +1,5 @@
 // Lots: the part of the app that makes cost basis and capital gains true
-// rather than typed (§41).
+// rather than typed.
 //
 // Nothing here is stored. A holding is the result of replaying an account's
 // investment rows in date order: buys, reinvestments and Add Shares open
@@ -75,7 +75,7 @@ pub fn value_cents(shares_micro: i64, price_micro: i64) -> i64 {
     mul_div(shares_micro, price_micro, 10_000_000_000)
 }
 
-/// How a holding's value is rounded to the cent (§79). Brokers differ:
+/// How a holding's value is rounded to the cent. Brokers differ:
 /// some truncate (20.125 sh × $10.07 = 202.65875 → 202.65); the app
 /// rounded half away and printed 202.66. The file says which it wants;
 /// nothing else in the arithmetic changes. Cost basis, proceeds and cash
@@ -101,7 +101,7 @@ pub fn rounding(conn: &Connection) -> Result<Rounding, String> {
     })
 }
 
-/// §81: the account's own choice when it has one, else the file's.
+/// The account's own choice when it has one, else the file's.
 pub fn rounding_for_account(conn: &Connection, account_id: &str, file_default: Rounding) -> Result<Rounding, String> {
     let v: Option<String> = conn
         .query_row("SELECT value_rounding FROM accounts WHERE id = ?1", params![account_id], |r| r.get(0))
@@ -129,7 +129,7 @@ pub fn value_cents_rounded(shares_micro: i64, price_micro: i64, r: Rounding) -> 
     match r {
         Rounding::Nearest => value_cents(shares_micro, price_micro),
         // Toward zero for a positive holding is "down"; a negative one
-        // cannot occur (a sale of more than held is clamped, §41).
+        // cannot occur (a sale of more than held is clamped).
         Rounding::Down => ((shares_micro as i128 * price_micro as i128) / 10_000_000_000i128) as i64,
     }
 }
@@ -152,11 +152,11 @@ struct InvRow {
     shares_micro: i64,
     gross_cents: i64,
     commission_cents: i64,
-    /// A share transfer's other half (§45).
+    /// A share transfer's other half.
     transfer_id: Option<String>,
 }
 
-/// §172.2 — what was held at the close of one day, taken during a replay
+/// What was held at the close of one day, taken during a replay
 /// so that an account (or one fund) can be valued on many days in ONE pass.
 /// Valuing the Investing tab's five periods took a full replay per flow
 /// day — a plan with a payroll contribution every two weeks for four years
@@ -218,7 +218,7 @@ pub fn replay(
 }
 
 /// `replay`, also taking a `Snapshot` of the open positions at the close of
-/// each `checkpoints` date (§172.2). A checkpoint is taken before the first
+/// each `checkpoints` date. A checkpoint is taken before the first
 /// row dated after it, once that day's exchanges have been settled.
 pub fn replay_at(
     conn: &Connection,
@@ -238,9 +238,9 @@ pub fn replay_at(
           WHERE t.is_void = 0 AND t.activity IS NOT NULL AND t.security_id IS NOT NULL",
     );
     // The account filter is applied to the OUTPUT, not the query: a share
-    // transfer (§45) carries lots from one account into another, and the
+    // transfer carries lots from one account into another, and the
     // receiving account's replay needs the sending account's rows.
-    // §167 — the security filter is applied to the OUTPUT too: an exchange
+    // The security filter is applied to the OUTPUT too: an exchange
     // within an account moves lots from one security into another, so the
     // receiving fund's replay needs the sending fund's rows.
     let mut args: Vec<String> = Vec::new();
@@ -288,7 +288,7 @@ pub fn replay_at(
     // Lots a Remove Shares half of a transfer closed, waiting for the Add
     // Shares half to reopen them — keyed by the removing row's id.
     let mut carried: HashMap<String, Vec<Lot>> = HashMap::new();
-    // §167 — an exchange WITHIN an account: a TSP reallocation is shares of
+    // An exchange WITHIN an account: a TSP reallocation is shares of
     // one fund out and shares of another in, on one day, linked like a share
     // transfer but to a row in the SAME account. The lots that went out are
     // pooled by (account, date) and the rows that came in draw from the pool
@@ -305,7 +305,7 @@ pub fn replay_at(
     let mut pending: Vec<InvRow> = Vec::new();
 
     for r in rows {
-        // §172.2 — every checkpoint that this row is past: settle the day
+        // Every checkpoint that this row is past: settle the day
         // (its exchange-ins are still pending) and photograph the positions.
         while ci < cps.len() && cps[ci] < r.date.as_str() {
             flush_exchanges(&mut open, &mut pool, &mut pending, &mut out, &names);
@@ -313,7 +313,7 @@ pub fn replay_at(
             ci += 1;
         }
         // A day's exchange-ins wait until the day is over: the TSP lists a
-        // fund's payroll contribution AFTER the sale that emptied it (§103),
+        // fund's payroll contribution AFTER the sale that emptied it,
         // so the in-rows cannot draw from the pool row by row.
         if !pending.is_empty() && pending[0].date != r.date {
             flush_exchanges(&mut open, &mut pool, &mut pending, &mut out, &names);
@@ -549,7 +549,7 @@ pub fn replay_at(
     Ok(out)
 }
 
-/// §167 — the in-rows of a day's exchanges draw their lots from what went
+/// The in-rows of a day's exchanges draw their lots from what went
 /// out that day, in the same account.
 ///
 /// Each in-row takes a share of every pooled lot in proportion to the VALUE
@@ -682,7 +682,7 @@ fn flush_exchanges(
     }
 }
 
-/// §155 — what one account holds of each security on `asof`, by NAME, in
+/// What one account holds of each security on `asof`, by NAME, in
 /// micro-shares. For the TSP importer, which names its securities and has
 /// to know what is already there before it writes an opening position —
 /// writing the file's inferred opening on top of shares the register already
@@ -729,7 +729,7 @@ pub fn fmt_shares(micro: i64) -> String {
     s
 }
 
-/// §174 — `fmt_cents` for callers outside this module (the demo receipt).
+/// `fmt_cents` for callers outside this module (the demo receipt).
 pub fn fmt_cents_public(c: i64) -> String {
     fmt_cents(c)
 }
@@ -758,8 +758,8 @@ pub fn holdings_by_account(conn: &Connection, asof: &str) -> Result<HashMap<Stri
     let r = rounding(conn)?;
     let mut prices: HashMap<String, Option<i64>> = HashMap::new();
     // Value each (account, security) POSITION once, as the Portfolio page
-    // does — valuing lot by lot and summing could differ from it by a cent
-    // (§79), and the sidebar and the Portfolio must print the same number.
+    // does — valuing lot by lot and summing could differ from it by a cent,
+    // and the sidebar and the Portfolio must print the same number.
     let mut positions: BTreeMap<(String, String), (i64, i64)> = BTreeMap::new();
     for l in &ledger.lots {
         let e = positions.entry((l.account_id.clone(), l.security_id.clone())).or_default();
@@ -908,9 +908,9 @@ mod tests {
 }
 
 // ---------------------------------------------------------------------------
-// §172 — performance: the two returns Money never had.
+// Performance: the two returns Money never had.
 //
-// The ROI table below (§56) nets contributions out of a gain, which makes
+// The ROI table below nets contributions out of a gain, which makes
 // the figure honest but not comparable to anything: it is neither the
 // return the INVESTMENTS earned (which a benchmark should be measured
 // against) nor the return the INVESTOR earned (which depends on when the
@@ -1042,7 +1042,7 @@ fn cash_on(conn: &Connection, account_id: Option<&str>, date: &str) -> Result<i6
     conn.query_row(&sql, rusqlite::params_from_iter(args.iter()), |r| r.get(0)).map_err(|e| e.to_string())
 }
 
-/// §172.2 — what the account (every investment account, or one fund in it)
+/// What the account (every investment account, or one fund in it)
 /// was worth at the close of each of `dates`: holdings at that day's price
 /// plus, unless the scope is one security, cash. One replay for all of them
 /// — the same positions `portfolio` would report on each day, valued the
@@ -1087,7 +1087,7 @@ pub fn worth_on_dates(conn: &Connection, account_id: Option<&str>, security_id: 
     Ok(out)
 }
 
-/// §172.2 — money into or out of ONE holding, by day, in (`after`, `to`]:
+/// Money into or out of ONE holding, by day, in (`after`, `to`]:
 /// what a buy cost, what a sale brought, and the value shares carried in or
 /// out (an exchange within the plan, a transfer between accounts). A
 /// reinvested distribution is the fund's own earnings, not new money, and a
@@ -1169,14 +1169,14 @@ fn account_flows(conn: &Connection, account_id: Option<&str>, after: &str, to: &
 /// The two returns for one period, plus the figures they were made from.
 ///
 /// Both are for the period as a whole and then annualized only when the
-/// period is at least a year long (§172.3 — the convention everywhere
+/// period is at least a year long (the convention everywhere
 /// returns are published; a month's −4.7% shown as −43% a year is a number
 /// nobody should act on, and a user asked what it was).
 pub fn performance_between(conn: &Connection, account_id: Option<&str>, security_id: Option<&str>, from: &str, to: &str) -> Result<Performance, String> {
     let from_d = NaiveDate::parse_from_str(from, "%Y-%m-%d").map_err(|e| format!("bad date {from:?}: {e}"))?;
     let to_d = NaiveDate::parse_from_str(to, "%Y-%m-%d").map_err(|e| format!("bad date {to:?}: {e}"))?;
     let days = (to_d - from_d).num_days().max(0) as u32;
-    // §172.2 — one fund's edge is what it was bought and sold for; the
+    // One fund's edge is what it was bought and sold for; the
     // account's is what crossed into or out of the account.
     let flows = match security_id {
         Some(s) => security_flows(conn, account_id, s, from, to)?,
@@ -1285,7 +1285,7 @@ pub fn performance(conn: &Connection, account_id: Option<&str>, security_id: Opt
     Ok(out)
 }
 
-/// Money's ROI figures for the Portfolio page (§56): past month, year to
+/// Money's ROI figures for the Portfolio page: past month, year to
 /// date, 12 months, all time. Money's own formula is (value now − value
 /// then + income) / value then, which counts every contribution as a gain;
 /// this one takes the money in and out back out of it:

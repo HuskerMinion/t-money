@@ -1,4 +1,4 @@
-// §125 — the ribbon collapses to an icon strip and comes back on a click.
+// The ribbon collapses to an icon strip and comes back on a click.
 //
 // The point of the collapsed state is that it is a TOOLBAR, not a stub: the
 // space comes back without the commands going with it. So the test that
@@ -15,7 +15,7 @@ beforeEach(() => {
   localStorage.clear();
 });
 
-describe("Ribbon (§125)", () => {
+describe("Ribbon", () => {
   it("collapses to icons that still run their commands, and expands again", async () => {
     const ran = vi.fn();
     const off = registerCommand("new.transaction", ran);
@@ -58,9 +58,9 @@ describe("Ribbon (§125)", () => {
   });
 });
 
-// §183 — the ribbon read the registry while rendering and never subscribed,
+// The ribbon read the registry while rendering and never subscribed,
 // so a command registered after it drew stayed gray.
-describe("§183 — the ribbon follows the registry live", () => {
+describe("The ribbon follows the registry live", () => {
   it("lights a button up when its command is registered, and grays it when it goes", () => {
     localStorage.setItem("tm.ribbon.collapsed", "0");
     render(<Ribbon />);

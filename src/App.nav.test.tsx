@@ -41,7 +41,7 @@ function stubEverything(overrides: Record<string, () => unknown> = {}) {
             chart: null,
           };
         }
-        // §139 — the year plan is the Budget tab's front door, so every
+        // The year plan is the Budget tab's front door, so every
         // App-level render asks for it. A bare [] here is not a YearPlan and
         // the screen has nothing to read, which took the whole app down when
         // this test first met it.
@@ -88,7 +88,7 @@ const TABS: [string, RegExp][] = [
   ["Banking", /Click the account you want to use/],
   ["Bills", /Bills to Pay & income/],
   ["Reports", /View a report/],
-  // §129: the card title became month navigation. "Start a budget" appears
+  // The card title became month navigation. "Start a budget" appears
   // twice when the month has no budget (toolbar and empty state), which a
   // getByText would choke on — the "show everything" checkbox is always
   // there exactly once.
@@ -118,7 +118,7 @@ describe("header tabs", () => {
     expect(screen.getByRole("button", { name: "Home" })).not.toHaveClass("active");
   });
 
-  // §100 — Settings is a pop-up with two levels of tab, not a ninth tab. It
+  // Settings is a pop-up with two levels of tab, not a ninth tab. It
   // opens over whatever you were doing and closes back onto it.
   it("opens Settings as a pop-up over the screen you were on, and closes back onto it", async () => {
     window.localStorage.removeItem("tm.settingsPane");
@@ -140,7 +140,7 @@ describe("header tabs", () => {
 
   it("draws no second strip for a group with only one thing in it", async () => {
     // One tab under one tab is a decoration, not a navigation.
-    // The dialog remembers the pane you were last on (§100), so this starts
+    // The dialog remembers the pane you were last on, so this starts
     // from a clean slate rather than from whatever the test above left.
     window.localStorage.removeItem("tm.settingsPane");
     render(<App />);
@@ -152,7 +152,7 @@ describe("header tabs", () => {
     expect(within(dlg).getByRole("button", { name: "Show my key" })).toBeInTheDocument();
   });
 
-  // §83 — Verify this file: Check reports; Repair is offered only when there is drift.
+  // Verify this file: Check reports; Repair is offered only when there is drift.
   it("Settings → Verify this file checks, and offers Repair only for drift", async () => {
     let drift: unknown[] = [];
     stubEverything({
@@ -208,7 +208,7 @@ describe("left rail", () => {
   it("Reconcile is a verb — it asks the register to start balancing", async () => {
     // With an account selected: open ITS register and request the wizard.
     // The register is the only consumer of the request, so it has to be
-    // mounted or the request sits armed and fires later, unasked (§38).
+    // mounted or the request sits armed and fires later, unasked.
     const acct: Account = {
       id: "acc-1", name: "Checking", type: "checking", balance_cents: 0, holdings_value_cents: 0, tax_included: true,
       is_favorite: false, is_closed: false, updated_at: "", institution: null,
@@ -241,7 +241,7 @@ describe("left rail", () => {
 // Regression, 2026-09-04. Starring an account pinned it to Home, but clicking
 // it there called `selectAccount` and nothing else — the selection changed and
 // the user stayed on Home, where nothing visibly happened. Selecting an
-// account is not the same as going to look at it (§33).
+// account is not the same as going to look at it.
 describe("Favorite Accounts open the register", () => {
   const checking: Account = {
     id: "acc-1",
@@ -310,7 +310,7 @@ describe("Favorite Accounts open the register", () => {
 describe("the account dropdown opens the register", () => {
   // The same bug as the favorites card, in a second place: choosing an
   // account changed the selection and left the user on the account list.
-  // Both ways in have to mean the same thing (§36).
+  // Both ways in have to mean the same thing.
   const base = {
     type: "checking" as const,
     holdings_value_cents: 0, tax_included: true,
@@ -382,7 +382,7 @@ describe("the account dropdown opens the register", () => {
   });
 });
 
-// §38 — the header's Search box had held its own state with nothing reading
+// The header's Search box had held its own state with nothing reading
 // it. Enter runs a search; a hit opens its register with the row selected.
 describe("Search", () => {
   const checking: Account = {
@@ -439,7 +439,7 @@ describe("Search", () => {
   });
 });
 
-// §40: Transactions is the register, not the account list.
+// Transactions is the register, not the account list.
 describe("rail Transactions", () => {
   it("opens the first account's register when none is selected", async () => {
     const acct: Account = {
@@ -458,7 +458,7 @@ describe("rail Transactions", () => {
     expect(useAccountStore.getState().selectedAccountId).toBe("acc-1");
   });
 
-  it("Bills switches to the calendar and back (§52)", async () => {
+  it("Bills switches to the calendar and back", async () => {
     stubEverything({
       get_occurrences: () => [
         { recurrence_id: "r-1", payee: "Anytown Properties", amount_cents: -145_000, account_id: "acc-1", account_name: "Checking", category_id: null, category_name: null, due_date: "2026-09-01", status: "paid", transaction_id: "t-1", actual_amount_cents: -145_000 },
@@ -475,7 +475,7 @@ describe("rail Transactions", () => {
     expect(screen.queryByRole("grid")).not.toBeInTheDocument();
   });
 
-  it("the Portfolio page shows the dated returns when something is held (§56)", async () => {
+  it("the Portfolio page shows the dated returns when something is held", async () => {
     const pos = { account_id: "a-401k", account_name: "TSP", security_id: "s-fund", security_name: "Target Fund", symbol: "TGTF", security_kind: "mutual_fund", shares_micro: 100_000_000, cost_cents: 100_000, price_micro: 14_000_000, price_date: "2026-09-06", value_cents: 140_000, gain_cents: 40_000, lots: [] };
     stubEverything({
       get_portfolio: () => ({ as_of: "2026-09-06", positions: [pos], total_cost_cents: 100_000, total_value_cents: 140_000, cash_cents: 0, problems: [] }),
@@ -493,7 +493,7 @@ describe("rail Transactions", () => {
     expect(within(table).getByText("$490.00")).toBeInTheDocument();
   });
 
-  it("Bills schedules a transfer into a goal's account (§57)", async () => {
+  it("Bills schedules a transfer into a goal's account", async () => {
     const acct = (id: string, name: string, type: Account["type"]): Account => ({ id, name, type, balance_cents: 1_000, holdings_value_cents: 0, tax_included: true, is_favorite: false, is_closed: false, updated_at: "", institution: null, account_number: null, routing_number: null, opened_on: null, credit_limit_cents: null, contact_phone: null, contact_email: null, website: null, address: null, account_notes: null });
     const accts = [acct("a-chk", "Checking", "checking"), acct("a-sav", "Savings", "savings")];
     stubEverything({
@@ -526,8 +526,8 @@ describe("rail Transactions", () => {
   });
 });
 
-// §58 — the Spending Tracker pages by month and opens the report behind a line.
-describe("the Spending Tracker (§58)", () => {
+// The Spending Tracker pages by month and opens the report behind a line.
+describe("the Spending Tracker", () => {
   it("pages months and opens Transactions by Category for a line", async () => {
     const now = currentMonth();
     const summary = [{ category_id: "c-food", category_name: "Food", target_cents: 50_000, spent_cents: 12_345, remaining_cents: 37_655, month_year: now }];
@@ -551,8 +551,8 @@ describe("the Spending Tracker (§58)", () => {
   });
 });
 
-// §62 — F1 opens Help on the topic for the tab you were on.
-describe("F1 (§62)", () => {
+// F1 opens Help on the topic for the tab you were on.
+describe("F1", () => {
   it("opens Help for the current tab", async () => {
     render(<App />);
     await userEvent.click(screen.getByRole("button", { name: /^Bills$/ }));
@@ -562,8 +562,8 @@ describe("F1 (§62)", () => {
   });
 });
 
-// §64 — a header tab is the tab's start, even when already on it.
-describe("clicking the active tab (§64)", () => {
+// A header tab is the tab's start, even when already on it.
+describe("clicking the active tab", () => {
   it("takes Reports back to the gallery and Banking back to the account list", async () => {
     render(<App />);
     await userEvent.click(screen.getByRole("button", { name: "Reports" }));
@@ -582,11 +582,11 @@ describe("clicking the active tab (§64)", () => {
 });
 
 
-// §102 — a shortcut the menu prints must be a shortcut the menu binds.
+// A shortcut the menu prints must be a shortcut the menu binds.
 // Ctrl+M lived in a keydown handler on the register's grid and appeared in no
 // menu, so it worked and nothing said so. It is in the Edit menu's table now,
 // which is what binds every other accelerator.
-describe("Ctrl+M (§102)", () => {
+describe("Ctrl+M", () => {
   it("is printed beside Edit → Mark as cleared", async () => {
     stubEverything();
     render(<App />);
@@ -598,10 +598,10 @@ describe("Ctrl+M (§102)", () => {
   });
 });
 
-// §101 — undo reaches the user through the Edit menu, and the menu's honesty
+// Undo reaches the user through the Edit menu, and the menu's honesty
 // depends on two things agreeing: the registry (is anything offering it) and
 // the backend's label (what would it undo). These check the pair.
-describe("Edit → Undo (§101)", () => {
+describe("Edit → Undo", () => {
   async function openEdit() {
     const user = userEvent.setup();
     await user.click(screen.getByRole("menuitem", { name: "Edit" }));

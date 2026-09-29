@@ -1,4 +1,4 @@
-// §181 — two things from the walk of §174 and §179, in the shell rather than
+// Two things from earlier walkthroughs, in the shell rather than
 // in one component:
 //
 // - N9: "I see Demo Old Checking … The rail (left bar) also shows it at the
@@ -81,7 +81,7 @@ beforeEach(() => {
   useBudgetStore.setState({ summary: [], budgets: [] });
 });
 
-describe("§181 — N9: a closed account stays out of the way", () => {
+describe("N9: a closed account stays out of the way", () => {
   it("is not on the rail, nor in the Banking account picker", async () => {
     await openAccountList();
     const rail = screen.getByRole("complementary", { name: "Money navigation" });
@@ -109,7 +109,7 @@ describe("§181 — N9: a closed account stays out of the way", () => {
   });
 });
 
-describe("§181 — G7: a refused account delete is shown in its dialog", () => {
+describe("G7: a refused account delete is shown in its dialog", () => {
   it("in red, inside the dialog, which stays open", async () => {
     const refusal =
       "Demo HELOC cannot be deleted: 12 split payments send a line to it from another account. Take those lines out of their splits first, or mark the account closed in its details instead.";

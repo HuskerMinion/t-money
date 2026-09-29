@@ -1,5 +1,5 @@
 // RegisterGrid — the one grid that backs the account register, the reconcile
-// clearing view (§6.1d) and, later, the split dialog (§6.1e). Presentational
+// clearing view and, later, the split dialog. Presentational
 // only: it takes rows and renders Money's column model. No store, no IPC.
 //
 // Column model, measured from reference/ms-money-02-account-register.png:
@@ -7,11 +7,10 @@
 //   [flag] [!] │ Num │ Date │ Payee │ C │ Payment │ Deposit │ Balance
 //
 // Note what is NOT here: there is no Category column. In Money, category lives
-// in the transaction form (the "Show transaction forms" toggle, §6.1b), not in
-// the grid. §6.1a has the full list of corrections this
-// component was rebuilt to satisfy.
+// in the transaction form (the "Show transaction forms" toggle), not in
+// the grid.
 //
-// Investment accounts (§41) use Money's other column model:
+// Investment accounts use Money's other column model:
 //
 //   [flag] [!] │ Date │ Activity │ Investment │ C │ Quantity │ Price │ Total │ Cash Bal.
 //
@@ -38,13 +37,13 @@ interface RegisterGridProps {
   groups: RegisterGroup[];
   selectedId?: string | null;
   onSelect?: (id: string) => void;
-  /** Reconcile mode: the C column becomes a clickable checkmark (§6.1d). */
+  /** Reconcile mode: the C column becomes a clickable checkmark. */
   clearable?: boolean;
   clearedIds?: ReadonlySet<string>;
   onToggleCleared?: (id: string) => void;
   /** Money draws empty rows down to the bottom of the viewport. */
   minRows?: number;
-  /** Row id currently being edited in place (§6.1b). */
+  /** Row id currently being edited in place. */
   editingId?: string | null;
   /** Renders the in-place form in that row's stead. */
   renderEdit?: (row: RegisterRow) => React.ReactNode;
@@ -56,24 +55,24 @@ interface RegisterGridProps {
   onRowContextMenu?: (id: string, x: number, y: number) => void;
   /** Clicking an empty filler row starts a new transaction, as Money does. */
   onEmptyRowClick?: () => void;
-  /** §96: the sort in force, so its column can carry the marker. Omitted in
+  /** The sort in force, so its column can carry the marker. Omitted in
    *  the reconcile and split uses, where the headers are not clickable. */
   sort?: RegisterSort;
-  /** §96: a sortable header was clicked. */
+  /** A sortable header was clicked. */
   onSortColumn?: (column: SortColumn) => void;
-  /** §61: the always-open entry line under the last transaction — today's
+  /** The always-open entry line under the last transaction — today's
    *  date and "Click here to enter a transaction"; clicking it is the same
    *  as New. Drawn when no new-row form is open. */
   entryRow?: boolean;
   /** Text the entry line shows in the Num column (the next check number). */
   entryNum?: string | null;
-  /** The date the entry line shows (§71: the last one entered), else today. */
+  /** The date the entry line shows (the last one entered), else today. */
   entryDate?: string | null;
   columnLabels?: { payment: string; deposit: string };
   /** The running balance only reads in date order; any other sort blanks
-   *  the column rather than print a number that is a lie (§10.2 item 4). */
+   *  the column rather than print a number that is a lie. */
   hideBalance?: boolean;
-  /** Money's investment register columns (§41). */
+  /** Money's investment register columns. */
   investment?: boolean;
 }
 
@@ -330,7 +329,7 @@ function Row({
       {clearable && row.cleared_state !== "R" ? (
         // In reconcile mode a cleared row renders as a CHECKMARK. It is the
         // same stored "C" — the tick is a view, not a third state — so
-        // leaving reconcile shows it as "C" again (§6.1f).
+        // leaving reconcile shows it as "C" again.
         <button
           type="button"
           aria-label={`${cleared ? "Unclear" : "Clear"} ${row.payee}`}
@@ -383,13 +382,13 @@ function Row({
           <td>
             {row.payee}
             {row.is_void && <span className="void-tag"> VOID</span>}
-            {/* §170: a receipt or a statement is attached — open the row to see it. */}
+            {/* A receipt or a statement is attached — open the row to see it. */}
             {(row.attachment_count ?? 0) > 0 && (
               <span className="tm-goal-tag" title={`${row.attachment_count} attached file${row.attachment_count === 1 ? "" : "s"} — open the transaction and click Attachments`}>
                 {" "}📎 {row.attachment_count}
               </span>
             )}
-            {/* §73: the category (or the transfer's other account) and the
+            {/* The category (or the transfer's other account) and the
                 memo ride along in the Payee cell, muted, so what a row was
                 for is readable without opening it — Money's two-line view,
                 on one line. */}
@@ -398,14 +397,14 @@ function Row({
               const bits = [where, row.notes].filter((x): x is string => !!x && x.trim() !== "");
               return bits.length > 0 ? <span className="tm-row-sub"> — {bits.join(" · ")}</span> : null;
             })()}
-            {/* §112 — what the row was FOR. A file with no classifications
+            {/* What the row was FOR. A file with no classifications
                 never shows this, and a row with none shows nothing. */}
             {(row.classes ?? []).filter((c) => c.label).map((c) => (
               <span key={c.classification_id} className="tm-goal-tag" title={`Classified as "${c.label}"`}>
                 {" "}◆ {c.label}
               </span>
             ))}
-            {/* §117.3 — and what its SPLIT LINES say, when the transaction
+            {/* And what its SPLIT LINES say, when the transaction
                 itself says nothing. A mortgage split into principal, interest
                 and escrow with every line tagged to a house used to show
                 nothing here at all, which reads as tagging that did not
@@ -447,13 +446,13 @@ function Row({
   );
 }
 
-/** The investment register's cells (§41). Reinvested income shows the amount
+/** The investment register's cells. Reinvested income shows the amount
  *  reinvested as the Total, since its cash effect is zero by design. */
 function InvestmentCells({ row, hideBalance, cCell }: { row: RegisterRow; hideBalance: boolean; cCell: React.ReactNode }) {
   const isCash = row.activity === null;
-  // A share transfer (§45) is a Remove/Add Shares pair linked like a money
+  // A share transfer is a Remove/Add Shares pair linked like a money
   // transfer; the register says where the shares went, as Money does.
-  // §167 — an exchange WITHIN the account (a TSP reallocation) is linked the
+  // An exchange WITHIN the account (a TSP reallocation) is linked the
   // same way but to a row in this account; it reads as an exchange of one
   // fund for another, not as shares leaving for somewhere else.
   const exchange = !isCash && row.is_exchange === true;
@@ -517,7 +516,7 @@ function InvestmentCells({ row, hideBalance, cCell }: { row: RegisterRow; hideBa
 }
 
 /**
- * A column header that sorts when clicked (§96).
+ * A column header that sorts when clicked.
  *
  * Without `onSortColumn` — the reconcile and split uses of this grid — it is
  * a plain `<th>`, because sorting a clearing list would be meaningless and a

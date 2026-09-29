@@ -1,4 +1,4 @@
-// Money's Debt Reduction Planner and Mini-Debt Reduction Planner (§55), as
+// Money's Debt Reduction Planner and Mini-Debt Reduction Planner, as
 // arithmetic. Everything is integer: balances and payments in cents, rates
 // in basis points (6.5% = 650), months whole. Interest for a month is
 // round(balance × apr / 12), the way a card or loan statement computes it;

@@ -1,9 +1,9 @@
-// "Add a new account" — Money's two-step wizard (§6.1g).
+// "Add a new account" — Money's two-step wizard.
 //
 // Step 1 is a radio group of categories; step 2 is a list box filtered by that
 // choice, with a description pane on the right. Step 3 collects the name and
 // opening balance (Money asks for more — institution, account number — which
-// this app does not model yet; see §10.1).
+// this app does not model yet).
 import { useState } from "react";
 import {
   ACCOUNT_CATEGORIES,
@@ -45,7 +45,7 @@ export default function NewAccountWizard({ onCreate, onCancel }: Props) {
 
   const choices = typesForCategory(category);
   const chosen = type && choices.some((c) => c.value === type.value) ? type : choices[0];
-  // §120: a mortgage, a loan or a card asks what you OWE, not what you have.
+  // A mortgage, a loan or a card asks what you OWE, not what you have.
   const owed = !!chosen && isDebt(chosen.value);
 
   async function finish() {
@@ -61,7 +61,7 @@ export default function NewAccountWizard({ onCreate, onCancel }: Props) {
       setError(`"${opening}" is not an amount.`);
       return;
     }
-    // §120 — a debt is stored NEGATIVE, and the wizard used to store whatever
+    // A debt is stored NEGATIVE, and the wizard used to store whatever
     // was typed. Opening a mortgage at 150,000 made a $150,000 ASSET: the
     // sidebar showed it as money you have, net worth was out by twice the
     // mortgage, and every principal payment afterwards — a positive amount in
@@ -184,7 +184,7 @@ export default function NewAccountWizard({ onCreate, onCancel }: Props) {
           </div>
         )}
 
-        {/* §181 — the shared refusal box, as every other refusal on the Account List. */}
+        {/* The shared refusal box, as every other refusal on the Account List. */}
         {error && (
           <Notice tone="error" boxed>
             {error}

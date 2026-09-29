@@ -1,4 +1,4 @@
-// Money's account taxonomy and its groupings (§6.1g), read off the real
+// Money's account taxonomy and its groupings, read off the real
 // "Choose an account type" wizard in reference/. Kept in sync with the CHECK
 // constraint in migration 0009.
 //
@@ -188,14 +188,14 @@ export function labelFor(value: string): string {
   return typeInfo(value)?.label ?? value;
 }
 
-/** §93 — the kinds whose value is a judgment rather than a balance. These
+/** The kinds whose value is a judgment rather than a balance. These
  *  get **Update value**; a checking account's balance is the sum of its
  *  transactions and nobody appraises it. Mirrors `queries::is_valued_asset`. */
 export function isValuedAsset(kind: string): boolean {
   return kind === "asset" || kind === "vehicle" || kind === "home" || kind === "other";
 }
 
-/** §94 — the kinds that amortize: a rate, a payment, and a balance that
+/** The kinds that amortize: a rate, a payment, and a balance that
  *  falls as it is paid. A credit card is a debt but not one of these — its
  *  balance is whatever was charged, not a schedule. */
 export function isAmortizable(kind: string): boolean {
@@ -208,7 +208,7 @@ export function isAmortizable(kind: string): boolean {
   );
 }
 
-/** §93 — the kinds that can be secured on an asset. */
+/** The kinds that can be secured on an asset. */
 export function isDebt(kind: string): boolean {
   return (
     kind === "loan" ||
@@ -220,7 +220,7 @@ export function isDebt(kind: string): boolean {
   );
 }
 
-/** §120 — what the register's two amount columns are called.
+/** What the register's two amount columns are called.
  *
  *  Money's register splits one signed amount across two columns, and the
  *  wording is the account type's, not the app's. On a checking account you
@@ -243,13 +243,13 @@ export function registerColumnLabels(kind: string): { payment: string; deposit: 
 }
 
 /** What an account is worth: its register balance, plus — for an investment
- *  or retirement account — its holdings at the latest prices (§41). Every
+ *  or retirement account — its holdings at the latest prices. Every
  *  place that prints an account's balance prints this. */
 export function accountWorth(a: { balance_cents: number; holdings_value_cents?: number }): number {
   return a.balance_cents + (a.holdings_value_cents ?? 0);
 }
 
-/** §181 — the accounts a picker offers: the open ones, plus any closed account
+/** The accounts a picker offers: the open ones, plus any closed account
  *  the thing being edited already names.
  *
  *  A closed account is out of every picker for NEW work (N9) — money moving
@@ -265,7 +265,7 @@ export function pickableAccounts<T extends { id: string; is_closed?: boolean }>(
   return accounts.filter((a) => !a.is_closed || keep.includes(a.id));
 }
 
-/** §169 — a sort helper for every list of accounts: the accounts that have
+/** A sort helper for every list of accounts: the accounts that have
  *  been placed (Favorites → Organize favorites…) come first, in their order;
  *  0 when neither has been placed, so the list's own order decides. */
 export function placedFirst(a: { sort_order?: number | null }, b: { sort_order?: number | null }): number {

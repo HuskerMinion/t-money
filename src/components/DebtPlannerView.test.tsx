@@ -53,7 +53,7 @@ beforeEach(() => {
   useAccountStore.setState({ accounts });
 });
 
-describe("the Debt Reduction Planner (§55)", () => {
+describe("the Debt Reduction Planner", () => {
   it("lists the debts, plans them with a budget, and keeps the rates", async () => {
     render(<DebtPlannerView />);
     const table = await screen.findByRole("table", { name: "Debts" });
@@ -98,7 +98,7 @@ describe("the Debt Reduction Planner (§55)", () => {
   });
 });
 
-describe("§183 — a save that fails", () => {
+describe("A save that fails", () => {
   it("says so instead of looking kept", async () => {
     setIpcHandlers({
       get_all_accounts: () => accounts,

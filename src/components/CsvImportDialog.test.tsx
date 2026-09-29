@@ -1,4 +1,4 @@
-// §88 — the CSV mapping dialog: guess shown, correction re-previews, Import sends the mapping.
+// The CSV mapping dialog: guess shown, correction re-previews, Import sends the mapping.
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -63,9 +63,9 @@ describe("CsvImportDialog", () => {
   });
 });
 
-// §165 — which table is the bank's and which is T-Money's is SAID, and the
+// Which table is the bank's and which is T-Money's is SAID, and the
 // second one shows every field the mapping writes.
-describe("the two tables say what they are (§165)", () => {
+describe("the two tables say what they are", () => {
   beforeEach(() => resetIpc());
 
   it("labels the file as the bank's and the reading as what will be written, with the mapped extras", async () => {
@@ -99,13 +99,13 @@ describe("the two tables say what they are (§165)", () => {
   });
 });
 
-// §132 — the wrong door. A tsp.gov export is a .csv, so it lands here, and
+// The wrong door. A tsp.gov export is a .csv, so it lands here, and
 // this importer reads one signed amount per row: right balance, no fund, no
 // units, no price, and every row named after the account. A user did exactly
 // that and had to restore from a backup.
-// §175 — the first hour: a Fidelity history is the other file people try
+// The first hour: a Fidelity history is the other file people try
 // to bring in through the bank importer.
-describe("a brokerage history (§175)", () => {
+describe("a brokerage history", () => {
   it("shuts the door and says to use the broker's QIF/OFX through Investing", async () => {
     setIpcHandlers({ preview_csv: () => ({ ...previewFor(guess), looks_like_brokerage: true }) });
     render(<CsvImportDialog path="E:/Downloads/History_for_Account_X12345678.csv" accountId="acc-1" accountName="Checking" onImported={vi.fn()} onCancel={vi.fn()} />);
@@ -118,7 +118,7 @@ describe("a brokerage history (§175)", () => {
   });
 });
 
-describe("a file that has a reader of its own (§132)", () => {
+describe("a file that has a reader of its own", () => {
   it("says so before the mapping table, and names the menu item that can read it", async () => {
     setIpcHandlers({ preview_csv: () => ({ ...previewFor(guess), looks_like_tsp: true }) });
     render(
@@ -134,7 +134,7 @@ describe("a file that has a reader of its own (§132)", () => {
     expect(warning).toHaveTextContent(/This is a TSP activity detail file/);
     expect(warning).toHaveTextContent(/no fund, no units, no price/);
 
-    // §152 — the door is SHUT, not signposted. There is no mapping table
+    // The door is SHUT, not signposted. There is no mapping table
     // to fill in and no Import button to press: the only way forward is the
     // importer that can actually read the file.
     expect(screen.queryByLabelText("Date")).toBeNull();
@@ -163,7 +163,7 @@ describe("a file that has a reader of its own (§132)", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Open the TSP importer" }));
     expect(onCancel).toHaveBeenCalled();
     expect(ran).toEqual(["import.tsp"]);
-    // §155 — and the file goes with it, so it is not chosen a second time.
+    // And the file goes with it, so it is not chosen a second time.
     expect(handed).toEqual(["E:/Downloads/tsp-activity.csv"]);
   });
 
@@ -183,7 +183,7 @@ describe("a file that has a reader of its own (§132)", () => {
   });
 });
 
-describe("§183 — a slow preview does not undo a newer choice", () => {
+describe("A slow preview does not undo a newer choice", () => {
   beforeEach(() => resetIpc());
 
   it("drops the answer to an older change when a newer one has already come back", async () => {

@@ -62,7 +62,7 @@ beforeEach(() => {
   });
 });
 
-describe("Update holdings from a statement (§50)", () => {
+describe("Update holdings from a statement", () => {
   it("turns the typed lines into the request, skipping empty ones", () => {
     expect(linesToRequest([
       { security_id: "s-fund", shares: "112.5", price: "26.40", value: "" },
@@ -110,7 +110,7 @@ describe("Update holdings from a statement (§50)", () => {
   });
 });
 
-describe("§183 — a refused preview", () => {
+describe("A refused preview", () => {
   it("drops the old preview and holds Update, then clears the refusal when the figures read again", async () => {
     let refuse = false;
     setIpcHandlers({

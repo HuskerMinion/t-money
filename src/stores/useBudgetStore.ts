@@ -30,7 +30,7 @@ export const useBudgetStore = create<BudgetState>((set, get) => ({
 
   loadSummary: async (month) => {
     const m = month ?? get().month;
-    // §183 — which request's answer still counts. Stepping ‹ › quickly sends
+    // Which request's answer still counts. Stepping ‹ › quickly sends
     // one summary per month, and a slow reply for the month you left used to
     // land last and put its figures under the new month's heading.
     const mine = ++latestSummary;

@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /* All color comes from src/branding/tm-tokens.css. No literal hex below this
-   line — if you need a new color, add a token there (§11). */
+   line — if you need a new color, add a token there. */
 
 :root {
   font-family: var(--tm-font-body);
@@ -113,7 +113,7 @@ body {
    * So: no plate at rest, and the icon is re-tinted here rather than by a
    * class on the <svg>: custom properties inherit into the <use> shadow tree,
    * and setting them on the button means nothing on the icon can out-specify
-   * them (§19.2). The gray is the button face, so the gear reads as a control
+   * them. The gray is the button face, so the gear reads as a control
    * rather than as a second brand mark. The hover plate is only an
    * affordance — at rest this is just the gear. */
   .aero-gear {
@@ -211,14 +211,14 @@ body {
     outline: 1px solid var(--tm-ms-button-default);
   }
 
-  /* The Common Transactions menu (§31). Anchored to the button strip rather
-     than portaled: unlike the category combo (§19.1) this sits in the button
+  /* The Common Transactions menu. Anchored to the button strip rather
+     than portaled: unlike the category combo this sits in the button
      row, which is not inside the register's overflow-auto wrapper, so there is
      nothing here to clip it. */
   .tm-common-menu {
     /* Positioned by the component from the button's measured rect — it is
        portaled to <body>, so nothing here can be clipped by the register's
-       overflow-auto wrapper (§19.1, §31.2). The CSS keeps only the look. */
+       overflow-auto wrapper. The CSS keeps only the look. */
     position: fixed;
     z-index: 20;
     min-width: 260px;
@@ -295,7 +295,7 @@ body {
     flex: 1;
   }
 
-  /* The 90-day balance projection (§33).
+  /* The 90-day balance projection.
      Thin marks, hairline chrome. The first version was 91 saturated bars,
      which went solid red the moment an account was already negative. */
   .tm-chart {
@@ -350,7 +350,7 @@ body {
     vector-effect: non-scaling-stroke;
   }
   /* The master-key warning. Permanent, not dismissable: it describes a way to
-     lose everything that no amount of care with the app prevents (§34). */
+     lose everything that no amount of care with the app prevents. */
   .tm-keywarn {
     padding: 6px 8px;
     background: var(--tm-ms-warn-bg);
@@ -424,7 +424,7 @@ body {
    Backs the register, the reconcile clearing view and the split dialog —
    one grid, three uses. Neutral-gray hairlines on white/near-white rows are
    what make it read as Money rather than as decoration.
-   Measured: reference/ms-money-02-account-register.png. See §6.1a, §6.1d. */
+   Measured: reference/ms-money-02-account-register.png. */
 .register-table {
   width: 100%;
   border-collapse: collapse;
@@ -433,7 +433,7 @@ body {
   table-layout: fixed;
 }
 .register-table thead th {
-  /* §61: the header stays put while the register scrolls under it. */
+  /* The header stays put while the register scrolls under it. */
   position: sticky;
   top: 0;
   z-index: 2;
@@ -465,12 +465,12 @@ body {
 .register-table tbody tr:nth-child(even) td {
   background: var(--tm-ms-row-alt);
 }
-/* The active/selected row. Also the ground the entry form sits on (§6.1b). */
+/* The active/selected row. Also the ground the entry form sits on. */
 .register-table tbody tr.active td,
 .register-table tbody tr.active:nth-child(even) td {
   background: var(--tm-ms-row-active);
 }
-/* Group header band: Deposits / Checks / Other Withdrawals (§6.1d). */
+/* Group header band: Deposits / Checks / Other Withdrawals. */
 .register-table tbody tr.group td,
 .register-table tbody tr.group:nth-child(even) td {
   background: var(--tm-ms-group-header);
@@ -504,7 +504,7 @@ body {
   color: var(--tm-positive);
 }
 
-/* Footer strip under the register: Balanced on … Ending Balance (§6.1a #9). */
+/* Footer strip under the register: Balanced on … Ending Balance. */
 .register-footer {
   display: flex;
   align-items: center;
@@ -514,7 +514,7 @@ body {
   background: var(--tm-ms-card-body);
 }
 
-/* --- Vista-era modal dialogs (§6.1c, §6.1e) ----------------------------- */
+/* --- Vista-era modal dialogs ----------------------------- */
 .tm-dialog {
   position: fixed;
   top: 50%;
@@ -535,7 +535,7 @@ body {
 .tm-dialog-body {
   padding: 10px;
 }
-/* §133 — the direction of a category merge, drawn.
+/* The direction of a category merge, drawn.
    The two sides are deliberately NOT symmetrical: the one being deleted is
    struck through and dimmed, the survivor is solid. A person who reads only
    the two names still gets the answer. */
@@ -560,7 +560,7 @@ body {
   font-size: 11px;
   opacity: 0.75;
 }
-/* §151 — a merge that cannot be done. Uses the error box §144 added, so a
+/* A merge that cannot be done. Uses the shared error box, so a
    refusal here looks like a refusal anywhere else in the app. */
 .tm-merge-blocked {
   border: 1px solid var(--tm-ms-error-border);
@@ -577,11 +577,11 @@ body {
   margin: 2px 0 0;
 }
 
-/* §181 — one notice strip, two tones. A refusal from the backend used to
+/* One notice strip, two tones. A refusal from the backend used to
    arrive in the same cream bar as "added to favorites", and a message that
    says NO looked exactly like one that says done:
    > "the warning should probably be a light red to highlight the message"
-   The error tone is the §142 error box again (every look sets or inherits
+   The error tone is the shared error box again (every look sets or inherits
    --tm-ms-error-*, and theme.test.ts holds each pair to a readable contrast),
    with a ⚠ so the difference is not carried by hue alone. The info tone is
    the register's old cream strip, unchanged. `Notice.tsx` draws both. */
@@ -624,7 +624,7 @@ body {
   border-color: var(--tm-ms-dialog-field-border);
 }
 
-/* §149 — the side that is about to be deleted.
+/* The side that is about to be deleted.
    > "along with the strikethrough maybe making the removed category red with
    >  being mostly opaque"
    The strikethrough alone was carrying the whole message, and a strikethrough
@@ -663,7 +663,7 @@ body {
   }
 }
 
-/* §134 — "this computer has no key for that file", said on the row rather
+/* "this computer has no key for that file", said on the row rather
    than after the click. Deliberately a quiet badge and not a red error: the
    file is fine and openable, it just needs one paste. */
 .tm-needs-key {
@@ -711,7 +711,7 @@ body {
   background: var(--tm-ms-group-header);
 }
 
-/* A voided transaction (§6.1h): still legible, visibly not counting. The
+/* A voided transaction: still legible, visibly not counting. The
    amount stays on screen — the record of what the charge was is the point. */
 .register-table tbody tr.voided td {
   color: var(--tm-ms-text-muted);
@@ -727,10 +727,10 @@ body {
   font-size: 0.9em;
 }
 
-/* --- Type-ahead category field (§17) ------------------------------------ */
+/* --- Type-ahead category field ------------------------------------ */
 .tm-combo-list {
   /* Positioned inline by CategoryCombo (portaled to <body> so no ancestor's
-     overflow can clip it — see §19). Only the look lives here. */
+     overflow can clip it). Only the look lives here. */
   z-index: 200;
   overflow-y: auto;
   margin: 0;
@@ -770,7 +770,7 @@ body {
   font-style: italic;
 }
 
-/* --- Reports (§39) --------------------------------------------------------
+/* --- Reports --------------------------------------------------------
    Money's report page: a "Common tasks" rail on the left, a large navy title,
    the date-range line beneath it, then the table or chart. Section headers in
    a report table reuse the register's group band. */
@@ -814,7 +814,7 @@ body {
 .tm-text-muted {
   color: var(--tm-ms-text-muted);
 }
-/* §118 — the report's period, at the top where it can be found, on its own
+/* The report's period, at the top where it can be found, on its own
    band so it reads as the report's setting rather than part of the table. */
 .tm-report-range {
   display: flex;
@@ -827,7 +827,7 @@ body {
   border-radius: 3px;
   background: var(--tm-ms-panel, #f3f6fb);
 }
-/* §118 — Customize's way out: Apply / Cancel / Reset on a footer band. */
+/* Customize's way out: Apply / Cancel / Reset on a footer band. */
 .tm-customize-actions {
   display: flex;
   align-items: center;
@@ -835,7 +835,7 @@ body {
   padding: 6px 12px 10px;
   font-size: var(--tm-font-size);
 }
-/* §118 — what a valued asset's register is for, said at the top of it. */
+/* What a valued asset's register is for, said at the top of it. */
 .tm-asset-banner {
   display: flex;
   align-items: center;
@@ -847,7 +847,7 @@ body {
   border-radius: 3px;
   background: var(--tm-ms-panel, #f3f6fb);
 }
-/* §118 — a checkbox list in place of a Ctrl-click multi-select. */
+/* A checkbox list in place of a Ctrl-click multi-select. */
 .tm-picklist-box {
   border: 1px solid var(--tm-ms-border);
   border-radius: 3px;
@@ -978,7 +978,7 @@ body {
   height: 10px;
   border: 1px solid var(--tm-chart-axis);
 }
-/* Printing (§85). Chrome and the rail go; the content area is the page;
+/* Printing. Chrome and the rail go; the content area is the page;
    scroll boxes open out so every row prints; buttons, forms, dialogs and
    the entry line are not paper. Row stripes and red amounts are kept
    (print-color-adjust). A print-only line at the top of a register or a
@@ -1048,7 +1048,7 @@ body {
   }
 }
 
-/* Lots (§41): the picker in the sell form and the detail under a holding. */
+/* Lots: the picker in the sell form and the detail under a holding. */
 .tm-lot-table {
   border-collapse: collapse;
   font-size: 11px;
@@ -1078,7 +1078,7 @@ body {
   text-decoration: underline dotted;
 }
 
-/* The rail's drag edge (§42). */
+/* The rail's drag edge. */
 .tm-rail-grip {
   width: 5px;
   flex: 0 0 5px;
@@ -1093,13 +1093,13 @@ body {
   outline: none;
 }
 
-/* A row tagged for a savings goal (§46). */
+/* A row tagged for a savings goal. */
 .tm-goal-tag {
   font-size: 10px;
   color: var(--tm-ms-text-muted, #5a6b80);
 }
 
-/* Bill calendar (§52): the month grid on the Bills page. */
+/* Bill calendar: the month grid on the Bills page. */
 .tm-calendar-grid {
   border-collapse: collapse;
   table-layout: fixed;
@@ -1183,7 +1183,7 @@ body {
   white-space: nowrap;
 }
 
-/* Home's Spending Tracker lines open the report behind them (§58). */
+/* Home's Spending Tracker lines open the report behind them. */
 .tm-tracker-row {
   border-radius: 4px;
   padding: 2px 4px;
@@ -1198,7 +1198,7 @@ body {
   cursor: default;
 }
 
-/* The report chart's style bar (§59). */
+/* The report chart's style bar. */
 .tm-chart-bar {
   display: flex;
   flex-wrap: wrap;
@@ -1212,7 +1212,7 @@ body {
   font-weight: 700;
 }
 
-/* Home's Subscriptions card (§60). */
+/* Home's Subscriptions card. */
 .tm-subs td,
 .tm-subs th {
   padding: 2px 4px;
@@ -1231,7 +1231,7 @@ body {
 .tm-subs-link:hover {
   text-decoration: underline;
 }
-/* §76: the small × that puts a charge on the ignore list. Faint until the
+/* The small × that puts a charge on the ignore list. Faint until the
    row is hovered, so the card reads as a list and not a row of buttons. */
 .tm-subs-ignore {
   background: none;
@@ -1254,7 +1254,7 @@ li:hover .tm-subs-ignore,
   color: var(--tm-ms-text);
 }
 
-/* §61: the always-open entry line at the foot of the register. */
+/* The always-open entry line at the foot of the register. */
 .register-table tbody tr.tm-entry-row {
   cursor: text;
 }
@@ -1272,7 +1272,7 @@ li:hover .tm-subs-ignore,
   filter: brightness(0.97);
 }
 
-/* The Help tab (§62). */
+/* The Help tab. */
 .tm-help {
   display: flex;
   gap: 16px;
@@ -1405,10 +1405,10 @@ li:hover .tm-subs-ignore,
   border-top: 1px solid var(--tm-ms-grid-line);
 }
 
-/* Settings → Theme (§63). */
+/* Settings → Theme. */
 .tm-theme-grid {
   display: grid;
-  /* §99: half the width they were. Ten themes and ten looks do not fit at
+  /* Half the width they were. Ten themes and ten looks do not fit at
      236px, and the point of a swatch is to be recognized, not read. */
   grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
   gap: 8px;
@@ -1444,7 +1444,7 @@ li:hover .tm-subs-ignore,
   font-size: 11px;
 }
 
-/* The report's quick look at a row's transactions (§68). */
+/* The report's quick look at a row's transactions. */
 .tm-peek {
   width: min(900px, 92vw);
   min-width: 0;
@@ -1460,13 +1460,13 @@ li:hover .tm-subs-ignore,
   background: var(--tm-ms-row-active);
 }
 
-/* Home's cards stay a screen tall (§68): about twenty rows, then scroll. */
+/* Home's cards stay a screen tall: about twenty rows, then scroll. */
 .tm-home-scroll {
   max-height: min(60vh, 520px);
   overflow-y: auto;
 }
 
-/* §69: balancing as a strip above the register, and the C toggle on an open row. */
+/* Balancing as a strip above the register, and the C toggle on an open row. */
 .tm-reconcile-bar {
   display: flex;
   align-items: center;
@@ -1494,7 +1494,7 @@ li:hover .tm-subs-ignore,
   background: var(--tm-ms-row-active);
 }
 
-/* §71: the typed date field, with a calendar button that opens the native picker. */
+/* The typed date field, with a calendar button that opens the native picker. */
 .tm-datefield {
   position: relative;
   display: flex;
@@ -1536,13 +1536,13 @@ li:hover .tm-subs-ignore,
   color: var(--tm-ms-text);
 }
 
-/* §73: category and memo alongside the payee. */
+/* Category and memo alongside the payee. */
 .register-table .tm-row-sub {
   color: var(--tm-ms-text-muted);
   font-size: 0.92em;
 }
 
-/* §96: a fold-away note. Used for anything that must be visible but is not
+/* A fold-away note. Used for anything that must be visible but is not
    news after the first read — the share ledger's unhonored rows, for one.
    Hiding such a thing outright would be dishonest; leaving it open costs the
    user the top of every screen it appears on. */
@@ -1568,7 +1568,7 @@ li:hover .tm-subs-ignore,
   padding: 4px 8px 6px;
 }
 
-/* §96: the header's search box. Tokens, so it follows the theme — it used to
+/* The header's search box. Tokens, so it follows the theme — it used to
    carry a literal near-white ground with no color of its own, which meant
    white-on-white typing under Evening. */
 .tm-header-search {
@@ -1589,7 +1589,7 @@ li:hover .tm-subs-ignore,
   background: var(--tm-ms-grid-header);
 }
 
-/* §96: a sortable register column header. The button fills the cell so the
+/* A sortable register column header. The button fills the cell so the
    whole header is the target, not just the word. */
 .tm-sort-th {
   display: flex;
@@ -1617,7 +1617,7 @@ li:hover .tm-subs-ignore,
   min-width: 8px;
 }
 
-/* §96: the Favorite Accounts watermark. Everything about how loud it is
+/* The Favorite Accounts watermark. Everything about how loud it is
    lives here, not in the component — which is what lets a dark theme carry it
    at a different weight without the drawing knowing about themes.
    `isolation: isolate` keeps the negative z-index behind the card's own
@@ -1626,7 +1626,7 @@ li:hover .tm-subs-ignore,
 .tm-watermarked {
   position: relative;
   isolation: isolate;
-  /* §109 — the field runs to the card's edges, so the card has to clip it.
+  /* The field runs to the card's edges, so the card has to clip it.
      Without this it spills past the rounded corners the Card and Rounded
      looks give it. */
   overflow: hidden;
@@ -1636,7 +1636,7 @@ li:hover .tm-subs-ignore,
 }
 .tm-watermark {
   position: absolute;
-  /* §107 — the whole card, not a centered motif. It is a FIELD now: a dozen
+  /* The whole card, not a centered motif. It is a FIELD now: a dozen
      icons spread across the card, so it wants the whole area and lets the
      card's edges crop it. `slice` on the SVG keeps the spacing right whatever
      height the card is, which changes with how many accounts are starred. */
@@ -1654,7 +1654,7 @@ li:hover .tm-subs-ignore,
   /* Light ink on a dark ground reads louder at the same alpha. */
   opacity: 0.15;
 }
-/* §107 — the icons the watermark is made of. All three inks become the text
+/* The icons the watermark is made of. All three inks become the text
    color, and the knockout becomes the card's own body — which is what keeps
    the $ inside the bag and the slice inside the pie, instead of flattening
    every icon into a silhouette. */
@@ -1665,7 +1665,7 @@ li:hover .tm-subs-ignore,
   --tm-icon-knockout: var(--tm-ms-card-body);
 }
 
-/* §97: the menu bar. Money's proportions — a 20px strip, 12px labels, a
+/* The menu bar. Money's proportions — a 20px strip, 12px labels, a
    dropdown with a hairline border and a highlight that fills the row. */
 .tm-menubar {
   display: flex;
@@ -1761,7 +1761,7 @@ li:hover .tm-subs-ignore,
 }
 
 /* ==========================================================================
-   §99 — LOOKS
+   LOOKS
    ==========================================================================
    A look is the SHAPE; the theme is the colors. Nothing below sets a color
    that is not a token, so any look works in any theme — which is what stops
@@ -1968,7 +1968,7 @@ li:hover .tm-subs-ignore,
   border-radius: 0;
 }
 
-/* §99: the Look picker's wireframe. Half the height of a theme swatch —
+/* The Look picker's wireframe. Half the height of a theme swatch —
    ten looks and ten themes have to fit on one screen. */
 .tm-look-preview {
   position: relative;
@@ -1978,7 +1978,7 @@ li:hover .tm-subs-ignore,
   overflow: hidden;
 }
 
-/* §99 — the Ribbon look. Tokens only: it inherits whatever theme is on. */
+/* The Ribbon look. Tokens only: it inherits whatever theme is on. */
 .tm-ribbon {
   display: flex;
   align-items: stretch;
@@ -2055,7 +2055,7 @@ li:hover .tm-subs-ignore,
   flex: none;
 }
 
-/* §125 — collapsed: one strip of live icons, and the chevron that undoes it.
+/* Collapsed: one strip of live icons, and the chevron that undoes it.
    The group rules stay, so the commands keep the shape you learned them in. */
 .tm-ribbon.collapsed {
   align-items: center;
@@ -2071,7 +2071,7 @@ li:hover .tm-subs-ignore,
   padding: 4px;
   border-radius: 4px;
 }
-/* §127 — a button with a word on it, not a chevron you have to already know. */
+/* A button with a word on it, not a chevron you have to already know. */
 .tm-ribbon-toggle {
   margin-left: auto;
   align-self: center;
@@ -2102,7 +2102,7 @@ li:hover .tm-subs-ignore,
   color: var(--tm-ms-text);
 }
 
-/* §99 — Document tabs. A register per tab, the way a browser does it. */
+/* Document tabs. A register per tab, the way a browser does it. */
 .tm-doctabs {
   display: flex;
   align-items: flex-end;
@@ -2141,7 +2141,7 @@ li:hover .tm-subs-ignore,
   color: var(--tm-negative);
 }
 
-/* §99 — Three-pane: the middle column of accounts and their balances. */
+/* Three-pane: the middle column of accounts and their balances. */
 .tm-accounts-pane {
   width: 250px;
   flex: none;
@@ -2189,7 +2189,7 @@ li:hover .tm-subs-ignore,
   margin-top: 1px;
 }
 
-/* §126 — Two-up. The watched register beside the worked one: narrower,
+/* Two-up. The watched register beside the worked one: narrower,
    quieter, and its own scroller so the two never fight for the page. */
 .tm-watch-pane {
   display: flex;
@@ -2228,7 +2228,7 @@ li:hover .tm-subs-ignore,
   color: var(--tm-ms-text-muted);
 }
 
-/* §99 — the Sidebar look's tabs, at the top of the rail. */
+/* The Sidebar look's tabs, at the top of the rail. */
 .tm-rail-tabs {
   padding-bottom: 4px;
   margin-bottom: 4px;
@@ -2244,7 +2244,7 @@ li:hover .tm-subs-ignore,
   font-weight: 600;
 }
 
-/* §100 — Settings, as a pop-up with two levels of tab.
+/* Settings, as a pop-up with two levels of tab.
    The top strip is the KIND of thing; the strip under it is the thing. */
 .tm-settings {
   display: flex;
@@ -2329,7 +2329,7 @@ li:hover .tm-subs-ignore,
   padding: 0 2px;
 }
 
-/* §102 — `hidden` must actually hide.
+/* `hidden` must actually hide.
    Tailwind's utilities set `display` from a class, and a class beats the
    `[hidden]` attribute rule in the UA sheet. So `hidden={!showTabs}` on an
    element that also carries `flex` did NOTHING: the Sidebar look, whose whole
@@ -2340,7 +2340,7 @@ li:hover .tm-subs-ignore,
   display: none !important;
 }
 
-/* §102 — the crash screen. Deliberately plain and token-free where it can be:
+/* The crash screen. Deliberately plain and token-free where it can be:
    the thing that just failed might be the theme. */
 .tm-crash {
   max-width: 720px;
@@ -2381,7 +2381,7 @@ li:hover .tm-subs-ignore,
   word-break: break-word;
 }
 
-/* §102 — the file banner: why you are not on the file you expected. */
+/* The file banner: why you are not on the file you expected. */
 .tm-file-banner {
   display: flex;
   align-items: center;
@@ -2402,7 +2402,7 @@ li:hover .tm-subs-ignore,
   padding: 0 2px;
 }
 
-/* --- §117: the start screen, when no file is open ------------------------
+/* --- The start screen, when no file is open ------------------------
    One card, centered, on the same content ground every tab uses — so a closed
    file looks like the app with nothing in it, not like a crash. */
 .tm-start {
@@ -2456,7 +2456,7 @@ li:hover .tm-subs-ignore,
 .tm-start-forget:hover { opacity: 1; }
 
 /* --- Rounded: the same shape with every corner taken off ------------------
-   §102, asked for by name. Tabs detach from the strip and become pills, and
+   Asked for by name. Tabs detach from the strip and become pills, and
    nothing in the chrome has a square corner. It is Money Classic's layout —
    the tab strip, the rail, the register — so nothing has to be relearned;
    only the edges change. */
@@ -2598,7 +2598,7 @@ li:hover .tm-subs-ignore,
   gap: 0;
 }
 
-/* §102 — the calculator's tape and the favorites list. Both are plain
+/* The calculator's tape and the favorites list. Both are plain
    scrolling lists inside a dialog; the only thing worth styling is that the
    numbers line up, which is what makes a tape checkable. */
 .tm-tape {
@@ -2616,7 +2616,7 @@ li:hover .tm-subs-ignore,
   line-height: 18px;
 }
 
-/* §104 — the keypad. Four columns to match the tape's width, operators
+/* The keypad. Four columns to match the tape's width, operators
    marked so the hand finds them without reading. */
 .tm-calc-keys {
   display: grid;
@@ -2664,7 +2664,7 @@ li:hover .tm-subs-ignore,
   background: var(--tm-ms-row-active);
 }
 
-/* §104 — text size, one line above the looks it belongs with. A row rather
+/* Text size, one line above the looks it belongs with. A row rather
    than a card: it is a single choice, and a card gave it a third of the pane
    while squeezing the looks into a column half the width they want. */
 .tm-size-strip {
@@ -2677,7 +2677,7 @@ li:hover .tm-subs-ignore,
   border-bottom: 1px solid var(--tm-ms-card-border);
 }
 
-/* §129 — the Budget screen. Tokens only, like every other look-aware part. */
+/* The Budget screen. Tokens only, like every other look-aware part. */
 .tm-budget-totals {
   display: flex;
   flex-wrap: wrap;
@@ -2745,8 +2745,8 @@ li:hover .tm-subs-ignore,
   color: var(--tm-ms-text);
 }
 /* The amount is an input sitting IN the row — no border until you are in it,
-   so eighty rows do not read as eighty boxes (§129). */
-/* §143 — these used to be `border-color: transparent; background:
+   so eighty rows do not read as eighty boxes. */
+/* These used to be `border-color: transparent; background:
    transparent`, invisible until the pointer happened to cross them.
    Reported as *"it is still difficult to ascertain exactly where you're
    supposed to click into the field for Annual or monthly"*, which is the
@@ -2798,7 +2798,7 @@ li:hover .tm-subs-ignore,
   background: var(--tm-ms-neg, #b00020);
 }
 
-/* §130 — the row you are working on. The register already uses `.active` for
+/* The row you are working on. The register already uses `.active` for
    this; the budget table uses its own class because its rows carry an input
    whose focus ring must still read as the thing with the caret in it. */
 .tm-budget-parent.selected > td,
@@ -2810,7 +2810,7 @@ li:hover .tm-subs-ignore,
   box-shadow: inset 3px 0 0 var(--tm-ms-tab-active-bot);
 }
 
-/* §131 — the monthly/yearly picker, and what a yearly line comes to. */
+/* The monthly/yearly picker, and what a yearly line comes to. */
 .tm-budget-percell {
   white-space: nowrap;
   width: 96px;
@@ -2828,7 +2828,7 @@ li:hover .tm-subs-ignore,
   background: var(--tm-ms-row);
 }
 
-/* §139 — the year plan. Same table furniture as the month screen (§129), plus
+/* The year plan. Same table furniture as the month screen, plus
    the three things a year grid needs that a month grid does not: a band that
    separates income from expenses, total rows that read as sums rather than as
    more categories, and twelve narrow month columns. */
@@ -2856,7 +2856,7 @@ li:hover .tm-subs-ignore,
 .tm-plan-sofar {
   border-left: 2px solid var(--tm-ms-grid-header-rule);
 }
-/* §159 — the CSV importer's "How they read" table: content-sized, with the
+/* The CSV importer's "How they read" table: content-sized, with the
    payee capped so one long bank description cannot push the amounts off to
    the right again. */
 .tm-csv-reads td.tm-csv-payee {
@@ -2865,7 +2865,7 @@ li:hover .tm-subs-ignore,
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* §154 — "saved" / "short" beside a set-aside line's balance. Small and
+/* "saved" / "short" beside a set-aside line's balance. Small and
    muted so the figure still reads first; the word says what KIND of figure
    it is, which the column header cannot, since it is a variance on every
    other row. */
@@ -2874,7 +2874,7 @@ li:hover .tm-subs-ignore,
   font-size: 10px;
   color: var(--tm-ms-text-muted);
 }
-/* §143 — the AUTHORED block: Annual, Monthly, Spread over. §140 ruled
+/* The AUTHORED block: Annual, Monthly, Spread over. An earlier change ruled
    between the twelve month columns and left this side open, which is why the
    three things you actually TYPE were the three hardest to aim at. Solid
    rules here rather than the months' dashed ones: this is a real boundary
@@ -2910,7 +2910,7 @@ li:hover .tm-subs-ignore,
   cursor: default;
 }
 
-/* §140 — reading across a nineteen-column grid.
+/* Reading across a nineteen-column grid.
  *
  * > *"its difficult to see what column I'm in"*
  *
@@ -2950,7 +2950,7 @@ li:hover .tm-subs-ignore,
   background: var(--tm-ms-row-active);
 }
 
-/* §144 — a month that has not happened yet, showing what it is PLANNED to
+/* A month that has not happened yet, showing what it is PLANNED to
    be rather than a dot.
 
    > "This would give every future month an estimate (or budgeted) look which
@@ -2967,7 +2967,7 @@ li:hover .tm-subs-ignore,
   font-style: italic;
 }
 
-/* §143 — the month an ASIDE bill is DUE. Not a background tint: the
+/* The month an ASIDE bill is DUE. Not a background tint: the
    current-month column already owns that, and two tints in one cell is a
    color puzzle. A rule under the figure instead, in the link blue the
    Spread over value uses, so the marker and the words that explain it match.
@@ -2978,7 +2978,7 @@ li:hover .tm-subs-ignore,
   border-bottom: 2px solid var(--tm-ms-text-link);
 }
 
-/* §141 — Build from history. A line that stopped is still readable: it is
+/* Build from history. A line that stopped is still readable: it is
    proposed, just not ticked, so it recedes rather than disappearing. */
 .tm-build-ended > td {
   color: var(--tm-ms-text-muted);

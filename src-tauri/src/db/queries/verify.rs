@@ -1,10 +1,10 @@
-//! Verify this file (§83): reading the whole file back against itself.
+//! Verify this file: reading the whole file back against itself.
 
 use crate::models::{BalanceDrift, FileCheck};
 use rusqlite::{params, Connection};
 
 // ---------------------------------------------------------------------------
-// Verify this file (§83)
+// Verify this file
 // ---------------------------------------------------------------------------
 
 /// Every balance in the file is kept incrementally on write and nothing ever
@@ -173,7 +173,7 @@ struct SplitTransferProblem {
     fix: Option<SplitTransferFix>,
 }
 
-/// §177 — a split line that is a transfer (§94) writes a row in the other
+/// A split line that is a transfer writes a row in the other
 /// account and keeps its id in `splits.transfer_txn_id`. Nothing else ties
 /// the two, so a write that follows `transactions.transfer_id` alone — void,
 /// undo, the duplicates dialog — could leave them disagreeing, and the balance
@@ -246,7 +246,7 @@ fn split_transfer_problems(conn: &Connection) -> Result<Vec<SplitTransferProblem
 
     // 2. Lines whose far row is gone, and 3. far rows no line points at. They
     // are read together because one is often the other's missing half: an
-    // undo that re-inserted the far row cut the line's link (fixed in §178).
+    // undo that re-inserted the far row cut the line's link (since fixed).
     let lost: Vec<(String, String, String, String, i64, String, i64)> = {
         let mut st = conn
             .prepare(
@@ -353,12 +353,12 @@ mod tests {
     use crate::db::queries::*;
     use crate::db::queries::test_support::*;
 
-    // §80: the register's running balance was a correlated subquery — O(n²),
+    // The register's running balance was a correlated subquery — O(n²),
     // seconds on a couple of years of a real checking account. Now a window
     // function. This test checks it against a plain fold over 20,000 rows
     // (dates shuffled, voids sprinkled) and prints the time; the number is
     // not asserted (CI machines vary) but it should be well under a second.
-    // §83: a balance nudged behind the app's back, a transfer whose other
+    // A balance nudged behind the app's back, a transfer whose other
     // half was deleted by hand, a split that no longer adds up.
     #[test]
     fn verify_file_finds_drift_half_transfers_and_bad_splits_and_repairs_the_first_two() {
@@ -404,7 +404,7 @@ mod tests {
         assert_eq!(again.split_mismatch.len(), 1, "a split that does not add up is reported, never guessed at");
     }
 
-    // §177: a mortgage payment split into interest, principal (to the loan)
+    // A mortgage payment split into interest, principal (to the loan)
     // and escrow (to the escrow account). Each account equals its own rows in
     // every case below, so the balance check sees nothing — this one must.
     #[test]
@@ -427,7 +427,7 @@ mod tests {
         let clean = verify_file(&c, false).unwrap();
         assert!(clean.split_transfers.is_empty(), "{:?}", clean.split_transfers);
 
-        // 1. The payment voided the way set_void did before §177: only the
+        // 1. The payment voided the way set_void used to: only the
         // checking row. The loan and escrow rows still count.
         c.execute("UPDATE transactions SET is_void = 1 WHERE id = ?1", params![pay.id]).unwrap();
         c.execute("UPDATE accounts SET balance_cents = balance_cents + 150000 WHERE id = ?1", params![chk]).unwrap();

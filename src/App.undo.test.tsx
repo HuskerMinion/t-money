@@ -1,14 +1,14 @@
-// §136 — the writes that cannot be undone must empty the undo stack.
+// The writes that cannot be undone must empty the undo stack.
 //
-// §132 established the rule and applied it to the four import commands. The
-// two operations §119 named alongside imports — deleting an account and
+// An earlier change established the rule and applied it to the four import commands. The
+// two operations named alongside imports — deleting an account and
 // merging two accounts — were left standing, which is the same bug in the
 // same shape: Ctrl+Z afterwards does not take back the delete (nothing can),
 // it reaches PAST it and takes back the edit you made before it, while the
 // delete stays.
 //
 // The backend half is one call to `undo_stack_invalidated` and has no unit
-// test, for the §132 reason: it lives in the command layer, where
+// test, for the usual reason: it lives in the command layer, where
 // `State<AppState>` is not constructible. It is walkthrough step **I4**.
 //
 // What IS testable is the half that has broken before: the frontend must ask
@@ -100,7 +100,7 @@ beforeEach(() => {
   useBudgetStore.setState({ summary: [], budgets: [] });
 });
 
-describe("§136 — a write that cannot be undone invalidates what came before", () => {
+describe("A write that cannot be undone invalidates what came before", () => {
   it("re-reads the undo status after deleting an account", async () => {
     stubEverything({ delete_account: () => null });
     await openAccountList();

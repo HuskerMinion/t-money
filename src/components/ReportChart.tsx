@@ -1,4 +1,4 @@
-// The chart view of a report (§39, redrawn in §59): the same numbers the
+// The chart view of a report: the same numbers the
 // table shows, as a bar, stacked bar, horizontal bar, pie, doughnut, line
 // or area chart, flat or with Money-style depth. Inline SVG, no library;
 // colors from the --tm-series-* tokens, which were read off Money's own
@@ -40,7 +40,7 @@ interface Props {
   /** Money-style depth on bars and pies, a soft shadow on lines. */
   depth?: boolean;
   height?: number;
-  /** §166 — a slice, a bar or a legend entry was clicked: the label of the
+  /** A slice, a bar or a legend entry was clicked: the label of the
    *  thing it stands for. The viewer opens that thing's transactions, as a
    *  click on its row in the table does. Omit and the chart is inert. */
   onPick?: (label: string) => void;
@@ -71,7 +71,7 @@ export function shortMoney(cents: number): string {
   const abs = Math.abs(cents);
   const sign = cents < 0 ? "-" : "";
   if (abs >= 100_000_000) return `${sign}${(abs / 100_000_000).toFixed(1)}M`;
-  // §183 — one decimal under $10k. A 500-step axis rounded $1,500 and
+  // One decimal under $10k. A 500-step axis rounded $1,500 and
   // $2,500 to "2k" and "3k", so two ticks could read the same or skip; the
   // labels have to say the value the gridline is at.
   if (abs >= 1_000_000) return `${sign}${Math.round(abs / 100_000)}k`;
@@ -90,7 +90,7 @@ function Flat() {
 }
 
 export default function ReportChart({ chart, style, depth = true, height = 420, onPick }: Props) {
-  // §166 — what a clickable mark carries: a hand cursor, a role, and Enter.
+  // What a clickable mark carries: a hand cursor, a role, and Enter.
   const pick = (label: string) =>
     onPick
       ? {

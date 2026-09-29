@@ -84,7 +84,7 @@ describe("InvestmentsView — symbol in place", () => {
   });
 });
 
-describe("the share ledger's unhonored rows (§96)", () => {
+describe("the share ledger's unhonored rows", () => {
   beforeEach(() => resetIpc());
 
   const problems = [
@@ -123,9 +123,9 @@ describe("the share ledger's unhonored rows (§96)", () => {
   });
 });
 
-// §172 — the two returns Money never had, and what kind of thing the money
+// The two returns Money never had, and what kind of thing the money
 // is in.
-describe("Performance and Allocation (§172)", () => {
+describe("Performance and Allocation", () => {
   beforeEach(() => resetIpc());
 
   it("shows each period's returns as percentages, and dashes where there is none", async () => {
@@ -147,7 +147,7 @@ describe("Performance and Allocation (§172)", () => {
     expect(table.textContent).toContain("110.00");
   });
 
-  // §172.2 / §172.3 — one account, then one holding in it.
+  // One account, then one holding in it.
   it("can show the returns of one account and of one holding in it, asking the backend by each", async () => {
     const row = (label: string, gain: number) => ({ label, from: "2025-09-07", to: "2026-09-07", start_value_cents: 100_000, end_value_cents: 100_000 + gain, flows_in_cents: 0, flows_out_cents: 0, gain_cents: gain, twr_bps: 1_000, twr_annual_bps: 1_000, mwr_annual_bps: 1_000, flow_days: 0 });
     setIpcHandlers({
@@ -195,7 +195,7 @@ describe("Performance and Allocation (§172)", () => {
   });
 });
 
-describe("§183 — failures and slow answers on the Portfolio page", () => {
+describe("Failures and slow answers on the Portfolio page", () => {
   beforeEach(() => resetIpc());
   const second: Security = { ...fund, id: "s-2", name: "Schwab dividend", symbol: "SCHD" };
   const price = (security_id: string, date: string, price_micro: number) => ({ security_id, date, price_micro, source: "manual" });

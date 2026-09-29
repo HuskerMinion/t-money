@@ -20,10 +20,10 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = [] }
 
-# --- §108: one copy of the app, not several ---
+# --- One copy of the app, not several ---
 #
 # Two copies open on the SAME file are two writers against one SQLite
-# database. The file association (§105) makes that easy to do by accident:
+# database. The file association makes that easy to do by accident:
 # double-click a .tmny while the app is already running and Windows launches a
 # second process. This plugin hands the path to the copy that is already
 # running instead, which is both safer and what every document application

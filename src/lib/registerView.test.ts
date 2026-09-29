@@ -91,7 +91,7 @@ describe("applyRegisterView", () => {
   });
 });
 
-describe("sorting by a clicked column header (§96)", () => {
+describe("sorting by a clicked column header", () => {
   const rows = [
     row({ id: "a", date: "2026-03-01", payee: "Costco", amount_cents: -5000, check_number: "1002" }),
     row({ id: "b", date: "2026-03-02", payee: "aldi", amount_cents: -1500, check_number: "9" }),

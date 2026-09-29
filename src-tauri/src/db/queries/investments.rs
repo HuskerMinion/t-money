@@ -1,4 +1,4 @@
-//! Securities, prices and investment transactions (migration 0022, §41).
+//! Securities, prices and investment transactions (migration 0022).
 
 use crate::models::{LotAllocation, NewInvestmentTransaction, Security, SecurityPrice};
 use crate::db::lots;
@@ -7,7 +7,7 @@ use uuid::Uuid;
 use super::*;
 
 // ---------------------------------------------------------------------------
-// Securities, prices and investment transactions (migration 0022, §41)
+// Securities, prices and investment transactions (migration 0022)
 // ---------------------------------------------------------------------------
 
 const SECURITY_SELECT: &str = "SELECT s.id, s.name, s.symbol, s.kind, s.notes, s.updated_at,
@@ -63,7 +63,7 @@ fn check_security(name: &str, kind: &str) -> Result<(), String> {
 /// Does a security's NAME read as a ticker? Money's QIF export writes no
 /// `!Type:Security` records, so a file whose securities were named by their
 /// symbols ("MUB", "VTSAX", "BRK.B") arrives with every symbol blank — and
-/// the price fetch (§75) needs the symbol. One to six capitals or digits,
+/// the price fetch needs the symbol. One to six capitals or digits,
 /// optionally one ".X"/"-X" class suffix, the first character a letter.
 pub fn ticker_like(name: &str) -> bool {
     let n = name.trim();
@@ -212,12 +212,12 @@ pub fn set_security_price(
 }
 
 /// The price a buy / sell / reinvest implies for its day. A price the user
-/// TYPED (§78: a broker's NAV to six places, corrected after an import
+/// TYPED (a broker's NAV to six places, corrected after an import
 /// rounded it) replaces a `transaction` row for that day — that row was
 /// only ever an inference, from this transaction or another the same day.
 /// A price DERIVED from the total never replaces anything. Neither touches
 /// a `fetched` or `manual` row: a quote beats an inference, never the
-/// reverse (§41.1).
+/// reverse.
 pub fn record_transaction_price(
     conn: &Connection,
     security_id: &str,
@@ -402,7 +402,7 @@ pub fn create_investment_transaction(conn: &Conn, t: &NewInvestmentTransaction) 
 }
 
 /// The body of `create_investment_transaction`, inside a transaction the
-/// caller holds — the OFX importer (§44) writes many in one. `fitid` is the
+/// caller holds — the OFX importer writes many in one. `fitid` is the
 /// broker's id when there is one.
 pub fn insert_investment_transaction(
     tx: &Connection,
@@ -429,7 +429,7 @@ pub fn insert_investment_transaction(
     )
     .map_err(|e| e.to_string())?;
     write_allocations(tx, &id, a, &t.lot_allocations)?;
-    // §90: a share move carries a price too — the quarterly fee share-out
+    // A share move carries a price too — the quarterly fee share-out
     // was the newest price in the user's 401(k) file, and the portfolio was
     // valuing it six weeks stale because only buys and sells filed one.
     if let (Some(p), true) = (c.price, matches!(a, "buy" | "sell" | "add_shares" | "remove_shares") || a.starts_with("reinvest_")) {
@@ -447,21 +447,21 @@ pub fn insert_investment_transaction(
             let note = Some(format!("{} {}", lots::activity_label(a), c.payee));
             let mine = match a {
                 "buy" => insert_transfer_pair(tx, fund, &t.account_id, &t.date, magnitude, note.as_deref())?.1,
-                // A sale's proceeds, or income paid out (§74: a dividend
+                // A sale's proceeds, or income paid out (a dividend
                 // swept to the bank), leave the investment account.
                 "sell" | "dividend" | "interest" | "ltcg_dist" | "stcg_dist" | "return_of_capital" => {
                     insert_transfer_pair(tx, &t.account_id, fund, &t.date, magnitude, note.as_deref())?.0
                 }
                 _ => return Err("only a buy, a sell or income paid in cash can name another account".to_string()),
             };
-            // §71: the buy remembers its own funding pair, so "Pay from" can change later.
+            // The buy remembers its own funding pair, so "Pay from" can change later.
             tx.execute("UPDATE transactions SET funding_txn_id = ?2 WHERE id = ?1", params![id, mine]).map_err(|e| e.to_string())?;
         }
     }
     Ok(id)
 }
 
-/// Move shares between two investment accounts as one action (§45): a
+/// Move shares between two investment accounts as one action: a
 /// Remove Shares in `from` and an Add Shares in `to`, linked by
 /// `transfer_id` like a money transfer. The lots travel with their dates
 /// and basis — `lots::replay` reopens in `to` exactly what closed in
@@ -480,7 +480,7 @@ pub fn create_share_transfer(
     if from_account_id == to_account_id {
         return Err("shares cannot be transferred to the account they are in".to_string());
     }
-    // §181 — shares moved into or out of a closed account are a new link too.
+    // Shares moved into or out of a closed account are a new link too.
     refuse_new_link_to_closed(conn, &[from_account_id, to_account_id])?;
     let held: i64 = lots::replay(conn, Some(from_account_id), Some(security_id), Some(date))?
         .lots
@@ -522,7 +522,7 @@ pub fn create_share_transfer(
 }
 
 /// The account a buy was paid from (or a sell deposited to) through its
-/// funding pair (§71), if it still has one.
+/// funding pair, if it still has one.
 pub fn funding_account_of(conn: &Connection, id: &str) -> Result<Option<String>, String> {
     conn.query_row(
         "SELECT p.account_id FROM transactions t
@@ -557,7 +557,7 @@ pub(super) fn legacy_funding_row(conn: &Connection, id: &str) -> Result<Option<S
     Ok(if rows.len() == 1 { rows.into_iter().next() } else { None })
 }
 
-/// Edit an investment transaction in place. The funding pair (§71) follows:
+/// Edit an investment transaction in place. The funding pair follows:
 /// `funding_account_id` None removes it, a different account (or a changed
 /// date or amount) rewrites it, and a buy that had none gets one.
 pub fn update_investment_transaction(conn: &Conn, id: &str, t: &NewInvestmentTransaction) -> Result<(), String> {
@@ -612,13 +612,13 @@ pub fn update_investment_transaction(conn: &Conn, id: &str, t: &NewInvestmentTra
         .map_err(|e| e.to_string())?;
     }
     write_allocations(&tx, id, a, &t.lot_allocations)?;
-    // §90: a share move carries a price too — the quarterly fee share-out
+    // A share move carries a price too — the quarterly fee share-out
     // was the newest price in the user's 401(k) file, and the portfolio was
     // valuing it six weeks stale because only buys and sells filed one.
     if let (Some(p), true) = (c.price, matches!(a, "buy" | "sell" | "add_shares" | "remove_shares") || a.starts_with("reinvest_")) {
         record_transaction_price(&tx, &t.security_id, &t.date, p, t.price_micro.is_some())?;
     }
-    // §71: the funding pair. Anything that changes it is a delete-and-rewrite,
+    // The funding pair. Anything that changes it is a delete-and-rewrite,
     // which keeps every balance honest through the one code path.
     let new_funding = t.funding_account_id.as_deref().filter(|f| !f.is_empty()).map(str::to_string);
     if new_funding.as_deref() == Some(t.account_id.as_str()) {
@@ -669,7 +669,7 @@ pub(super) fn delete_transfer_pair_in(tx: &Connection, id: &str) -> Result<(), S
     else {
         return Ok(());
     };
-    // §179 — a paid occurrence goes back to due whichever half it was
+    // A paid occurrence goes back to due whichever half it was
     // entered as, released before either row goes (see `delete_transaction`).
     tx.execute(
         "DELETE FROM recurrence_exceptions WHERE status = 'paid' AND transaction_id IN (?1, ?2)",
@@ -756,7 +756,7 @@ mod tests {
         assert!(lots::roi(&c, Some(&empty), "2026-09-06").unwrap().iter().all(|p| p.return_bps.is_none() && p.return_cents == 0));
     }
 
-    // ── investments: securities, lots, gains (§41) ───────────────────────
+    // ── investments: securities, lots, gains ───────────────────────
 
     #[test]
     fn the_cash_effect_follows_from_the_activity_never_the_form() {
@@ -805,7 +805,7 @@ mod tests {
         assert!(create_investment_transaction(&c, &inv(&chk, "2025-02-01", "buy", &sec.id, lots::MICRO, 100)).is_err());
     }
 
-    // §78: a broker's confirmation says 12.3456 shares, NAV 34.5678, total
+    // A broker's confirmation says 12.3456 shares, NAV 34.5678, total
     // 426.74. The app kept the total (the cash) and the day's price came from
     // the rounded NAV, so the portfolio was pennies off the statement. Typing
     // the six-place NAV on the row fixes the day's price and leaves the total
@@ -849,7 +849,7 @@ mod tests {
         assert_eq!(get_register(&c, &acct).unwrap().into_iter().find(|r| r.id == id).unwrap().price_micro, Some(34_000_000), "the row itself still says what was typed");
     }
 
-    // §79: 20.125 shares of Fund A (FNDAX) @ $10.07 = 202.65875 → the app
+    // 20.125 shares of Fund A (FNDAX) @ $10.07 = 202.65875 → the app
     // rounds to 202.66, a broker that truncates says 202.65; 10.25 shares of
     // Fund B (FNDBX) @ $50.07 = 513.2175 → 513.22 rounded, 513.21 truncated.
     // Some brokers truncate. The file can say so, and then every place that
@@ -890,7 +890,7 @@ mod tests {
         set_setting(&c, lots::ROUNDING_KEY, "sideways").unwrap();
         assert_eq!(lots::rounding(&c).unwrap(), lots::Rounding::Nearest);
 
-        // §81: an account can go its own way. File says nearest; this
+        // An account can go its own way. File says nearest; this
         // account says down; a second account follows the file.
         let other = inv_account(&c, "Other broker", "investment");
         create_investment_transaction(&c, &inv(&other, "2026-03-03", "add_shares", &fund_a.id, 20_125_000, 20_000)).unwrap();
@@ -1040,7 +1040,7 @@ mod tests {
         assert_eq!(p.positions[0].shares_micro, 200 * lots::MICRO, "the shares are back where they were");
     }
 
-    // §71 — "Pay from" can change after entry.
+    // "Pay from" can change after entry.
     #[test]
     fn a_buys_funding_account_can_be_changed_removed_and_added_after_entry() {
         let db = TestDb::new("inv-refund");
@@ -1089,7 +1089,7 @@ mod tests {
         let pf = lots::portfolio(&c, Some(&acct), "2025-12-31").unwrap();
         assert_eq!(pf.positions[0].shares_micro, 10 * lots::MICRO);
         assert_eq!(pf.positions[0].cost_cents, 120_000);
-        // §86: deleting the buy takes its funding pair with it — Checking
+        // Deleting the buy takes its funding pair with it — Checking
         // gets the $1,200 back; nothing is left in either register.
         delete_transaction(&c, &buy).unwrap();
         assert_eq!((bal(&chk), bal(&acct)), (1_000_000, 0));
@@ -1109,7 +1109,7 @@ mod tests {
         let pairs: i64 = c.query_row("SELECT count(*) FROM transactions WHERE activity IS NULL AND transfer_id IS NOT NULL AND date = '2025-05-01'", [], |r| r.get(0)).unwrap();
         assert_eq!(pairs, 2, "one pair, not two");
 
-        // §86: deleting the buy takes its funding pair with it — Savings gets
+        // Deleting the buy takes its funding pair with it — Savings gets
         // its $500 back and no orphan transfer is left in either register.
         delete_transaction(&c, &old).unwrap();
         assert_eq!((bal(&chk), bal(&sav), bal(&acct)), (1_000_000, 500_000, 0));
@@ -1117,7 +1117,7 @@ mod tests {
         assert_eq!(pairs, 0, "the funding pair went with the buy");
     }
 
-    // §74 — a dividend paid out to the bank is one entry.
+    // A dividend paid out to the bank is one entry.
     #[test]
     fn a_dividend_can_be_deposited_to_another_account_but_a_reinvestment_cannot() {
         let db = TestDb::new("inv-div-sweep");
@@ -1211,8 +1211,8 @@ mod tests {
             kind: "spending_by_category".into(), from: "2025-01-01".into(), to: "2025-12-31".into(),
             account_ids: None, category_ids: None, compare_from: None, compare_to: None, detail: None, security_ids: None, tax_scope: None, ..Default::default()
         }).unwrap();
-        // The buy must not appear as 100,000 of uncategorized spending (§64:
-        // the spending report leaves income out, so the opening balance's
+        // The buy must not appear as 100,000 of uncategorized spending (the
+        // spending report leaves income out, so the opening balance's
         // uncategorized 1,000,000 is not on it either — nothing is).
         let uncategorized: Vec<i64> = sp.rows.iter().filter(|r| r.label == "Uncategorized").map(|r| r.cells[0].cents.unwrap()).collect();
         assert_eq!(uncategorized, Vec::<i64>::new(), "{:?}", sp.rows.iter().map(|r| (&r.label, r.cells.first().and_then(|c| c.cents))).collect::<Vec<_>>());
@@ -1248,7 +1248,7 @@ mod tests {
         assert_eq!(fill_symbols_from_names(&conn).unwrap(), 0);
     }
 
-    // §167 — a TSP reallocation is an exchange within the account: the lots
+    // A TSP reallocation is an exchange within the account: the lots
     // that left one fund arrive in the other with their basis and dates, and
     // nothing is realized on the way. Written as a Sell and a Buy it booked a
     // gain inside a tax-deferred plan and made the basis that day's price.
@@ -1264,8 +1264,8 @@ mod tests {
         create_investment_transaction(&c, &inv(&acct, "2024-01-10", "buy", &g.id, 100 * lots::MICRO, 100_000)).unwrap();
         create_investment_transaction(&c, &inv(&acct, "2025-01-10", "buy", &g.id, 100 * lots::MICRO, 200_000)).unwrap();
         // Everything moves to I: 200 G out worth $5,000, 250 I in worth $5,000.
-        // The TSP lists the in-row FIRST on such a day (§103 orders adds before
-        // removes), which is exactly why the in-rows wait for the day to end.
+        // The TSP lists the in-row FIRST on such a day (the import orders adds
+        // before removes), which is exactly why the in-rows wait for the day to end.
         let mut into = inv(&acct, "2026-03-01", "add_shares", &i.id, 250 * lots::MICRO, 500_000);
         into.notes = Some(REALLOC_IN.into());
         let in_id = create_investment_transaction(&c, &into).unwrap();
@@ -1363,7 +1363,7 @@ mod tests {
         }
     }
 
-    // §167 — migration 0042 turns the Sell/Buy pairs an earlier import wrote
+    // Migration 0042 turns the Sell/Buy pairs an earlier import wrote
     // into the linked exchange they should have been, without moving cash.
     #[test]
     fn migration_0042_turns_imported_reallocation_sells_and_buys_into_a_linked_exchange() {
@@ -1403,7 +1403,7 @@ mod tests {
         assert_eq!(get_register(&c, &acct).unwrap().iter().filter(|r| r.is_exchange).count(), 2);
     }
 
-    // §172 — a TSP contribution imported through the QIF path gets its cash
+    // A TSP contribution imported through the QIF path gets its cash
     // side when the importer supplies what its own memos mean.
     #[test]
     fn a_tsp_contribution_buy_arrives_with_its_cash_side_when_the_memo_rules_are_supplied() {
@@ -1426,11 +1426,11 @@ mod tests {
         let reg = get_register(&c, &plan).unwrap();
         let cash = reg.iter().find(|r| r.activity.is_none()).expect("the cash side");
         assert_eq!((cash.amount_cents, cash.category_name.as_deref()), (20_000, Some("Retirement Contributions")));
-        // Without them (every import before §172): the buy alone, cash drifting negative.
+        // Without them (every older import): the buy alone, cash drifting negative.
         assert_eq!(get_account(&c, &plain).unwrap().balance_cents, -20_000);
     }
 
-    // §172 — migration 0044 writes that cash side for the contributions an
+    // Migration 0044 writes that cash side for the contributions an
     // earlier import left bare, once, and links each buy to its deposit.
     #[test]
     fn migration_0044_gives_bare_tsp_contribution_buys_their_cash_side_once() {
@@ -1462,7 +1462,7 @@ mod tests {
         assert_eq!(get_register(&c, &plan).unwrap().len(), 3);
     }
 
-    // §172.2 — valuing on many days is one replay, and it agrees with the
+    // Valuing on many days is one replay, and it agrees with the
     // portfolio on every one of them; and one fund can be looked at alone,
     // its edge being what it was bought and sold for.
     #[test]
@@ -1511,8 +1511,8 @@ mod tests {
         assert_eq!(all.from, "2026-02-04");
     }
 
-    // §172.1 — contributions that came in through the Import QIF dialog
-    // already have each one's deposit (§90), under the file's own
+    // Contributions that came in through the Import QIF dialog
+    // already have each one's deposit, under the file's own
     // categories. The migration must see that and write nothing there;
     // only a bare buy gets one. Counted in groups: two equal same-day
     // contributions with one deposit between them get exactly one more.
@@ -1525,7 +1525,7 @@ mod tests {
         let memo = "TSP Traditional payroll deferral";
         let own = ensure_category(&c, "TSP Traditional").unwrap();
         // 1. A contribution the dialog wrote: the buy, and the deposit beside
-        //    it — payee is the memo, note is §90's, no funding link.
+        //    it — payee is the memo, note is the dialog's, no funding link.
         let mut b1 = inv(&plan, "2026-09-03", "buy", &g.id, 10 * lots::MICRO, 20_000);
         b1.notes = Some(memo.into());
         create_investment_transaction(&c, &b1).unwrap();
@@ -1575,7 +1575,7 @@ mod tests {
         assert_eq!(n, 0, "no category for nothing");
     }
 
-    // §172 — the time-weighted return is the investments'; the money-weighted
+    // The time-weighted return is the investments'; the money-weighted
     // return is the investor's. Money that crossed the account's edge is a
     // flow; a fee paid from cash is a cost; a dividend paid in cash is return.
     #[test]
@@ -1627,7 +1627,7 @@ mod tests {
         assert_eq!(labels, vec!["Past month", "Year to date", "12 months", "3 years", "All time"]);
         let all = table.iter().find(|t| t.label == "All time").unwrap();
         assert_eq!(all.from, "2026-01-04");
-        // §172.3 — a period under a year is not annualized: not a week, and not eleven months.
+        // A period under a year is not annualized: not a week, and not eleven months.
         let week = lots::performance_between(&c, Some(&ira), None, "2026-12-24", "2026-12-31").unwrap();
         assert!(week.twr_annual_bps.is_none() && week.mwr_annual_bps.is_none());
         let eleven = lots::performance_between(&c, Some(&ira), None, "2026-01-31", "2026-12-31").unwrap();
@@ -1641,9 +1641,9 @@ mod tests {
         assert_eq!((whole.flows_in_cents, whole.flows_out_cents), (0, 0), "a move between two plans is not money from outside");
     }
 
-    // ── §179 ─────────────────────────────────────────────────────────────
+    // ── Deleting and voiding a reallocation ──────────────────────────────
 
-    /// §179 — the 2-out/2-in reallocation, deleted and voided from its second
+    /// The 2-out/2-in reallocation, deleted and voided from its second
     /// in-row. Its link names the FIRST fund's out-row, which another in-row
     /// also points at: the delete failed the foreign key, and the void voided
     /// a row from a different fund.

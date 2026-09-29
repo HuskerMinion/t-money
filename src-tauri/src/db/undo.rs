@@ -1,4 +1,4 @@
-//! §101 — undo, for the things you do hundreds of times.
+//! Undo, for the things you do hundreds of times.
 //!
 //! > *"Build undo for transactions"*
 //!
@@ -9,27 +9,27 @@
 //!
 //! WHAT IS UNDOABLE, AND WHAT IS NOT. Transactions: added, edited, deleted,
 //! voided, split, tagged; payee rules applied to existing rows; and — since
-//! §119 — the two ways of writing a transaction that are not typing one:
-//! **Update value** on an asset (§93) and **Record payment** on a loan (§94).
+//! The two ways of writing a transaction that are not typing one:
+//! **Update value** on an asset and **Record payment** on a loan.
 //! Those two were missed when this was built because neither goes through
 //! `create_transaction`, and a user found both the hard way: "I had an error
 //! and I couldn't undo and had to delete." An undo that covers most of what
 //! writes to the file is the shallow undo this module's own comment warns
-//! about. Since §133, **merging two categories** as well: it is a rename
+//! about. And **merging two categories** as well: it is a rename
 //! that deletes something, the direction is easy to get backwards, and the
 //! person who gets it backwards is by definition not the person who took a
-//! backup first. Since §186, **merging two payees** and deleting an unused
+//! backup first. And **merging two payees** and deleting an unused
 //! one, for the same reason: *"I merged Best Buy into Chewy … CTRL+Z did
 //! not undo it."*
 //!
 //! Not accounts — deleting an account takes every row in it, and something
 //! that consequential should stay confirm-then-commit rather than becoming a
-//! thing you can shrug off; §132's rule covers it instead, by emptying the
-//! stack so Undo cannot reach past it. That sentence was written at §132 and
-//! only became true at §136, which finally had `delete_account` and
+//! thing you can shrug off; the invalidation rule covers it instead, by emptying the
+//! stack so Undo cannot reach past it. That sentence was written well before
+//! it became true: a later change finally had `delete_account` and
 //! `merge_accounts` call `undo_stack_invalidated` the way the importers
 //! already did. Worth saying plainly: a header that states an intention in
-//! the present tense is how a gap like that survives four sections. A
+//! the present tense is how a gap like that survives several changes. A
 //! shallow undo that quietly covers half of what a user assumes is worse than
 //! no undo, so the menu names what it will undo ("Undo delete a transaction")
 //! and grays itself out when the last thing you did was not one of these.
@@ -78,7 +78,7 @@ pub struct Rows {
     pub rows: Vec<Vec<Value>>,
 }
 
-/// §133 — one column of one table, put back row by row.
+/// One column of one table, put back row by row.
 ///
 /// The `Rows` photograph above is for rows that get deleted and re-inserted
 /// whole. A merge does not delete the rows it touches — it re-points a single
@@ -98,7 +98,7 @@ pub struct Cells {
     pub rows: Vec<(Value, Value)>,
 }
 
-/// §133 — rows to clear out before a photograph goes back, named by a key
+/// Rows to clear out before a photograph goes back, named by a key
 /// that is not a transaction id.
 ///
 /// Named `Removal` and not `Drop` because `Drop` is in the prelude, and a
@@ -121,7 +121,7 @@ pub struct Snapshot {
     pub txn_ids: Vec<String>,
     /// Accounts whose balance must be recomputed after a restore.
     pub accounts: Vec<String>,
-    /// §133 — the generic half, applied in the order it is declared here:
+    /// The generic half, applied in the order it is declared here:
     /// **drops, inserts, cells, late_drops**. The order is load-bearing, and
     /// each step earns its place:
     ///
@@ -201,7 +201,7 @@ impl Journal {
 
 /// Every transaction id an operation on `id` could reach: the row itself, its
 /// transfer partner, its funding pair in both directions, anything pointing
-/// at it as a transfer, the far rows of its split transfers — and, §178, the
+/// at it as a transfer, the far rows of its split transfers — and the
 /// payment a far row belongs to. Without that last one an edit made in the
 /// loan register photographed the principal row alone; undo deleted and
 /// re-inserted it, `ON DELETE SET NULL` cut the payment's line loose, and the
@@ -228,7 +228,7 @@ pub fn related_ids(conn: &Connection, id: &str) -> Result<Vec<String>, String> {
                 "SELECT id FROM transactions WHERE funding_txn_id = ?1",
                 "SELECT transfer_txn_id FROM splits WHERE transaction_id = ?1 AND transfer_txn_id IS NOT NULL",
                 "SELECT transaction_id FROM splits WHERE transfer_txn_id = ?1",
-                // §179 — a §167 exchange's day. Delete and void take the whole
+                // An exchange's day. Delete and void take the whole
                 // day's exchange (`queries::exchange_day_of`), and its links
                 // are many-to-one: in a two-out, two-in reallocation the
                 // second fund's Remove is three hops from the second Add.
@@ -263,7 +263,7 @@ fn placeholders(n: usize) -> String {
 
 /// `SELECT *` for a set of ids, columns read at runtime.
 ///
-/// §133 — public, because a merge photographs rows outside the three tables
+/// Public, because a merge photographs rows outside the three tables
 /// `snapshot` knows about (the category row it is about to delete, and the
 /// budget rows it is about to fold together).
 pub fn photograph(conn: &Connection, table: &'static str, key: &str, ids: &[String]) -> Result<Rows, String> {
@@ -288,11 +288,11 @@ pub fn photograph(conn: &Connection, table: &'static str, key: &str, ids: &[Stri
 pub fn snapshot(conn: &Connection, txn_ids: &[String]) -> Result<Snapshot, String> {
     let txns = photograph(conn, "transactions", "id", txn_ids)?;
     let splits = photograph(conn, "splits", "transaction_id", txn_ids)?;
-    // §112: the classification links, keyed on the transaction either way
+    // The classification links, keyed on the transaction either way
     // (a split line's link carries its transaction_id too). Restored after
     // splits, since a line's link references the split row.
     let classes = photograph(conn, "transaction_classes", "transaction_id", txn_ids)?;
-    // §170: the attachment LINK rows — name, type, what they hang off —
+    // The attachment LINK rows — name, type, what they hang off —
     // never the bytes, which stay in `attachment_blobs` until the file is
     // next opened. A photograph a few hundred bytes a row is what lets a
     // deleted transaction come back with its receipts.
@@ -343,7 +343,7 @@ fn insert_rows(tx: &Connection, rows: &Rows) -> Result<(), String> {
 pub fn restore(conn: &Connection, snap: &Snapshot, also: &[String]) -> Result<(), String> {
     let tx = conn.unchecked_transaction().map_err(|e| e.to_string())?;
 
-    // §178 — split lines OUTSIDE the photograph that point at a row inside
+    // Split lines OUTSIDE the photograph that point at a row inside
     // it. Deleting that row below fires `ON DELETE SET NULL` on them, and
     // their own split rows are not about to be re-inserted to carry the link
     // back. `related_ids` puts the payment in the photograph, so this is
@@ -367,7 +367,7 @@ pub fn restore(conn: &Connection, snap: &Snapshot, also: &[String]) -> Result<()
     if !snap.txn_ids.is_empty() {
         let marks = placeholders(snap.txn_ids.len());
         // Links first, then splits: each references what follows it.
-        // §170: the link rows go first; the photograph puts them back.
+        // The link rows go first; the photograph puts them back.
         tx.execute(
             &format!("DELETE FROM attachments WHERE transaction_id IN ({marks})"),
             params_from_iter(snap.txn_ids.iter()),
@@ -414,7 +414,7 @@ pub fn restore(conn: &Connection, snap: &Snapshot, also: &[String]) -> Result<()
     for t in snap.tables.iter().filter(|t| t.table != "transactions") {
         insert_rows(&tx, t)?;
     }
-    // §178 — and point those lines back at their rows, where the rows came
+    // And point those lines back at their rows, where the rows came
     // back. A row that did not (undoing its creation) leaves the line as the
     // delete left it, which `verify_file` reports.
     for (split_id, far_id) in &stranded {
@@ -426,7 +426,7 @@ pub fn restore(conn: &Connection, snap: &Snapshot, also: &[String]) -> Result<()
         .map_err(|e| e.to_string())?;
     }
 
-    // §133 — the generic half. Drops, inserts, cells, late drops; see
+    // The generic half. Drops, inserts, cells, late drops; see
     // `Snapshot` for why that order and no other.
     let remove = |d: &Removal| -> Result<(), String> {
         if d.values.is_empty() {
@@ -567,7 +567,7 @@ pub fn recording<T>(
     ))
 }
 
-/// §119 — finish a step for an operation that CREATED rows.
+/// Finish a step for an operation that CREATED rows.
 ///
 /// `recording` cannot photograph what does not exist yet, so a create needs a
 /// second pass once the new row has an id: the "after" photograph covers what
@@ -575,7 +575,7 @@ pub fn recording<T>(
 /// undo-of-a-create a deletion of exactly those rows.
 ///
 /// `also` is for an operation that created a row AND changed an existing one —
-/// a revaluation adjusts the next revaluation after it (§93), and those ids
+/// a revaluation adjusts the next revaluation after it, and those ids
 /// must already have been passed to `recording` so their original state is in
 /// the "before" photograph. Naming them here keeps them in the id set the undo
 /// clears, so redo removes the created row without stranding the neighbor.
@@ -591,7 +591,7 @@ pub fn creation_step(conn: &Connection, mut step: Step, created: &str, also: &[S
     Ok(step)
 }
 
-/// §153 — the ids of every transaction in the file, for diffing across an
+/// The ids of every transaction in the file, for diffing across an
 /// operation that creates an unknown number of them.
 ///
 /// An import does not know what it is about to write: the file decides, rows
@@ -617,7 +617,7 @@ pub fn all_txn_ids(conn: &Connection) -> Result<BTreeSet<String>, String> {
     Ok(out)
 }
 
-/// §153 — a step for an operation that created MANY rows, which is what an
+/// A step for an operation that created MANY rows, which is what an
 /// import is.
 ///
 /// > *"if I mistakenly import to the wrong account well I have a lot of
@@ -678,7 +678,7 @@ mod tests {
     use super::*;
     use crate::db::queries;
 
-    // §182 — the shared database, checked whole when the test ends.
+    // The shared database, checked whole when the test ends.
     use crate::db::test_db::TestDb as Db;
     impl Db {
         fn c(&self) -> r2d2::PooledConnection<r2d2_sqlite::SqliteConnectionManager> {
@@ -702,7 +702,7 @@ mod tests {
         let db = Db::new("xfer");
         let c = db.c();
         let a = queries::create_account(&c, "Checking", "checking", 100_000, Some("2026-01-01")).unwrap().id;
-        // Both sides get an opening balance, which is itself a row (§93), so
+        // Both sides get an opening balance, which is itself a row, so
         // "the transfer rows went away" is visibly different from "the account
         // is empty".
         let b = queries::create_account(&c, "Savings", "savings", 40_000, Some("2026-01-01")).unwrap().id;
@@ -737,7 +737,7 @@ mod tests {
 
     #[test]
     fn undoing_a_delete_brings_back_the_classification_links_too() {
-        // §112: the links live in their own table, so the photograph has to
+        // The links live in their own table, so the photograph has to
         // carry it — a column would have come for free, a table does not.
         use crate::db::classes;
         let db = Db::new("classes");
@@ -837,7 +837,7 @@ mod tests {
         assert_eq!(balance(&c, &a), 90_000);
     }
 
-    /// A split line can be a transfer (§94), which puts a row in a DIFFERENT
+    /// A split line can be a transfer, which puts a row in a DIFFERENT
     /// account. Undoing the split has to take that far row with it, or the
     /// other account keeps money that no longer has a source.
     #[test]
@@ -873,7 +873,7 @@ mod tests {
         assert_eq!(splits, 0, "back to an unsplit transaction");
     }
 
-    /// §178 — the file agrees with itself afterwards: every balance equals its
+    /// The file agrees with itself afterwards: every balance equals its
     /// rows, and every split transfer line still has its row.
     fn assert_consistent(c: &queries::Conn) {
         let v = queries::verify_file(c, false).unwrap();
@@ -913,7 +913,7 @@ mod tests {
         (chk, loan, pay, principal)
     }
 
-    /// §178 — an edit made in the LOAN register, to the principal row, then
+    /// An edit made in the LOAN register, to the principal row, then
     /// Ctrl+Z. Undo deleted and re-inserted that row, `ON DELETE SET NULL`
     /// cut the payment's line loose, and nothing put it back.
     #[test]
@@ -954,7 +954,7 @@ mod tests {
         assert_consistent(&c);
     }
 
-    /// §178 — the other side: an edit to the payment moves its rows' dates,
+    /// The other side: an edit to the payment moves its rows' dates,
     /// and undo has to move them back.
     #[test]
     fn undoing_an_edit_to_a_split_payment_puts_its_rows_back_too() {
@@ -979,7 +979,7 @@ mod tests {
         assert_consistent(&c);
     }
 
-    /// §178 — `update_transfer` wrote no step. Moving a transfer's other half
+    /// `update_transfer` wrote no step. Moving a transfer's other half
     /// to a different account touches three balances, and undo has to put
     /// all three back.
     #[test]
@@ -1114,7 +1114,7 @@ mod tests {
         assert_eq!(n, DEPTH);
     }
 
-    /// §119 — Ctrl+Z after Update value.
+    /// Ctrl+Z after Update value.
     ///
     /// Reported plainly: "I had an error and I couldn't undo and had to
     /// delete." A revaluation was written straight to the file with no step
@@ -1195,7 +1195,7 @@ mod tests {
         assert_eq!(count(&c, &house), 3);
         assert_eq!(balance(&c, &house), 37_000_000);
     }
-    /// §153 — an import is many rows in one act, and it has to come back out
+    /// An import is many rows in one act, and it has to come back out
     /// in one act.
     ///
     /// > *"if I mistakenly import to the wrong account well I have a lot of
@@ -1250,7 +1250,7 @@ mod tests {
         assert_eq!(balance(&c, &wrong), -9_213, "-40.12 -65.00 +12.99");
     }
 
-    /// §153 — an import that wrote nothing (every row a duplicate, or every
+    /// An import that wrote nothing (every row a duplicate, or every
     /// row matched to something already in the register) has an empty diff, so
     /// `commands::importing` puts nothing on the stack and leaves what is
     /// behind it alone.

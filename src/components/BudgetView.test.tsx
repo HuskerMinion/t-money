@@ -1,4 +1,4 @@
-// §129 — the Budget screen.
+// The Budget screen.
 //
 // The tests worth having here are the three complaints that caused the
 // rework: you could not change a number where you were looking at it, you
@@ -65,7 +65,7 @@ beforeEach(() => {
   });
 });
 
-describe("Budget helpers (§129)", () => {
+describe("Budget helpers", () => {
   it("groups the flat rows into the two-level tree", () => {
     const groups = groupLines([auto, fuel, travel]);
     expect(groups.map((g) => g.parent.name)).toEqual(["Automobile", "Travel"]);
@@ -91,8 +91,8 @@ describe("Budget helpers (§129)", () => {
   });
 });
 
-describe("<BudgetView /> (§129)", () => {
-  // §148 — EIGHT TESTS WERE REMOVED HERE, and what they tested went with
+describe("<BudgetView />", () => {
+  // EIGHT TESTS WERE REMOVED HERE, and what they tested went with
   // them. They drove typing on this screen: editing an amount in the row,
   // the envelope notice that a write produced, the period picker, and
   // revealing a hidden category "and then it is typeable".
@@ -101,13 +101,13 @@ describe("<BudgetView /> (§129)", () => {
   // >  Card at 0.00 where I had set it and I changed it to 60. Where does
   // >  that go?"
   //
-  // Nowhere. §138 materializes `budgets` from `budget_plans`, so a figure
+  // Nowhere. `budgets` is materialized from `budget_plans`, so a figure
   // typed here is invisible to the year plan or wiped by the next
   // materialize. The screen is kept because it is a good reading of one
   // month; the typing is the year plan's job, and the envelope rule is
-  // tested where it now runs (queries.rs and plan.rs, §142/§147).
+  // tested where it now runs (queries.rs and plan.rs).
 
-  it("§148: shows the figure but does not offer to change it", async () => {
+  it("Shows the figure but does not offer to change it", async () => {
     render(<BudgetView />);
     await screen.findByText("Automobile");
     // The amount is drawn, not typed.
@@ -115,7 +115,7 @@ describe("<BudgetView /> (§129)", () => {
     expect(screen.queryByLabelText("Period for Automobile")).toBeNull();
   });
 
-  it("§148: says where the figure comes from, so the dead end is signposted", () => {
+  it("Says where the figure comes from, so the dead end is signposted", () => {
     expect(
       budgetSource(line({ category_id: "c-1", name: "Automobile", has_budget: true, target_cents: 60_000 }))
     ).toContain("set on the Year plan");
@@ -132,17 +132,17 @@ describe("<BudgetView /> (§129)", () => {
 
 
 
-  // §137 — the other half of that sentence. A parent that had NO budget and
+  // The other half of that sentence. A parent that had NO budget and
   // now has one is a different event from a parent that went up, and the
   // screen must not report the two the same way: a figure has appeared in a
-  // box nobody typed in, which is exactly what §130 refused to do until the user
+  // box nobody typed in, which is exactly what the screen refused to do until the user
   // asked for it.
 
 
 
   it("moves between months and asks the backend for the one being shown", async () => {
     render(<BudgetView />);
-    // §148 — wait on the row's NAME; the amount is no longer a labeled field.
+    // Wait on the row's NAME; the amount is no longer a labeled field.
     await screen.findByText("Automobile");
     const first = invokeCalls.filter((c) => c.cmd === "get_budget_grid").length;
 
@@ -165,7 +165,7 @@ describe("<BudgetView /> (§129)", () => {
   });
 });
 
-describe("§156 — Ctrl+F finds a budget line, not a transaction", () => {
+describe("Ctrl+F finds a budget line, not a transaction", () => {
   it("finds a child under a collapsed parent and opens it", async () => {
     const user = userEvent.setup();
     render(<BudgetView />);
@@ -190,7 +190,7 @@ describe("§156 — Ctrl+F finds a budget line, not a transaction", () => {
   });
 });
 
-describe("§183 — Clear, and the month on screen", () => {
+describe("Clear, and the month on screen", () => {
   it("does not offer Clear on a line the Year plan wrote, which the plan would write back", async () => {
     setIpcHandlers({
       get_budget_grid: () => grid,

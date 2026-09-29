@@ -1,4 +1,4 @@
-// §96, and redrawn three times since — the watermark behind Favorite Accounts.
+// Drawn early on, and redrawn three times since — the watermark behind Favorite Accounts.
 //
 // The history is worth keeping, because each attempt failed for a reason that
 // is now a rule:

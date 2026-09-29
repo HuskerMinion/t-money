@@ -107,7 +107,7 @@ pub fn ensure_category(conn: &Connection, name: &str) -> Result<String, String> 
 }
 
 /// A QIF category path — `Food:Groceries` — resolved to the subcategory,
-/// creating the parent and the child as needed (§54). Until now the
+/// creating the parent and the child as needed. Until now the
 /// importer flattened `Food:Groceries` to `Food`, which threw away the
 /// half of the name Money and Quicken actually file by. A bare name goes
 /// through `ensure_category`. Deeper paths keep only the first two levels,
@@ -290,16 +290,16 @@ pub fn update_category(
 /// **promoted to top level**, never deleted — losing a whole branch because a
 /// parent was tidied away is not recoverable.
 ///
-/// §179 — with a target, this is a merge that promotes the children instead
+/// With a target, this is a merge that promotes the children instead
 /// of moving them, and it now runs the merge's own body (`fold_category`).
 /// It used to re-point four things: transactions, splits, payee defaults and
 /// budgets. Payee rules, scheduled bills, common transactions, statements and
 /// a loan's escrow and interest categories were left to `ON DELETE SET NULL`
-/// — the exact list §133 fixed for merge and never carried here — the year
+/// — the exact list the undoable merge fixed and never carried here — the year
 /// plan was cascaded away, and a budget month the target already had was
 /// dropped rather than folded. And it could not be undone, while
-/// `undo_stack_invalidated` was not called either, so Ctrl+Z reached past it
-/// (§132). It returns the step now, with or without a target.
+/// `undo_stack_invalidated` was not called either, so Ctrl+Z reached past it.
+/// It returns the step now, with or without a target.
 pub fn delete_category(conn: &Conn, id: &str, reassign_to: Option<&str>) -> Result<undo::Step, String> {
     if reassign_to == Some(id) {
         return Err("cannot reassign a category to itself".into());
@@ -315,8 +315,8 @@ pub fn delete_category(conn: &Conn, id: &str, reassign_to: Option<&str>) -> Resu
         if !exists {
             return Err("the category to reassign to does not exist".into());
         }
-        // §179 — reassigning runs the merge's body, so it keeps the merge's
-        // §146 rule: income is not refiled as spending, or spending as income.
+        // Reassigning runs the merge's body, so it keeps the merge's
+        // same-kind rule: income is not refiled as spending, or spending as income.
         let (from_kind, from_name, into_kind, into_name): (String, String, String, String) = conn
             .query_row(
                 "SELECT f.kind, f.name, t.kind, t.name FROM categories f, categories t WHERE f.id = ?1 AND t.id = ?2",
@@ -358,7 +358,7 @@ pub fn delete_category(conn: &Conn, id: &str, reassign_to: Option<&str>) -> Resu
             )
             .map_err(|e| e.to_string())?;
         // Bind the Vec before returning it — the MappedRows temporary would
-        // otherwise outlive `stmt` (E0597, §8).
+        // otherwise outlive `stmt` (E0597).
         let out = stmt
             .query_map(params![id], |r| r.get(0))
             .map_err(|e| e.to_string())?
@@ -381,12 +381,12 @@ pub fn delete_category(conn: &Conn, id: &str, reassign_to: Option<&str>) -> Resu
 
 /// Fold `from_id` into `into_id`: every transaction, split, budget, payee
 /// default and subcategory moves across, then the source category is removed.
-/// §133 — every place in the schema that stores a category id, as
+/// Every place in the schema that stores a category id, as
 /// `(table, key column, category column)`.
 ///
 /// A merge re-points every one of them and undo puts every one of them back.
 /// The list is exhaustive against the FK declarations in `migrations.rs`, and
-/// that matters: before §133 the merge re-pointed four of these and left the
+/// that matters: the merge used to re-point four of these and left the
 /// other nine to `ON DELETE SET NULL`. Merging `Fuel` into `Gasoline`
 /// therefore **silently defused every payee rule that filed to Fuel**, blanked
 /// the category on any scheduled bill and common transaction that used it, and
@@ -397,7 +397,7 @@ pub fn delete_category(conn: &Conn, id: &str, reassign_to: Option<&str>) -> Resu
 /// A new table with a category column belongs in this list. `budgets` is
 /// deliberately absent: it carries `UNIQUE (category_id, month_year)`, so it
 /// cannot simply be re-pointed, and it is handled on its own below.
-/// §179 — so is `budget_plans`, `UNIQUE (category_id, year)`, which §133 did
+/// So is `budget_plans`, `UNIQUE (category_id, year)`, which the merge did
 /// not know about at all; `plan::fold_plans` folds it.
 const CATEGORY_REFS: &[(&str, &str, &str)] = &[
     ("transactions", "id", "category_id"),
@@ -415,7 +415,7 @@ const CATEGORY_REFS: &[(&str, &str, &str)] = &[
     ("categories", "id", "parent_id"),
 ];
 
-/// §133 — `cents`, stated in the `from` period, restated in the `to` period.
+/// `cents`, stated in the `from` period, restated in the `to` period.
 ///
 /// Adding a yearly 1,560 to a monthly 130 gives 1,690 of nothing at all, so
 /// two budgets being folded together are put in the same units first.
@@ -429,7 +429,7 @@ pub fn in_period(cents: i64, from: &str, to: &str) -> i64 {
 
 /// Why this merge cannot happen — `None` when it can.
 ///
-/// §133 split this out of `merge_categories` so that the dialog can ask the
+/// The undoable merge split this out of `merge_categories` so that the dialog can ask the
 /// same question the merge will ask, before the user presses anything. A
 /// refusal discovered by pressing Merge is a refusal the user had already
 /// decided was going to work.
@@ -438,7 +438,7 @@ pub fn merge_blocked(conn: &Conn, from_id: &str, into_id: &str) -> Result<Option
         return Ok(Some("cannot merge a category into itself".into()));
     }
 
-    // §146 — income and expense do not merge, in either direction.
+    // Income and expense do not merge, in either direction.
     //
     // Found by walking M7: *"chose Income Interest : Interest and told it to
     // merge into Credit card : Interest... didn't stop me, didn't warn me."*
@@ -534,7 +534,7 @@ fn keys_pointing_at(
         .prepare(&format!("SELECT {key} FROM {table} WHERE {column} = ?1 ORDER BY {key}"))
         .map_err(|e| e.to_string())?;
     // Bind before returning — the MappedRows temporary would otherwise
-    // outlive `st` (E0597, §8).
+    // outlive `st` (E0597).
     let out = st
         .query_map(params![value], |r| r.get::<_, String>(0))
         .map_err(|e| e.to_string())?
@@ -565,7 +565,7 @@ pub struct MergePreview {
     pub blocked: Option<String>,
 }
 
-/// §133 — count what a merge would touch, without touching it.
+/// Count what a merge would touch, without touching it.
 pub fn preview_merge(conn: &Conn, from_id: &str, into_id: &str) -> Result<MergePreview, String> {
     let mut p = MergePreview { blocked: merge_blocked(conn, from_id, into_id)?, ..Default::default() };
     if from_id == into_id {
@@ -632,7 +632,7 @@ fn budgets_of(conn: &Conn, category_id: &str) -> Result<Vec<MergeBudget>, String
 /// Fold `from_id` into `into_id` and delete it, returning the step that puts
 /// it back.
 ///
-/// §133 — undoable, because a user asked for it: which way a merge went
+/// Undoable, because a user asked for it: which way a merge went
 /// was not obvious, and getting it wrong looked permanent without a backup
 /// taken just before. Both halves of that are addressed —
 /// the direction is now spelled out in the dialog and in the button you
@@ -655,7 +655,7 @@ fn category_name(conn: &Conn, id: &str) -> String {
         .unwrap_or_else(|_| "a category".to_string())
 }
 
-/// §179 — where a folded category's subcategories go: under the destination
+/// Where a folded category's subcategories go: under the destination
 /// (a merge), or up to the top level (a delete, which never takes a branch
 /// with it).
 #[derive(Clone, Copy, PartialEq)]
@@ -666,7 +666,7 @@ enum Subcategories {
 
 /// Fold `from_id` into `into_id` (or, with no destination, uncategorize what
 /// named it), delete it, and return the step that puts it back. The body
-/// behind both `merge_categories` and `delete_category` (§179), so the two
+/// behind both `merge_categories` and `delete_category`, so the two
 /// can no longer disagree about what names a category.
 ///
 /// The step is built out of `undo::Cells` rather than the row photographs the
@@ -714,8 +714,8 @@ fn fold_category(
     // The category row itself, which the fold deletes.
     let category_row = undo::photograph(conn, "categories", "id", &[from_id.to_string()])?;
 
-    // §179 — budgets and year plans, photographed by CATEGORY rather than by
-    // row id. §133 photographed the budget rows it folded by id, which was
+    // Budgets and year plans, photographed by CATEGORY rather than by
+    // row id. The merge used to photograph the budget rows it folded by id, which was
     // exact while a merge only ever edited those rows; folding a year plan
     // means rebuilding the year's monthly rows (`plan::materialize` deletes
     // and re-inserts them under new ids) and re-running the envelope rule on
@@ -764,7 +764,7 @@ fn fold_category(
     // month's budget vanished, and nothing anywhere said so.
     //
     // Two envelopes for the same spending become one envelope holding both
-    // (§130's model), converted into the destination's period first.
+    // (the envelope model), converted into the destination's period first.
     if let Some(into) = into_id {
         for s in &source_budgets {
             match dest_budgets.iter().find(|d| d.month_year == s.month_year) {
@@ -795,7 +795,7 @@ fn fold_category(
     // happened to it.
     tx.execute("DELETE FROM budgets WHERE category_id = ?1", params![from_id])
         .map_err(|e| e.to_string())?;
-    // §179 — the year plans, the same way. `plan::fold_plans` writes through
+    // The year plans, the same way. `plan::fold_plans` writes through
     // `conn`, which is inside `tx`: same connection, same SQL transaction.
     let years = match into_id {
         Some(into) => crate::db::plan::fold_plans(conn, from_id, into)?,
@@ -862,7 +862,7 @@ mod tests {
     use super::*;
     use crate::db::queries::test_support::*;
 
-    /// §146 — income and expense do not merge, found by walking M7.
+    /// Income and expense do not merge, found by walking M7.
     ///
     /// > *"chose Income Interest : Interest and told it to merge into Credit
     /// >  card : Interest... Yeah, didn't stop me, didn't warn me that I was
@@ -1030,7 +1030,7 @@ mod tests {
         assert_eq!(budgets[0].category_id, into.id, "the budget was orphaned");
     }
 
-    // ── §133 — undoable merges ────────────────────────────────────────────
+    // ── Undoable merges ───────────────────────────────────────────────────
 
     /// The links the old merge dropped on the floor. Every one of these
     /// pointed at the source and was left to `ON DELETE SET NULL`.
@@ -1103,7 +1103,7 @@ mod tests {
         );
     }
 
-    /// The whole point of §133: get the direction wrong, press Ctrl+Z, and
+    /// The whole point of an undoable merge: get the direction wrong, press Ctrl+Z, and
     /// the file is exactly where it was.
     #[test]
     fn undoing_a_merge_puts_the_category_and_everything_pointing_at_it_back() {
@@ -1293,7 +1293,7 @@ mod tests {
     }
 
     // -----------------------------------------------------------------------
-    // §38 — what the review found
+    // What the review found
     // -----------------------------------------------------------------------
 
     #[test]
@@ -1326,7 +1326,7 @@ mod tests {
         assert_eq!(get_category(&c, &ins_child.id).expect("child").parent_id.as_deref(), Some(auto.id.as_str()));
     }
 
-    // §162 — a category typed as "loan:heloc" is the same category as
+    // A category typed as "loan:heloc" is the same category as
     // "Loan : HELOC". The path lookup folds case at both levels, so an import
     // whose file spells a name differently from the file's chart does not
     // grow a duplicate.
@@ -1349,9 +1349,9 @@ mod tests {
         assert_eq!(n, 2, "one parent, one child, and no duplicates");
     }
 
-    // ── §179 ─────────────────────────────────────────────────────────────
+    // ── Year plans and deleting into another category ────────────────────
 
-    /// §179 — merge_categories never knew `budget_plans` existed: the source's
+    /// `merge_categories` never knew `budget_plans` existed: the source's
     /// year plan was cascaded away with it, and undo could not bring it back.
     #[test]
     fn a_merge_folds_the_year_plan_and_undo_takes_the_fold_apart() {
@@ -1399,7 +1399,7 @@ mod tests {
         assert!(verify_file(&c, false).unwrap().foreign_keys.is_empty());
     }
 
-    /// §179 — a delete with a target refiled four things and let `ON DELETE`
+    /// A delete with a target refiled four things and let `ON DELETE`
     /// have the rest; it now does everything a merge does, keeps its promise
     /// to promote the children, and can be undone.
     #[test]
@@ -1479,7 +1479,7 @@ mod tests {
         assert_eq!(budget_of(&c, &fuel, "2027-01"), Some(10_000));
     }
 
-    /// §179 — reassigning keeps the merge's §146 rule, in both directions.
+    /// Reassigning keeps the merge's same-kind rule, in both directions.
     #[test]
     fn deleting_a_category_into_one_of_the_other_kind_is_refused() {
         let db = TestDb::new("cat-delete-kind");

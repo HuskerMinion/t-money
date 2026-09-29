@@ -1,4 +1,4 @@
-//! QIF writer (§54): one account's register as a Quicken Interchange file,
+//! QIF writer: one account's register as a Quicken Interchange file,
 //! the mirror of `qif.rs`. Money's "Export an account as QIF".
 //!
 //! What goes out, and how:
@@ -251,7 +251,7 @@ fn write_record(out: &mut String, row: &Row, invest: bool) {
         "C" => out.push_str("C*\n"),
         _ => {}
     }
-    // §180: not in an investment record. There `N` is the action, already
+    // Not in an investment record. There `N` is the action, already
     // written above, and a second `N` is read as a replacement action — so a
     // cash row with a check number came back as the action "1043" and was
     // left out of the import. `!Type:Invst` has no check-number field; the

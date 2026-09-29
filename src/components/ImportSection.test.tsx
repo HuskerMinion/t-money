@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// §183 — the Import card and the dialogs it opens.
+// The Import card and the dialogs it opens.
 //
 // The review dialogs were drawn inside the card's <form>, so Enter in one of
 // their fields was the form's implicit submission and started the import over
@@ -100,7 +100,7 @@ async function chooseAndImport() {
   await userEvent.click(screen.getByRole("button", { name: "Import" }));
 }
 
-describe("§183 — the Import card", () => {
+describe("The Import card", () => {
   it("does not start the import again when Enter is pressed in a dialog's field", async () => {
     setIpcHandlers({
       get_all_accounts: () => [plan401k],

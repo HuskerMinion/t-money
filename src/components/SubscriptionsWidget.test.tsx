@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// Home's subscription reminder (§60).
+// Home's subscription reminder.
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -33,7 +33,7 @@ beforeEach(() => {
   setIpcHandlers({ list_saved_reports: () => [], run_report: () => report });
 });
 
-describe("the Subscriptions card (§60)", () => {
+describe("the Subscriptions card", () => {
   it("splits the report into active, stopped and the totals", () => {
     const p = splitRows(report);
     expect(p.active.map((r) => r.payee)).toEqual(["Netflix", "Amazon Prime"]);
@@ -88,7 +88,7 @@ describe("the Subscriptions card (§60)", () => {
   });
 });
 
-describe("the ignore list (§76)", () => {
+describe("the ignore list", () => {
   it("hides an ignored charge, drops it from the totals, keeps it in the file, and can watch it again", async () => {
     let saved: string | null = JSON.stringify(["Amazon Prime"]);
     setIpcHandlers({
@@ -124,8 +124,8 @@ describe("the ignore list (§76)", () => {
   });
 });
 
-// §183 — a failed save left the row hidden as if it had been ignored.
-describe("§183 — a refused ignore is put back", () => {
+// A failed save left the row hidden as if it had been ignored.
+describe("A refused ignore is put back", () => {
   it("restores the row and says the list could not be saved", async () => {
     setIpcHandlers({
       list_saved_reports: () => [],

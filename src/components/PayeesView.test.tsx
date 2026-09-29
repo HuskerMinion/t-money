@@ -1,4 +1,4 @@
-// Payees manager (§10.3 item 8) — rename, merge, and the delete guard.
+// Payees manager — rename, merge, and the delete guard.
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -60,8 +60,8 @@ beforeEach(() => {
   setIpcHandlers({ list_payees: () => PAYEES, list_categories: () => CATS });
 });
 
-// §84 — rename rules live on the Payees page.
-describe("Rename rules (§84)", () => {
+// Rename rules live on the Payees page.
+describe("Rename rules", () => {
   it("lists rules, adds one, and applies them to the file", async () => {
     let rules: unknown[] = [{ id: "r-1", match_text: "NETFLIX", payee_name: "Netflix", category_id: null, category_name: null, created_at: "" }];
     setIpcHandlers({
@@ -88,7 +88,7 @@ describe("Rename rules (§84)", () => {
     await waitFor(() => expect(within(card).getByRole("status")).toHaveTextContent("Changed 7 transactions."));
   });
 
-  // §171 — a rule can be narrowed by amount, memo and account; the card
+  // A rule can be narrowed by amount, memo and account; the card
   // sends the conditions in cents (absolute), and shows them on the row.
   it("adds a rule with conditions and describes them on the row", async () => {
     const checking = { id: "acc-1", name: "Checking", type: "checking", is_closed: false } as unknown as Account;
@@ -226,7 +226,7 @@ describe("PayeesView", () => {
     expect(call.args).toEqual({ fromId: "p-2", intoId: "p-1" });
   });
 
-  // §186 — "I merged Best Buy into Chewy … CTRL+Z did not undo it." The
+  // "I merged Best Buy into Chewy … CTRL+Z did not undo it." The
   // backend records both writes now; the Edit menu only hears about it if
   // the undo status is asked for again AFTER the write.
   const lastCall = (cmd: string) => invokeCalls.reduce((last, c, i) => (c.cmd === cmd ? i : last), -1);
@@ -304,7 +304,7 @@ describe("PayeesView", () => {
   });
 });
 
-describe("adding a payee by hand (§37.4)", () => {
+describe("adding a payee by hand", () => {
   const MADE: Payee = {
     id: "p-9",
     name: "City Water",
@@ -371,8 +371,8 @@ describe("adding a payee by hand (§37.4)", () => {
   });
 });
 
-// §183 — the edit form after a merge, and where a refused merge is shown.
-describe("§183 — merging the payee being edited", () => {
+// The edit form after a merge, and where a refused merge is shown.
+describe("Merging the payee being edited", () => {
   it("loads the survivor into the form, so Save cannot rename it back to the merged-away name", async () => {
     let payees = PAYEES;
     setIpcHandlers({

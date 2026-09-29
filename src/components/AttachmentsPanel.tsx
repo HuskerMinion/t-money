@@ -1,4 +1,4 @@
-// §170 — the files attached to one transaction or one account: a receipt,
+// The files attached to one transaction or one account: a receipt,
 // a statement, a photo of the check. Quicken, Moneydance and Monarch all
 // have this and it is the most-used thing T-Money did not.
 //
@@ -83,16 +83,16 @@ export default function AttachmentsPanel({ transactionId = null, accountId = nul
     setBusy(true);
     try {
       for (const p of paths) await api.addAttachment(transactionId, accountId, p);
-      // §183 — on a transaction each file is an undo step ("attach a file").
+      // On a transaction each file is an undo step ("attach a file").
       noteChanged();
-      // §170.1 — reload FIRST, then tell the owner. `onChanged?.(await
+      // Reload FIRST, then tell the owner. `onChanged?.(await
       // load())` skipped the load whenever there was no handler: an optional
       // call short-circuits its arguments too, which is why the account
       // dialog (no handler) showed nothing until it was reopened (walk A4).
       tell(await load());
     } catch (e) {
       setError(String(e));
-      // §183 — the files before the one that failed WERE attached. The list
+      // The files before the one that failed WERE attached. The list
       // was reloaded but the owner was not told, so the register's 📎 and
       // the count stayed where they were, and Undo still named the write
       // before them.
@@ -108,16 +108,16 @@ export default function AttachmentsPanel({ transactionId = null, accountId = nul
     setBusy(true);
     try {
       await api.removeAttachment(a.id);
-      // §183 — "remove an attachment" is an undo step on a transaction.
+      // "remove an attachment" is an undo step on a transaction.
       noteChanged();
-      // §170.1 — reload FIRST, then tell the owner. `onChanged?.(await
+      // Reload FIRST, then tell the owner. `onChanged?.(await
       // load())` skipped the load whenever there was no handler: an optional
       // call short-circuits its arguments too, which is why the account
       // dialog (no handler) showed nothing until it was reopened (walk A4).
       tell(await load());
     } catch (e) {
       setError(String(e));
-      // §183 — whatever the refusal left behind is what the list and the
+      // Whatever the refusal left behind is what the list and the
       // owner's count should show; reload and tell it, as a success does.
       tell(await load());
     } finally {

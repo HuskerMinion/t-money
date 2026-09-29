@@ -1,9 +1,9 @@
-// §134 — the door finally gets a handle.
+// The door finally gets a handle.
 //
 // > *"I want to open my file on another computer but it requires the key. I
 // > think the file open for an existing file needs a way to paste the key in."*
 //
-// The backend has accepted a key on `open_file` since §98, and the comment in
+// The backend has long accepted a key on `open_file`, and the comment in
 // `App.tsx` beside the call said in plain words that a file from another
 // machine needs its key typed in — while passing `null` every time. Everything
 // was built except the box.
@@ -29,7 +29,7 @@ import Notice from "./Notice";
 /** A T-Money key is 32 random bytes, hex-encoded. */
 const KEY_RE = /\b[0-9a-fA-F]{64}\b/;
 
-/** §134 — the key inside whatever was pasted, or null.
+/** The key inside whatever was pasted, or null.
  *
  *  Exported and pure. The whole-file paste is the case this exists for, and it
  *  is far easier to prove here than through a dialog. Case is normalized
@@ -71,7 +71,7 @@ export default function KeyPromptDialog({
 
   return (
     <>
-      {/* §183 — not while the file is being opened with the key. */}
+      {/* Not while the file is being opened with the key. */}
       <div className="tm-dialog-backdrop" onClick={() => !busy && onCancel()} />
       <div className="tm-dialog" role="dialog" aria-label="Master key needed">
         <div className="tm-dialog-title">Master key needed</div>
@@ -115,7 +115,7 @@ export default function KeyPromptDialog({
             ) : typedSomething ? (
               "No 64-character key in that — paste the key itself, or the whole key file."
             ) : (
-              // §183 — the real path. There is no "Database → Save master key";
+              // The real path. There is no "Database → Save master key";
               // the key lives under Security → Master key (SettingsView).
               "On the other computer: Tools → Settings… → Security → Master key → Save to a file…, or Show my key and copy it."
             )}

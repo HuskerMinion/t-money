@@ -1,4 +1,4 @@
-// The type-ahead category field (§17). A native <select> only jumps by first
+// The type-ahead category field. A native <select> only jumps by first
 // letter, which is useless when every entry reads "Automobile : Fuel".
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -26,7 +26,7 @@ describe("filterItems", () => {
     expect(filterItems(ITEMS, "   ")).toHaveLength(ITEMS.length);
   });
 
-  // §162 — "Loan : HELOC" is the standard spelling, and a field should
+  // "Loan : HELOC" is the standard spelling, and a field should
   // recognize the same name however the colon was typed around.
   it("recognizes a name typed without the spaces around the colon", () => {
     expect(filterItems(ITEMS, "Automobile:Fuel").map((i) => i.value)).toEqual(["e-2"]);
@@ -194,7 +194,7 @@ describe("CategoryCombo", () => {
     expect(screen.getByText("No match")).toBeInTheDocument();
   });
 
-  // §183 — Enter chose "(none)" when nothing matched, wiping the category
+  // Enter chose "(none)" when nothing matched, wiping the category
   // the row had; Tab has always left it alone.
   it("Enter with nothing matching leaves the category alone", async () => {
     const { onChange, input } = setup("e-1");
@@ -267,7 +267,7 @@ describe("CategoryCombo", () => {
     expect(onChange).toHaveBeenCalledWith("e-3");
   });
 
-  it("scrolls the list to the category the row already has (§117.2)", async () => {
+  it("scrolls the list to the category the row already has", async () => {
     // Reported: with a full chart of accounts, clicking a row filed under
     // "Loan : HELOC Interest" opened the list at the top — the highlight was
     // right, but it was somewhere off-screen below, which reads as the field

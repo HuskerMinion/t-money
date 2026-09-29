@@ -1,4 +1,4 @@
-// §82 — the Payee field completes from history and Tab / Enter take the match.
+// The Payee field completes from history and Tab / Enter take the match.
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -63,7 +63,7 @@ describe("PayeeField", () => {
     expect(screen.queryByRole("listbox")).toBeNull();
   });
 
-  // §183 — `open` is true after any keystroke, list or no list, and Escape
+  // `open` is true after any keystroke, list or no list, and Escape
   // was swallowed whenever it was: the row's Esc-to-cancel took two presses.
   it("Escape with no list showing reaches the row on the first press", async () => {
     const onRowKey = vi.fn();

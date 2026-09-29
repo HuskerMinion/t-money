@@ -1,5 +1,5 @@
 // The shared category picker: full names, the income/expense filter that
-// §6.1e says drives every picker in Money, and — since §23 — the type-ahead
+// drives every picker in Money, and the type-ahead
 // behavior it inherits from CategoryCombo.
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -68,7 +68,7 @@ describe("categoryItems", () => {
 
 describe("<CategorySelect />", () => {
   it("is a text field you can type into, not a native select", () => {
-    // §18.5: a native select only jumps by first letter, which is useless
+    // A native select only jumps by first letter, which is useless
     // against a list where everything reads "Parent : Child".
     render(
       <CategorySelect categories={categories} value="" onChange={vi.fn()} label="Category" />

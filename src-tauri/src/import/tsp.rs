@@ -1,4 +1,4 @@
-//! §103 — the TSP importer, brought in from the script.
+//! The TSP importer, brought in from the script.
 //!
 //! A command-line script did this first and did it correctly; everything
 //! below is a port of its rules.
@@ -59,7 +59,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::str::FromStr;
 
 /// Activity types that are a payroll or agency contribution: a Buy, with the
-/// deposit that funds it written by §90's dialog.
+/// deposit that funds it written by the treatment dialog.
 ///
 /// The memo wording is load-bearing. `plan::guess` reads it to propose a
 /// treatment, so a contribution's memo must contain "contribution" or
@@ -105,8 +105,8 @@ fn payroll_in_memo(activity: &str) -> Option<&'static str> {
     }
 }
 
-/// §172 — what this importer's own contribution memos mean, handed to the
-/// QIF path as §90 memo rules so every contribution Buy is written WITH its
+/// What this importer's own contribution memos mean, handed to the
+/// QIF path as treatment memo rules so every contribution Buy is written WITH its
 /// cash side. The memos are this file's constants, so the rules cannot
 /// drift from the rows they describe.
 pub fn contribution_rules() -> Vec<crate::import::plan::MemoRule> {
@@ -123,7 +123,7 @@ pub fn contribution_rules() -> Vec<crate::import::plan::MemoRule> {
         .collect()
 }
 
-/// §167 — a reallocation's two memos are load-bearing twice over: `plan::guess`
+/// A reallocation's two memos are load-bearing twice over: `plan::guess`
 /// must not read them as a withdrawal, and the importer links the day's rows
 /// to each other BY them once written (`queries::link_same_day_exchanges`),
 /// which is what makes the lot engine carry basis across the funds.
@@ -244,7 +244,7 @@ pub struct OpeningPosition {
     /// Millionths added to cover the plan's own per-source rounding. Shown
     /// rather than hidden: it is a real, if tiny, invention.
     pub rounding_sliver: Option<String>,
-    /// §155 — of `units`, what the chosen account ALREADY holds on the open
+    /// Of `units`, what the chosen account ALREADY holds on the open
     /// date, and what will actually be written. Both "0.000000" until an
     /// account is chosen, because the register cannot be asked before then.
     pub already_held: String,
@@ -275,7 +275,7 @@ fn tsp_date(s: &str) -> Result<NaiveDate, String> {
 }
 
 /// Header name to column index, case- and space-insensitive.
-/// §132 — is this a tsp.gov Investment Activity Detail?
+/// Is this a tsp.gov Investment Activity Detail?
 ///
 /// Asked by the GENERIC csv importer, which is the door a `.csv` sends you to
 /// and which knows nothing about funds, units or prices. A TSP export read
@@ -503,7 +503,7 @@ pub fn payments(txns: &[Txn]) -> Vec<Payment> {
 }
 
 /// Everything the CSV alone can determine, for the dialog to show and ask about.
-/// `held` — §155 — is what the chosen account already holds of each fund on
+/// `held` is what the chosen account already holds of each fund on
 /// the open date (empty until an account is chosen). The opening the FILE
 /// implies is still shown in full; what is WRITTEN is the shortfall.
 pub fn plan(text: &str, held: &BTreeMap<String, Decimal>) -> Result<Plan, String> {
@@ -543,7 +543,7 @@ pub fn plan(text: &str, held: &BTreeMap<String, Decimal>) -> Result<Plan, String
     })
 }
 
-/// §155 — the opening position the file implies, LESS what the account
+/// The opening position the file implies, LESS what the account
 /// already holds on that date. Only a shortfall is written; a fund the
 /// register already covers, or over-covers, gets nothing.
 ///
@@ -691,7 +691,7 @@ pub fn build_qif(
     txns: &[Txn],
     opening: &BTreeMap<String, Decimal>,
     open_date: NaiveDate,
-    // §154 — `None` when the file paid nothing out. A payment with no account
+    // `None` when the file paid nothing out. A payment with no account
     // to land in is refused here, before a line of QIF reaches the importer.
     cash_account: Option<&str>,
     splits: &[PaymentSplit],
@@ -733,7 +733,7 @@ pub fn build_qif(
         } else if let Some(m) = cash_out_memo(&t.activity) {
             ("Sell", m.to_string())
         } else if t.units > Decimal::ZERO {
-            // §167 — a reallocation is an EXCHANGE, not a sale and a purchase:
+            // A reallocation is an EXCHANGE, not a sale and a purchase:
             // Shares In / Shares Out move no cash, and once the importer has
             // linked the day's rows the lot engine carries the basis and the
             // dates across the funds. As a Buy and a Sell it booked a realized
@@ -819,7 +819,7 @@ mod door_tests {
         line.split(',').map(|s| s.to_string()).collect()
     }
 
-    /// §132 — the generic CSV importer asks this before offering to read a
+    /// The generic CSV importer asks this before offering to read a
     /// file flat. A real TSP export went through that door: right balance,
     /// no fund, no units, no price, every row named after the account.
     #[test]
@@ -1064,7 +1064,7 @@ VALUATION DATE,POSTING DATE,ACTIVITY TYPE,PLAN,ACCOUNT,FUND,AMOUNT,FUND NAV/PRIC
 
     #[test]
     fn a_contribution_memo_reads_as_a_contribution_and_a_sale_does_not_read_as_a_withdrawal() {
-        // §90's `plan::guess` reads these memos to propose a treatment. A
+        // `plan::guess` reads these memos to propose a treatment. A
         // reallocation whose memo says "withdraw" books cash that the row
         // does not represent.
         let txns = collapse(&rows());
@@ -1080,7 +1080,7 @@ VALUATION DATE,POSTING DATE,ACTIVITY TYPE,PLAN,ACCOUNT,FUND,AMOUNT,FUND NAV/PRIC
         assert!(qif.contains("MTSP reallocation into fund"));
     }
 
-    // §167 — a reallocation is an exchange, not a sale and a purchase.
+    // A reallocation is an exchange, not a sale and a purchase.
     #[test]
     fn a_reallocation_is_shares_out_and_shares_in_not_a_sale_and_a_purchase() {
         let txns = collapse(&rows());
@@ -1115,7 +1115,7 @@ VALUATION DATE,POSTING DATE,ACTIVITY TYPE,PLAN,ACCOUNT,FUND,AMOUNT,FUND NAV/PRIC
         assert!(qif.contains("NShrsIn\nYTSP S Fund\nI10.0000\nQ100.000000"), "{qif}");
     }
 
-    /// §154 — report W4: a file of contributions and reallocations moves nothing
+    /// Report W4: a file of contributions and reallocations moves nothing
     /// to a bank, so there is nothing to name. The dialog no longer asks, and
     /// the QIF is built without one.
     #[test]
@@ -1145,7 +1145,7 @@ VALUATION DATE,POSTING DATE,ACTIVITY TYPE,PLAN,ACCOUNT,FUND,AMOUNT,FUND NAV/PRIC
         assert!(err.contains("2026-04-01") && err.contains("no bank account"), "{err}");
     }
 
-    /// §155 — report T2. The file's first row sold shares it never bought, so
+    /// Report T2. The file's first row sold shares it never bought, so
     /// the importer wrote them in as an opening position — on top of the
     /// same shares already in the register. Holdings doubled.
     #[test]
@@ -1174,7 +1174,7 @@ VALUATION DATE,POSTING DATE,ACTIVITY TYPE,PLAN,ACCOUNT,FUND,AMOUNT,FUND NAV/PRIC
         assert_eq!(net_of_held(&opening, &BTreeMap::new()).get("G Fund").copied(), Some(g));
 
         // And the QIF written from the netted opening carries no opening
-        // position. (§167: the reallocation's own Shares In is still there.)
+        // position. (The reallocation's own Shares In is still there.)
         held.insert("G Fund".to_string(), g);
         let write = net_of_held(&opening, &held);
         let qif = build_qif(&txns, &write, NaiveDate::from_ymd_opt(2026, 9, 2).unwrap(), None, &[]).unwrap();

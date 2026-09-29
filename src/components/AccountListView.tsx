@@ -1,8 +1,8 @@
-// Account list — Money's grouped account index (§6.1g).
+// Account list — Money's grouped account index.
 //
 // "Click the account you want to use." Accounts are links, grouped under Bank /
 // Credit / Investment / Other, with collapsible group headers. Closed accounts
-// render grayed — §181: and only once "Show closed accounts" is ticked.
+// render grayed, and only once "Show closed accounts" is ticked.
 import { Fragment, useEffect, useState } from "react";
 import Money from "./Money";
 import { ACCOUNT_GROUPS, accountWorth, groupFor, isValuedAsset, labelFor, placedFirst, type AccountGroup } from "../lib/accountTypes";
@@ -18,7 +18,7 @@ interface Props {
   /** Money's "Delete account" — removes the account AND its transactions,
    *  so the caller confirms before this fires. */
   onDeleteAccount: (id: string) => void;
-  /** Money's "Merge duplicate accounts" (§49): fold this one into another. */
+  /** Money's "Merge duplicate accounts": fold this one into another. */
   onMergeAccount: (id: string) => void;
 }
 
@@ -31,14 +31,14 @@ export default function AccountListView({
   onMergeAccount,
 }: Props) {
   const [collapsed, setCollapsed] = useState<Partial<Record<AccountGroup, boolean>>>({});
-  // §181 — N9: "A closed account stays out of the way … and Account List →
+  // N9: "A closed account stays out of the way … and Account List →
   // show closed finds it." Closed accounts are left off the rail and every
   // picker; this is the one place they are still reached from, with their
   // registers and the transfers they hold intact. Off by default, and the
   // box says how many are hidden, so a list that looks short explains itself.
   const [showClosed, setShowClosed] = useState(false);
   const closedCount = accounts.filter((a) => a.is_closed).length;
-  // §93: what is owed against each asset, for the equity line under it.
+  // What is owed against each asset, for the equity line under it.
   const [debts, setDebts] = useState<Record<string, number>>({});
   useEffect(() => {
     let live = true;
@@ -61,7 +61,7 @@ export default function AccountListView({
     if (a.is_closed && !showClosed) continue;
     byGroup.get(groupFor(a.type))!.push(a);
   }
-  // §169 — placed accounts keep their place; the rest by name after them.
+  // Placed accounts keep their place; the rest by name after them.
   for (const list of byGroup.values()) list.sort((x, y) => placedFirst(x, y) || x.name.localeCompare(y.name));
 
   return (
@@ -129,7 +129,7 @@ export default function AccountListView({
                       </td>
                       <td className="num">
                         <Money cents={accountWorth(a)} />
-                        {/* §93: a house with a mortgage on it is worth the
+                        {/* A house with a mortgage on it is worth the
                             difference to you. Both accounts are already in net
                             worth, so this is a reading of them, not a third
                             number. */}

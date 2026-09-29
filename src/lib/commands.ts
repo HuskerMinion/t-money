@@ -1,4 +1,4 @@
-// §97 — the command registry behind the menu bar.
+// The command registry behind the menu bar.
 //
 // THE PROBLEM A MENU HAS. A menu bar names everything the app can do, but
 // almost none of it belongs to the menu: Print and Export CSV belong to the
@@ -25,7 +25,7 @@
  *  something has to register a handler before it can be chosen. */
 export type CommandId = string;
 
-/** §155 — a command may carry one argument (a file path the CSV door hands
+/** A command may carry one argument (a file path the CSV door hands
  *  to the TSP importer). Most ignore it. */
 type Handler = (arg?: unknown) => void | Promise<void>;
 

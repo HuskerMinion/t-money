@@ -1,4 +1,4 @@
-// The Help tab (§62): every topic in src/help/topics.ts, grouped in a left
+// The Help tab: every topic in src/help/topics.ts, grouped in a left
 // column, searchable, cross-linked. Content is a small markdown subset
 // rendered here — no library, no HTML in the content.
 import { useEffect, useMemo, useState } from "react";

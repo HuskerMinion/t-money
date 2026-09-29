@@ -73,7 +73,7 @@ fn common_splits(conn: &Conn, id: &str) -> Result<Vec<NewSplit>, String> {
                 category_id: r.get(0)?,
                 description: r.get(1)?,
                 amount_cents: r.get(2)?,
-                // §31 templates hold categories only; a transfer line is not
+                // Templates hold categories only; a transfer line is not
                 // something a template can carry yet.
                 transfer_account_id: None,
             })
@@ -188,7 +188,7 @@ mod tests {
     use super::*;
     use crate::db::queries::test_support::*;
 
-    // ── Common Transactions (§31) ────────────────────────────────────────
+    // ── Common Transactions ────────────────────────────────────────
 
     #[test]
     fn a_template_round_trips_with_its_category_name_resolved() {
@@ -207,7 +207,7 @@ mod tests {
         assert_eq!(all[0].name, "Rent");
         assert_eq!(all[0].amount_cents, Some(-145_000));
         assert_eq!(all[0].check_number.as_deref(), Some("1042"));
-        // The menu shows the full name, as every other picker does (§6.1e).
+        // The menu shows the full name, as every other picker does.
         assert_eq!(all[0].category_name.as_deref(), Some("Home : Rent"));
     }
 

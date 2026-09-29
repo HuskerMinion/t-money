@@ -23,7 +23,7 @@
 //!    2026-08-03   -58.42   Kroger^Food:Groceries^Weekly shop
 //!    ```
 //!
-//! Until §37.5 only the second was handled — and worse, the field-code lines
+//! Until this was fixed, only the second was handled — and worse, the field-code lines
 //! of the first were explicitly skipped as "header/meta", so a genuine QIF
 //! file parsed to **zero transactions and imported successfully with nothing
 //! in it**. For an app whose point is reading your bank's export, that is the
@@ -47,10 +47,10 @@ pub struct QifTransaction {
     pub check_number: Option<String>,
     /// `C` — `*` or `c` is cleared, `X` or `R` is reconciled.
     pub cleared_state: String,
-    /// `S` / `E` / `$` lines of a bank record (§65): category path (or a
+    /// `S` / `E` / `$` lines of a bank record: category path (or a
     /// bracketed account), memo, amount.
     pub splits: Vec<QifSplit>,
-    /// Set for a record inside `!Type:Invst` (§66).
+    /// Set for a record inside `!Type:Invst`.
     pub invest: Option<QifInvest>,
 }
 
@@ -81,7 +81,7 @@ pub struct QifInvest {
 
 /// A `!Type:Prices` line: `"VTSAX",21.35,"12/31/2025"`. Quicken writes the
 /// symbol; a file whose securities have no symbol names them instead, so the
-/// importer tries both (§92).
+/// importer tries both.
 #[derive(Debug, Clone, PartialEq)]
 pub struct QifPrice {
     /// The symbol, or the security's name when it has none.
@@ -111,7 +111,7 @@ pub struct QifParse {
     pub unreadable: u32,
     /// `!Type:Security` records, so a security named by `Y` gets its symbol.
     pub securities: Vec<QifSecurity>,
-    /// `!Type:Prices` lines (§92).
+    /// `!Type:Prices` lines.
     pub prices: Vec<QifPrice>,
 }
 
@@ -124,7 +124,7 @@ enum Block {
     Invest,
     /// `!Type:Security`.
     Security,
-    /// `!Type:Prices` (§92).
+    /// `!Type:Prices`.
     Prices,
     /// Categories, classes, memorized, prices, budgets, `!Account` lists.
     Other,
@@ -232,7 +232,7 @@ pub fn parse_qif_full(text: &str) -> QifParse {
             }
             continue;
         }
-        // §92: a price block's records are one line each, not field codes.
+        // A price block's records are one line each, not field codes.
         if block == Block::Prices {
             if !line.starts_with('^') {
                 if let Some(p) = parse_price_line(line) {
@@ -335,7 +335,7 @@ pub fn parse_qif_full(text: &str) -> QifParse {
                     inv.commission_cents = parse_amount_cents(value).unwrap_or(0);
                 }
             }
-            // Splits (§65): `S` starts a line, `E` and `$` fill it in. In an
+            // Splits: `S` starts a line, `E` and `$` fill it in. In an
             // investment record `$` is the amount transferred instead.
             'S' => current.splits.push(QifSplit { category: Some(value.to_string()).filter(|v| !v.is_empty()), memo: None, amount_cents: 0 }),
             'E' => {
@@ -454,7 +454,7 @@ mod tests {
 mod real_qif_tests {
     use super::*;
 
-    /// What a bank's export button actually writes (§37.5).
+    /// What a bank's export button actually writes.
     const REAL: &str = "\
 !Type:Bank
 D08/03/2026
@@ -563,7 +563,7 @@ PKroger
     }
 }
 
-/// §92: one `!Type:Prices` line — `"VTSAX",21.35,"12/31/2025"`.
+/// One `!Type:Prices` line — `"VTSAX",21.35,"12/31/2025"`.
 ///
 /// Quicken quotes the symbol and the date and leaves the price bare, but
 /// files in the wild quote all three or none, and some write the price as a

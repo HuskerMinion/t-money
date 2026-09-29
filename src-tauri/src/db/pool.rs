@@ -28,7 +28,7 @@ fn manager_for(path: &Path, key: &str) -> SqliteConnectionManager {
             // 1) The encryption key MUST be the first statement.
             //    SQLCipher accepts the key as a string literal.
             conn.execute_batch(&format!("PRAGMA key = '{}';", key.replace('\'', "''")))?;
-            // 2) §130.1 — WAIT for a lock instead of failing on it.
+            // 2) WAIT for a lock instead of failing on it.
             //
             //    SQLite's default `busy_timeout` is ZERO: a connection that
             //    meets a lock gives up instantly with "database is locked".
@@ -110,7 +110,7 @@ pub fn init_pool(path: &Path, key: &str) -> Result<DbPool, String> {
 /// `PRAGMA rekey`. Without it, the next launch opens a file encrypted with the
 /// old key using the new one and fails — and since the old key was never shown
 /// to the user, the file is unrecoverable. That was the behavior of
-/// `set_master_key` before §34.
+/// `set_master_key` before this was fixed.
 ///
 /// Deliberately takes a PATH rather than a pooled connection: the pool holds up
 /// to eight connections already keyed with the old passphrase, and rekeying
@@ -163,7 +163,7 @@ mod tests {
     use super::*;
     use std::path::PathBuf;
 
-    /// §130.1 — every connection the pool hands out waits for a lock rather
+    /// Every connection the pool hands out waits for a lock rather
     /// than failing on it.
     ///
     /// The race itself cannot be tested deterministically; that the pragma is
@@ -187,7 +187,7 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
-    /// §182 — an account and the row its balance comes from, so the file
+    /// An account and the row its balance comes from, so the file
     /// these tests write is one `verify_file` agrees with.
     fn account_with_row(conn: &rusqlite::Connection, id: &str, name: &str, kind: &str, cents: i64) {
         conn.execute(
@@ -253,7 +253,7 @@ mod tests {
     /// `State` plumbing: `VACUUM INTO` a second file. What matters is that the
     /// copy is *also* encrypted — a backup that silently writes plaintext
     /// financial data to the user's Documents folder is the worst bug this
-    /// app could ship, and nothing tested it (§21.5).
+    /// app could ship, and nothing tested it.
     #[test]
     fn a_backup_is_encrypted_and_reopens_with_the_same_key() {
         let dir = tmp_dir("backup");
@@ -406,7 +406,7 @@ mod tests {
     }
 
     /// Changing the master key has to RE-ENCRYPT the file, not just remember a
-    /// different passphrase. Before §34 the app did the latter, which left a
+    /// different passphrase. The app used to do the latter, which left a
     /// file only the old — and never-displayed — key could open.
     #[test]
     fn rekeying_re_encrypts_the_file_so_the_new_key_opens_it() {

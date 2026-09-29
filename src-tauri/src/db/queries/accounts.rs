@@ -71,7 +71,7 @@ pub fn get_all_accounts(conn: &Conn) -> Result<Vec<Account>, String> {
     with_holdings(conn, out)
 }
 
-/// §169 — put the accounts in this order, everywhere accounts are listed.
+/// Put the accounts in this order, everywhere accounts are listed.
 ///
 /// `ids` is the whole order the user arranged; each named account takes its
 /// position in the list, and an account not named (one created later) keeps
@@ -92,7 +92,7 @@ pub fn set_account_order(conn: &Conn, ids: &[String]) -> Result<usize, String> {
 }
 
 /// Stamp each investment account with the market value of what it holds
-/// today (§41). Every other kind stays at zero; nothing is stored.
+/// today. Every other kind stays at zero; nothing is stored.
 fn with_holdings(conn: &Connection, mut accounts: Vec<Account>) -> Result<Vec<Account>, String> {
     if !accounts.iter().any(|a| matches!(a.r#type.as_str(), "investment" | "retirement")) {
         return Ok(accounts);
@@ -124,7 +124,7 @@ pub fn create_account(
     let id = Uuid::new_v4().to_string();
     let tx = conn.unchecked_transaction().map_err(|e| e.to_string())?;
     tx.execute(
-        // Retirement accounts start out of the tax reports (§48).
+        // Retirement accounts start out of the tax reports.
         "INSERT INTO accounts (id, name, type, balance_cents, is_favorite, opened_on, tax_included)
          VALUES (?1, ?2, ?3, 0, 0, ?4, ?5)",
         params![id, name, account_type, opened_on, (account_type != "retirement") as i64],
@@ -143,7 +143,7 @@ pub fn create_account(
     if opening_balance_cents != 0 {
         let txn_id = Uuid::new_v4().to_string();
         tx.execute(
-            // §93/§94: an opening balance is what was already there — a
+            // An opening balance is what was already there — a
             // house's appraisal, a mortgage's remaining debt, the money in
             // the account the day you started keeping records. None of it is
             // income or spending, and counting it made a $150,000 mortgage
@@ -196,8 +196,8 @@ pub fn set_favorite(conn: &Conn, account_id: &str, is_favorite: bool) -> Result<
 /// and stay in their own account as ordinary entries, which is what they
 /// still are: money that moved.
 ///
-/// §179 — refused while a split payment has a line on either side of this
-/// account. A split transfer line (§94) is one line of a payment, not a
+/// Refused while a split payment has a line on either side of this
+/// account. A split transfer line is one line of a payment, not a
 /// transfer with two free-standing halves. Deleting the loan left every
 /// checking payment's principal line with `transfer_account_id` NULLed — and
 /// `CATEGORY_LINES` only leaves a line out while that column is set, so years
@@ -263,7 +263,7 @@ pub fn delete_account(conn: &Conn, id: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// Money's 401(k) Manager / "Update your shares" (§50): the statement says
+/// Money's 401(k) Manager / "Update your shares": the statement says
 /// what is held on `date`; this writes an Add Shares or Remove Shares row per
 /// security for the difference from what the register says is held, and
 /// records the statement's price. A 401(k) that only sends statements can
@@ -373,7 +373,7 @@ pub fn update_holdings(
     Ok(out)
 }
 
-/// Money's "Merge duplicate accounts" (§49). `from_id` is folded into
+/// Money's "Merge duplicate accounts". `from_id` is folded into
 /// `into_id` and deleted. What moves:
 ///
 /// - Its transactions — all of them, or with `after_last` only those dated
@@ -425,7 +425,7 @@ pub fn merge_accounts(
          SELECT f.id
            FROM transactions f
           WHERE f.account_id = ?1
-            -- §179 — a split payment's row (§94) always moves: its line in
+            -- A split payment's row always moves: its line in
             -- the other account survives the merge and must still find it.
             -- Left behind it would be deleted with the duplicate and the
             -- payment would lose the row that pays down the loan.
@@ -459,7 +459,7 @@ pub fn merge_accounts(
         &[&from_id, &cutoff],
     )?;
 
-    // §179 — a split line cannot transfer to its own account (§94), and a
+    // A split line cannot transfer to its own account, and a
     // merge would make one: a payment moving into the account its own line
     // pays, or a survivor's payment whose line pays the duplicate. Refused
     // before anything is written, so the dry run says it too and the Merge
@@ -484,9 +484,9 @@ pub fn merge_accounts(
     // Transfers between the two accounts: a moving row whose partner is in
     // the survivor. Both sides go.
     //
-    // §179 — "or is moving too" used to be part of that test, and the only
+    // "or is moving too" used to be part of that test, and the only
     // pair it could ever match is two rows of the duplicate linked to each
-    // other: a §167 exchange, whose `transfer_id` points into its own
+    // other: an exchange, whose `transfer_id` points into its own
     // account. Merging a TSP account deleted every reallocation it held, and
     // the lots they carried went with them. An exchange is not money moving
     // between the two accounts; it moves with the rest.
@@ -547,7 +547,7 @@ pub fn merge_accounts(
     // The rest of the duplicate goes the way `delete_account` sends it:
     // partners unlinked, paid exceptions released, rows deleted.
     //
-    // §179 — and a payment left behind takes its split rows in other
+    // And a payment left behind takes its split rows in other
     // accounts with it, as `delete_transaction` does. It is a row the
     // survivor already has (or history before the survivor's last date), and
     // the survivor's copy has its own rows; leaving these would pay the loan
@@ -601,7 +601,7 @@ pub fn merge_accounts(
             .map_err(|e| e.to_string())?;
     }
 
-    // §179 — everything else that names the duplicate, re-pointed BEFORE it
+    // Everything else that names the duplicate, re-pointed BEFORE it
     // is deleted. Every `REFERENCES accounts(id)` in `migrations.rs` is here
     // or above (transactions, statements, recurrences, goals). Left to their
     // `ON DELETE` clauses these went quietly wrong: a checking payment's
@@ -662,7 +662,7 @@ pub fn merge_accounts(
         .map_err(|e| e.to_string())?;
         repoint(&format!("UPDATE loan_terms SET {column} = ?1 WHERE {column} = ?2"))?;
     }
-    // §93 — the same for what a debt is secured by, in both directions.
+    // The same for what a debt is secured by, in both directions.
     tx.execute(
         "UPDATE accounts SET secured_by_account_id = NULL WHERE id = ?1 AND secured_by_account_id = ?2",
         params![into_id, from_id],
@@ -755,7 +755,7 @@ pub fn update_account(
 }
 
 /// One account by id.
-/// Money's "Choose accounts to include in tax return information" (§48).
+/// Money's "Choose accounts to include in tax return information".
 pub fn set_account_tax_included(conn: &Conn, id: &str, included: bool) -> Result<(), String> {
     let n = conn
         .execute(
@@ -769,7 +769,7 @@ pub fn set_account_tax_included(conn: &Conn, id: &str, included: bool) -> Result
     Ok(())
 }
 
-/// §81: this account rounds its holding values its own way, or follows the
+/// This account rounds its holding values its own way, or follows the
 /// file (None). Only meaningful on investment / retirement accounts, but
 /// harmless elsewhere.
 pub fn set_account_value_rounding(conn: &Conn, id: &str, rounding: Option<&str>) -> Result<(), String> {
@@ -791,7 +791,7 @@ pub fn set_account_value_rounding(conn: &Conn, id: &str, rounding: Option<&str>)
     Ok(())
 }
 
-/// §93: the kinds of account whose value is a judgment rather than a
+/// The kinds of account whose value is a judgment rather than a
 /// balance — a house, a car, a boat, a coin collection. These get **Update
 /// value**; a checking account's balance is the sum of its transactions and
 /// nobody revalues it.
@@ -799,7 +799,7 @@ pub fn is_valued_asset(kind: &str) -> bool {
     matches!(kind, "asset" | "vehicle" | "home" | "other")
 }
 
-/// §93: what the thing is worth now.
+/// What the thing is worth now.
 ///
 /// Not "adjust by": the user knows the Pickup is worth $9,000, not that it
 /// fell $1,850 since the last time they looked. The difference is worked out
@@ -874,7 +874,7 @@ pub fn set_account_value(
         Some((later_id, later_amount, later_payee)) => {
             let absorbed = later_amount - delta;
             if absorbed == 0 {
-                // §179 — the later value was exactly what this one now says
+                // The later value was exactly what this one now says
                 // it already was: its row would move nothing and read
                 // "Increase in value 0.00" in the register. It goes. (The
                 // command photographed it before the write, so undo puts it
@@ -882,7 +882,7 @@ pub fn set_account_value(
                 tx.execute("DELETE FROM transactions WHERE id = ?1", params![later_id])
                     .map_err(|e| e.to_string())?;
             } else {
-                // §179 — absorbing the difference can turn the later rise
+                // Absorbing the difference can turn the later rise
                 // into a fall. Its label follows its sign, as this row's
                 // does; a label someone typed over is theirs and is left.
                 let relabel = match later_payee.as_str() {
@@ -919,7 +919,7 @@ pub fn set_account_value(
     }))
 }
 
-/// §93: the asset a debt is borrowed against — the mortgage names the house.
+/// The asset a debt is borrowed against — the mortgage names the house.
 /// `None` unlinks. The link lives on the liability so one asset can carry
 /// several debts while each debt is secured on exactly one thing.
 pub fn set_account_security(conn: &Conn, liability_id: &str, asset_id: Option<&str>) -> Result<(), String> {
@@ -948,7 +948,7 @@ pub fn set_account_security(conn: &Conn, liability_id: &str, asset_id: Option<&s
     Ok(())
 }
 
-/// §93: what is owed against each asset — the asset's id to the total of the
+/// What is owed against each asset — the asset's id to the total of the
 /// debts secured on it, as a positive number. Equity is the asset's worth
 /// less this.
 pub fn debts_by_asset(conn: &Conn) -> Result<std::collections::HashMap<String, i64>, String> {
@@ -991,7 +991,7 @@ mod tests {
     use super::*;
     use crate::db::queries::test_support::*;
 
-    // ── retirement accounts stay out of tax reports (§48) ────────────────
+    // ── retirement accounts stay out of tax reports ────────────────
 
     #[test]
     fn a_retirement_account_is_left_out_of_tax_reports_unless_included() {
@@ -1135,7 +1135,7 @@ mod tests {
     }
 
     // -----------------------------------------------------------------------
-    // §38 — what the review found
+    // What the review found
     // -----------------------------------------------------------------------
 
     #[test]
@@ -1155,7 +1155,7 @@ mod tests {
         assert_eq!(balance(&c, &chk), -20_000);
     }
 
-    // §169 — the accounts come back in the order they were put in; the
+    // The accounts come back in the order they were put in; the
     // unplaced ones after, by name, so a file that never arranged anything
     // reads as it did.
     #[test]
@@ -1182,7 +1182,7 @@ mod tests {
         assert_eq!(names(&c), vec!["Checking", "Visa", "Savings"]);
     }
 
-    // ── §179 ─────────────────────────────────────────────────────────────
+    // ── Merging loans and retirement accounts ────────────────────────────
 
     fn loan_terms(acct: &str, from: Option<&str>, escrow: Option<&str>, apr_micro: i64) -> crate::models::LoanTerms {
         crate::models::LoanTerms {
@@ -1202,7 +1202,7 @@ mod tests {
         }
     }
 
-    /// §179 — every link to the duplicate is re-pointed before it is deleted.
+    /// Every link to the duplicate is re-pointed before it is deleted.
     #[test]
     fn merging_a_duplicate_loan_carries_every_link_to_it() {
         let db = TestDb::new("merge-links");
@@ -1308,7 +1308,7 @@ mod tests {
         assert!(verify_file(&c, false).unwrap().foreign_keys.is_empty());
     }
 
-    /// §179 — "a transfer between the two accounts" also matched a §167
+    /// "a transfer between the two accounts" also matched an
     /// exchange, whose two rows are both in the duplicate. Every reallocation
     /// was deleted, and the basis it carried with it.
     #[test]
@@ -1346,7 +1346,7 @@ mod tests {
         assert!(v.drift.is_empty() && v.half_transfers.is_empty() && v.foreign_keys.is_empty(), "{v:?}");
     }
 
-    /// §179 — deleting an account a split payment still sends a line to turned
+    /// Deleting an account a split payment still sends a line to turned
     /// years of principal into uncategorized spending.
     #[test]
     fn an_account_a_split_payment_still_pays_cannot_be_deleted() {
@@ -1371,7 +1371,7 @@ mod tests {
         assert_consistent(&c);
     }
 
-    /// §179 — a later revaluation that absorbs a difference follows its new
+    /// A later revaluation that absorbs a difference follows its new
     /// sign, and goes when it comes to nothing; undo puts it back.
     #[test]
     fn a_revaluation_that_absorbs_a_difference_follows_its_sign_and_goes_at_zero() {

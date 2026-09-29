@@ -1,4 +1,4 @@
-// The tax lines a category can be assigned to (§43, Tier 2).
+// The tax lines a category can be assigned to.
 // A FIXED list, grouped by form, because free text cannot be grouped
 // reliably — two spellings of one line become two lines in the report.
 // The strings are the values stored in `categories.tax_line`; the standard

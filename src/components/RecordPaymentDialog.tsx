@@ -1,4 +1,4 @@
-// Record a loan payment (§94, §121) — one transaction, split up to four ways.
+// Record a loan payment — one transaction, split up to four ways.
 //
 // Interest is a category (it is spending). Principal is a transfer to the loan
 // (it is debt repaid, and it is what makes the balance fall). Extra principal
@@ -54,7 +54,7 @@ export default function RecordPaymentDialog({ account, onDone, onCancel }: Props
       ),
     [accounts, account.id]
   );
-  // §183 — only an account "Paid from" actually lists counts as chosen. The
+  // Only an account "Paid from" actually lists counts as chosen. The
   // terms remember a funding account, and when that account has since been
   // closed it was preselected anyway: hidden from the list (the select showed
   // "(choose)"), yet still the one the payment was written against. Derived
@@ -100,7 +100,7 @@ export default function RecordPaymentDialog({ account, onDone, onCancel }: Props
   const offTheLoan = (principalCents ?? 0) + (extraCents ?? 0);
 
   async function save() {
-    // §183 — DateField sends "" for text it cannot read; say so here rather
+    // DateField sends "" for text it cannot read; say so here rather
     // than let the backend answer with a raw parse error.
     if (!date) {
       setError("Type a date the form can read, such as 8/3/2026.");
@@ -137,7 +137,7 @@ export default function RecordPaymentDialog({ account, onDone, onCancel }: Props
         checkNumber: checkNumber.trim() || null,
         notes: notes.trim() || null,
       });
-      // §183 — a loan payment is one undo step ("record a loan payment"); the
+      // A loan payment is one undo step ("record a loan payment"); the
       // Edit menu has to hear about it like every other recorded write.
       noteChanged();
       onDone();

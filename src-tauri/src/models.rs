@@ -11,29 +11,29 @@ use serde::{Deserialize, Serialize};
 pub struct Account {
     pub id: String,
     pub name: String,
-    /// One of the 17 types in migration 0009 (§6.1g). The Account List groups
+    /// One of the 17 types in migration 0009. The Account List groups
     /// these into Bank / Credit / Investment / Other.
     pub r#type: String,
     /// The register balance: for an investment account, its CASH.
     pub balance_cents: i64,
     /// Market value of the account's holdings at the latest prices; zero for
-    /// anything but investment and retirement accounts (§41). The account's
+    /// anything but investment and retirement accounts. The account's
     /// worth is `balance_cents + holdings_value_cents`.
     #[serde(default)]
     pub holdings_value_cents: i64,
-    /// Counted in tax reports (§48). Retirement accounts start excluded.
+    /// Counted in tax reports. Retirement accounts start excluded.
     #[serde(default = "default_true")]
     pub tax_included: bool,
-    /// §81: how this account's holdings round to the cent — "nearest" |
-    /// "down" — or None to follow the file's setting (§79).
+    /// How this account's holdings round to the cent — "nearest" |
+    /// "down" — or None to follow the file's setting.
     #[serde(default)]
     pub value_rounding: Option<String>,
-    /// §93: for a liability, the asset it is borrowed against — the mortgage
+    /// For a liability, the asset it is borrowed against — the mortgage
     /// names the house. Equity is the asset's worth less the debts secured on
     /// it, and one asset can carry several (a mortgage and a HELOC).
     #[serde(default)]
     pub secured_by_account_id: Option<String>,
-    /// §169: where this account sits in every list of accounts — the account
+    /// Where this account sits in every list of accounts — the account
     /// bar, the Home page's favorites, the Favorites menu, the Account List.
     /// None = never placed; those sort after the placed ones, by name.
     #[serde(default)]
@@ -58,7 +58,7 @@ pub struct Account {
     pub account_notes: Option<String>,
 }
 
-/// §94 — what a loan costs and how its payment divides. Every field is a
+/// What a loan costs and how its payment divides. Every field is a
 /// starting point the user can type over when the payment is recorded: the
 /// bank's arithmetic wins.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -69,7 +69,7 @@ pub struct LoanTerms {
     /// The regular payment, principal and interest only.
     pub payment_cents: i64,
     pub escrow_cents: i64,
-    /// §121: principal paid ahead on top of the scheduled payment, every
+    /// Principal paid ahead on top of the scheduled payment, every
     /// month, by choice. Proposed on every payment and applied by the
     /// schedule; zero for a loan paid to its terms.
     pub extra_principal_cents: i64,
@@ -83,7 +83,7 @@ pub struct LoanTerms {
     pub notes: Option<String>,
 }
 
-/// §94 — one row of an amortization schedule, or of a payment as it will be
+/// One row of an amortization schedule, or of a payment as it will be
 /// recorded. Balances are the loan's, as a positive amount owed.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LoanPeriod {
@@ -92,7 +92,7 @@ pub struct LoanPeriod {
     pub interest_cents: i64,
     pub principal_cents: i64,
     pub escrow_cents: i64,
-    /// §121: principal ahead of schedule, on top of `principal_cents`. The
+    /// Principal ahead of schedule, on top of `principal_cents`. The
     /// last payment takes less than the standing amount, or none of it.
     pub extra_principal_cents: i64,
     /// Owed before this payment, and after it.
@@ -102,7 +102,7 @@ pub struct LoanPeriod {
 
 /// A category in Money's two-level tree (migration 0014).
 ///
-/// `kind` is load-bearing: every category picker filters on it (§6.1e), and a
+/// `kind` is load-bearing: every category picker filters on it, and a
 /// subcategory always shares its parent's kind. `full_name` is the display
 /// idiom Money uses everywhere — "Auto : Fuel" — and is computed in SQL so the
 /// frontend never has to join the tree back together itself.
@@ -140,7 +140,7 @@ fn default_true() -> bool {
 
 /// A register row: a transaction plus the account balance *after* it,
 // ---------------------------------------------------------------------------
-// Reports (§39) — one request shape, one result shape, for the whole gallery
+// Reports — one request shape, one result shape, for the whole gallery
 // ---------------------------------------------------------------------------
 
 /// What the frontend asks for: which report, over which dates, scoped how.
@@ -167,15 +167,15 @@ pub struct ReportRequest {
     /// assets and liabilities).
     #[serde(default)]
     pub detail: Option<String>,
-    /// Investment reports only: `None` / empty = every security (§47).
+    /// Investment reports only: `None` / empty = every security.
     #[serde(default)]
     pub security_ids: Option<Vec<String>>,
-    /// Count only accounts with `tax_included` (§48). The two tax reports
+    /// Count only accounts with `tax_included`. The two tax reports
     /// always do; the Taxes tab asks it of capital gains and investment
     /// income too.
     #[serde(default)]
     pub tax_scope: Option<bool>,
-    // --- §113: the scope every report honors, not just the ones that
+    // --- The scope every report honors, not just the ones that
     // happened to support it. All optional; absent = no filter. ---
     /// `None` / empty = every payee. Ids from `payees`.
     #[serde(default)]
@@ -198,17 +198,17 @@ pub struct ReportRequest {
     /// Only lines whose payee or memo contains this (case-insensitive).
     #[serde(default)]
     pub text: Option<String>,
-    /// §112: only lines carrying these classification values. A parent value
+    /// Only lines carrying these classification values. A parent value
     /// selects its sub-values; `none:<classification id>` selects lines with
     /// NO value on that axis. Values on different axes AND together, values
     /// on the same axis OR — "Maple, either person" is one pick per axis.
     #[serde(default)]
     pub class_value_ids: Option<Vec<String>>,
-    /// §114: which axis a by-classification report groups on. Absent = the
+    /// Which axis a by-classification report groups on. Absent = the
     /// first one.
     #[serde(default)]
     pub classification_id: Option<String>,
-    /// §116: the security a performance report measures against.
+    /// The security a performance report measures against.
     #[serde(default)]
     pub benchmark_security_id: Option<String>,
 }
@@ -271,7 +271,7 @@ pub struct Report {
 
 /// A saved, named report — Money's "Add to my favorite reports" after
 /// Customize: the kind plus the scope and range it was customized with, so
-/// "Spending by category — Jordan" is exactly the accounts they use (§39).
+/// "Spending by category — Jordan" is exactly the accounts they use.
 /// Stored as JSON in `app_settings` under `reports.saved`, inside the
 /// encrypted file, so it travels with a backup.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -294,10 +294,10 @@ pub struct SavedReport {
     #[serde(default)]
     pub detail: Option<String>,
     /// The viewer's presentation choices (sort, combine-under, chart kind,
-    /// securities) — stored as the viewer sends them (§47).
+    /// securities) — stored as the viewer sends them.
     #[serde(default)]
     pub options: Option<serde_json::Value>,
-    // --- §113: the rest of the scope, so a favorite report is the whole
+    // --- The rest of the scope, so a favorite report is the whole
     // customization and not just its date range and accounts. Every field
     // defaults, so a report saved before this still loads. ---
     #[serde(default)]
@@ -314,13 +314,13 @@ pub struct SavedReport {
     pub cleared: Vec<String>,
     #[serde(default)]
     pub text: Option<String>,
-    /// §112: chosen classification values (`none:<axis>` for "no value").
+    /// Chosen classification values (`none:<axis>` for "no value").
     #[serde(default)]
     pub class_value_ids: Vec<String>,
-    /// §114: the axis a by-classification report groups on.
+    /// The axis a by-classification report groups on.
     #[serde(default)]
     pub classification_id: Option<String>,
-    /// §116: the benchmark a performance report is measured against.
+    /// The benchmark a performance report is measured against.
     #[serde(default)]
     pub benchmark_security_id: Option<String>,
 }
@@ -333,7 +333,7 @@ pub struct ReportGalleryEntry {
     pub label: String,
 }
 
-/// One hit from the header's Search box (§38): enough to show a
+/// One hit from the header's Search box: enough to show a
 /// result line and to open the row in its register.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SearchHit {
@@ -369,10 +369,10 @@ pub struct RegisterRow {
     /// Derived from `cleared_state == "R"`. The stored `is_reconciled` column
     /// is vestigial after migration 0011 — never read it directly.
     pub is_reconciled: bool,
-    /// "" | "C" | "R" — Money's three-state C column (§6.1a).
+    /// "" | "C" | "R" — Money's three-state C column.
     pub cleared_state: String,
     pub check_number: Option<String>,
-    /// Voided: kept in the register, excluded from every balance (§6.1h).
+    /// Voided: kept in the register, excluded from every balance.
     pub is_void: bool,
     pub notes: Option<String>,
     /// For a transfer, the OTHER account's name. Money displays this in the
@@ -388,53 +388,53 @@ pub struct RegisterRow {
     pub commission_cents: i64,
     /// A sale that named its lots (`lot_allocations`), rather than FIFO.
     pub lot_specified: bool,
-    /// The savings goal this row counts toward (§46).
+    /// The savings goal this row counts toward.
     pub goal_id: Option<String>,
-    /// Per-transaction tax line (§53): None = the category's, Some("") =
+    /// Per-transaction tax line: None = the category's, Some("") =
     /// not tax-related, Some(line) = that line.
     #[serde(default)]
     pub tax_line: Option<String>,
     pub goal_name: Option<String>,
-    /// §112: the transaction's own classification values, one per axis.
+    /// The transaction's own classification values, one per axis.
     #[serde(default)]
     pub classes: Vec<ClassPick>,
-    /// §117.3: what the SPLIT LINES say, on the axes the transaction itself
+    /// What the SPLIT LINES say, on the axes the transaction itself
     /// says nothing about — the one value they agree on, or "N values" with
     /// an empty `value_id` when they differ. A mortgage split three ways and
     /// tagged line by line showed nothing at all on its row before this.
     #[serde(default)]
     pub line_classes: Vec<ClassPick>,
     /// The account a buy was paid from / a sell deposited to, through its
-    /// funding pair (§71). None for everything else.
+    /// funding pair. None for everything else.
     #[serde(default)]
     pub funding_account_id: Option<String>,
-    /// §118: this row is a revaluation — what the thing was appraised at on
-    /// its date (§93), not money that moved. The register marks these so an
+    /// This row is a revaluation — what the thing was appraised at on
+    /// its date, not money that moved. The register marks these so an
     /// asset account reads as a history of values rather than as a checking
     /// account whose "deposits" nobody can explain.
     #[serde(default)]
     pub is_revaluation: bool,
-    /// §167: this row is half of an exchange WITHIN its account — a TSP
+    /// This row is half of an exchange WITHIN its account — a TSP
     /// reallocation's Shares Out or Shares In, linked to a row in the same
     /// account rather than to another account. The register says "Exchange"
     /// rather than "Transfer Shares", because nothing left the plan.
     #[serde(default)]
     pub is_exchange: bool,
-    /// §170: how many files are attached to this row, for the 📎 in the
+    /// How many files are attached to this row, for the 📎 in the
     /// register.
     #[serde(default)]
     pub attachment_count: i64,
-    /// §181: written by a split line in another account (§94) — its amount,
+    /// Written by a split line in another account — its amount,
     /// date and category are the line's, so the form shows them read-only.
     #[serde(default)]
     pub is_split_transfer: bool,
-    /// §181: the account of the payment whose line wrote this row; None when
+    /// The account of the payment whose line wrote this row; None when
     /// the row is not a far row, or no line points at it any more.
     #[serde(default)]
     pub split_payment_account_name: Option<String>,
 }
 
-/// §170 — a file attached to a transaction or an account: what it is, not
+/// A file attached to a transaction or an account: what it is, not
 /// its bytes. The bytes come through `attachment_bytes` when they are
 /// opened or saved, never with a list.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -459,7 +459,7 @@ pub struct NewTransaction {
     /// Money's Num column. Optional so an older payload still deserializes.
     #[serde(default)]
     pub check_number: Option<String>,
-    /// §168 — the split lines, written in the SAME undo step as the row.
+    /// The split lines, written in the SAME undo step as the row.
     /// Absent (or empty) means no split; an older payload still deserializes.
     #[serde(default)]
     pub splits: Option<Vec<NewSplit>>,
@@ -477,7 +477,7 @@ pub struct UpdateTransaction {
     pub notes: Option<String>,
     #[serde(default)]
     pub check_number: Option<String>,
-    /// §168 — the split lines, replaced in the SAME undo step as the edit:
+    /// The split lines, replaced in the SAME undo step as the edit:
     /// None = leave them alone, Some(empty) = clear them, Some(rows) = these.
     #[serde(default)]
     pub splits: Option<Vec<NewSplit>>,
@@ -495,7 +495,7 @@ pub struct Budget {
     pub month_year: String,
 }
 
-/// Money's Autobudget (§51): one proposed line per expense category.
+/// Money's Autobudget: one proposed line per expense category.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct AutobudgetLine {
     pub category_id: String,
@@ -512,7 +512,7 @@ pub struct AutobudgetLine {
     pub current_cents: Option<i64>,
 }
 
-/// §129 — one row of the Budget screen.
+/// One row of the Budget screen.
 ///
 /// The screen shows every expense category, budgeted or not, so that setting
 /// a budget is typing a number into a row you can already see rather than
@@ -529,9 +529,9 @@ pub struct BudgetLine {
     /// The amount AS TYPED, in the line's own period. A yearly line keeps the
     /// $100 its owner thinks in rather than the $8.33 nobody recognizes.
     pub target_cents: i64,
-    /// §131 — "monthly" or "yearly". How to read `target_cents`.
+    /// "monthly" or "yearly". How to read `target_cents`.
     pub period: String,
-    /// §131 — `target_cents` as a monthly figure: itself, or a twelfth. This
+    /// `target_cents` as a monthly figure: itself, or a twelfth. This
     /// is what the envelope arithmetic and the screen's totals use, because
     /// those are monthly questions.
     pub monthly_cents: i64,
@@ -541,22 +541,22 @@ pub struct BudgetLine {
     pub has_budget: bool,
     /// Spending booked directly to this category.
     pub own_cents: i64,
-    /// §130 — spending from EVERY child, whether or not the child carries a
+    /// Spending from EVERY child, whether or not the child carries a
     /// budget of its own. A parent is the envelope for the whole category;
     /// a child's own amount is an allocation inside it, not an escape from it.
     pub rolled_cents: i64,
-    /// §130 — what this line's children have allocated between them. The
+    /// What this line's children have allocated between them. The
     /// parent's amount is kept strictly above it (`next_ten_above`), so a
     /// category always covers what its parts claim.
     pub children_budgeted_cents: i64,
-    /// §130 — whether this line's target belongs in the screen's totals.
+    /// Whether this line's target belongs in the screen's totals.
     ///
     /// A budgeted child sitting under a budgeted parent does NOT: its amount
     /// is already inside the parent's envelope, and adding both is how a
     /// household gets reported as budgeting twice what it did. Each branch is
     /// counted once, at its top.
     pub counts_in_total: bool,
-    /// §131 — what the target is measured against, **over the line's own
+    /// What the target is measured against, **over the line's own
     /// period**: this month for a monthly line, this calendar year for a
     /// yearly one. A $100 registration paid in March is not March overspending
     /// by $91.67; it is the year's budget, spent.
@@ -568,7 +568,7 @@ pub struct BudgetLine {
     pub remaining_cents: i64,
 }
 
-/// §129 — the whole screen in one answer, totals included.
+/// The whole screen in one answer, totals included.
 ///
 /// The totals are computed HERE rather than summed in the frontend, because
 /// the carve-out makes summing them wrong in a way that looks right: add the
@@ -587,7 +587,7 @@ pub struct BudgetGrid {
     pub total_lines: u32,
 }
 
-/// §138 — one row of the YEAR plan: what you decided once, and the twelve
+/// One row of the YEAR plan: what you decided once, and the twelve
 /// months of what actually happened against it.
 ///
 /// The plan is `annual_cents` plus `months`, and NOTHING else on this struct
@@ -614,12 +614,12 @@ pub struct PlanLine {
     /// "every month", "Nov–Mar", "Jan, Apr, Jul, Oct" — built here so the
     /// screen and any report say it the same way.
     pub months_label: String,
-    /// §143 — how to read `months`: "spent" (the months it runs in, which
+    /// How to read `months`: "spent" (the months it runs in, which
     /// is what divides the annual figure) or "aside" (the months it is DUE,
     /// with the annual figure divided by twelve because the monthly number is
     /// what you set aside).
     pub spread: String,
-    /// §143 — what ONE payment of an "aside" line is: $1,200 due each
+    /// What ONE payment of an "aside" line is: $1,200 due each
     /// January is one payment of $1,200; due in Jan and Jul, two of $600.
     /// Zero for a "spent" line, where `monthly_cents` already IS the payment.
     pub payment_cents: i64,
@@ -638,11 +638,11 @@ pub struct PlanLine {
     /// one color rule serves both blocks.
     pub variance_cents: i64,
     /// A budgeted child inside a budgeted parent is already in the parent's
-    /// envelope and must not be added to the totals again (§130).
+    /// envelope and must not be added to the totals again.
     pub counts_in_total: bool,
 }
 
-/// §138 — a totals line: income, expenses, or the net between them.
+/// A totals line: income, expenses, or the net between them.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlanTotals {
     pub annual_cents: i64,
@@ -654,7 +654,7 @@ pub struct PlanTotals {
     pub variance_cents: i64,
 }
 
-/// §138 — the whole year in one answer: both blocks, their totals, and net.
+/// The whole year in one answer: both blocks, their totals, and net.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct YearPlan {
     pub year: i32,
@@ -671,7 +671,7 @@ pub struct YearPlan {
     pub planned_lines: u32,
 }
 
-/// §141 — one line of "build next year from what this year did".
+/// One line of "build next year from what this year did".
 ///
 /// The proposal is a READING of a year, not a decision: nothing is written
 /// until the user accepts it. `basis` says which arithmetic was used and
@@ -708,7 +708,7 @@ pub struct PlanProposal {
     /// plan when there is one, so a seasonal line stays seasonal.
     pub months: String,
     pub months_label: String,
-    /// §179 — how `months` reads (§143): "spent" or "aside", carried from the
+    /// How `months` reads: "spent" or "aside", carried from the
     /// source year's plan with the mask, "spent" when there was none. The
     /// monthly and annual figures above are already worked out in it.
     pub spread: String,
@@ -719,7 +719,7 @@ pub struct PlanProposal {
     pub existing_annual_cents: Option<i64>,
 }
 
-/// §141 — one accepted proposal on its way back in. Deliberately not the
+/// One accepted proposal on its way back in. Deliberately not the
 /// whole `PlanProposal`: what gets written is the category, the figure and
 /// the spread, and sending the rest back would invite the two sides to
 /// disagree about which of them was authoritative.
@@ -728,34 +728,34 @@ pub struct PlanPick {
     pub category_id: String,
     pub annual_cents: i64,
     pub months: String,
-    /// §143 — "spent" or "aside". Absent means "spent": Build from history
+    /// "spent" or "aside". Absent means "spent": Build from history
     /// reads what a year DID, and what a year did is spending.
     #[serde(default)]
     pub spread: Option<String>,
 }
 
-/// §138 — what one plan write did: the row, and the parent it moved.
+/// What one plan write did: the row, and the parent it moved.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlanWrite {
     pub line: PlanLine,
     pub raised: Option<RaisedParent>,
 }
 
-/// §130 — a parent raised to cover its children, so the screen can say so.
+/// A parent raised to cover its children, so the screen can say so.
 /// Nothing changes a figure the user typed without telling them.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RaisedParent {
     pub category_id: String,
     pub category_name: String,
     pub target_cents: i64,
-    /// §137 — true when the parent had no budget and this write gave it one;
+    /// True when the parent had no budget and this write gave it one;
     /// false when an existing amount was pushed up. The screen says different
     /// words for the two: a number appearing where there was none needs more
     /// explaining than one that moved.
     pub created: bool,
 }
 
-/// §130 — what one budget write did: the row, and the parent it pushed up.
+/// What one budget write did: the row, and the parent it pushed up.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BudgetWrite {
     pub budget: Budget,
@@ -765,7 +765,7 @@ pub struct BudgetWrite {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CategoryBudget {
     pub category_id: String,
-    /// Display name — "Parent : Child" for a subcategory (§6.1e).
+    /// Display name — "Parent : Child" for a subcategory.
     pub category_name: String,
     pub target_cents: i64,
     pub spent_cents: i64,
@@ -773,7 +773,7 @@ pub struct CategoryBudget {
     pub month_year: String,
 }
 
-/// One line of a brokerage / 401(k) statement (§50): what the statement
+/// One line of a brokerage / 401(k) statement: what the statement
 /// says is held. Give shares, or a value (with a price, or at the price
 /// already known); `update_holdings` works out the change.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -803,7 +803,7 @@ pub struct HoldingChange {
     pub problem: Option<String>,
 }
 
-/// A payee rename rule (§84).
+/// A payee rename rule.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct PayeeRule {
     pub id: String,
@@ -812,8 +812,8 @@ pub struct PayeeRule {
     pub category_id: Option<String>,
     pub category_name: Option<String>,
     pub created_at: String,
-    /// §171 — the conditions beyond the payee text. All optional; None is
-    /// "any", so a rule from before §171 means what it meant.
+    /// The conditions beyond the payee text. All optional; None is
+    /// "any", so a rule from before these conditions existed means what it meant.
     /// Absolute amount at least this (cents).
     #[serde(default)]
     pub min_cents: Option<i64>,
@@ -830,7 +830,7 @@ pub struct PayeeRule {
     pub account_name: Option<String>,
 }
 
-/// §171 — what a rule looks at besides the payee text, when it is made.
+/// What a rule looks at besides the payee text, when it is made.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RuleConditions {
     #[serde(default)]
@@ -854,7 +854,7 @@ impl RuleConditions {
     }
 }
 
-/// §106 — one row a payee rule would change, for the preview.
+/// One row a payee rule would change, for the preview.
 ///
 /// Both halves of every change are carried — what it says now and what it
 /// would say — because a preview that shows only the destination asks the
@@ -878,7 +878,7 @@ pub struct PayeeRuleChange {
     pub match_text: String,
 }
 
-/// A set of rows that look like the same transaction entered twice (§84).
+/// A set of rows that look like the same transaction entered twice.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct DuplicateGroup {
     pub date: String,
@@ -901,7 +901,7 @@ pub struct DuplicateRow {
     pub is_transfer: bool,
 }
 
-/// One account whose stored balance disagrees with its rows (§83).
+/// One account whose stored balance disagrees with its rows.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct BalanceDrift {
     pub account_id: String,
@@ -910,7 +910,7 @@ pub struct BalanceDrift {
     pub computed_cents: i64,
 }
 
-/// What "Verify this file" found (§83). Everything is reported; `repaired`
+/// What "Verify this file" found. Everything is reported; `repaired`
 /// says what was put right when asked to.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct FileCheck {
@@ -924,7 +924,7 @@ pub struct FileCheck {
     pub half_transfers: Vec<String>,
     /// Split transactions whose lines do not add up to the row's amount.
     pub split_mismatch: Vec<String>,
-    /// §177 — split transfer lines whose row in the other account is missing,
+    /// Split transfer lines whose row in the other account is missing,
     /// orphaned, or disagrees with the line (amount, date, account, void).
     #[serde(default)]
     pub split_transfers: Vec<String>,
@@ -934,7 +934,7 @@ pub struct FileCheck {
     pub repaired: Vec<String>,
 }
 
-/// What `merge_accounts` did, or (dry run) would do (§49).
+/// What `merge_accounts` did, or (dry run) would do.
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 pub struct MergeSummary {
     /// Rows moved from the duplicate into the surviving account.
@@ -954,7 +954,7 @@ pub struct MergeSummary {
     pub goals: u32,
     /// The survivor's balance after the merge.
     pub balance_cents: i64,
-    /// §179 — what the merge decided that the counts cannot say: loan terms
+    /// What the merge decided that the counts cannot say: loan terms
     /// kept from the survivor when both had them, scheduled transfers between
     /// the two removed. Plain sentences, for the dialog to list.
     #[serde(default)]
@@ -971,21 +971,21 @@ pub struct ImportSummary {
     /// amount, payee) already exists in the account.
     pub duplicates: u32,
     pub balance_delta_cents: i64,
-    /// Investment rows written (§44): buys, sells, income, reinvestments…
+    /// Investment rows written: buys, sells, income, reinvestments…
     #[serde(default)]
     pub investments: u32,
     /// Securities the file named that the app had not seen before.
     #[serde(default)]
     pub securities_created: u32,
-    /// QIF `[Account]` rows written or matched as linked transfers (§65).
+    /// QIF `[Account]` rows written or matched as linked transfers.
     #[serde(default)]
     pub transfers_linked: u32,
-    /// §89: rows the user paired with a transaction already in the register.
+    /// Rows the user paired with a transaction already in the register.
     /// Those were marked cleared rather than written again, so they move no
     /// balance.
     #[serde(default)]
     pub matched: u32,
-    /// §89: rows the user chose to leave out in the review dialog.
+    /// Rows the user chose to leave out in the review dialog.
     #[serde(default)]
     pub user_skipped: u32,
     /// What was left out and why. Shown to the user verbatim.
@@ -1009,7 +1009,7 @@ pub struct Goal {
     pub name: String,
     pub target_cents: i64,
     /// Progress: `starting_cents` plus every tagged row in the linked
-    /// account (§46). For an unlinked goal it is simply the typed amount.
+    /// account. For an unlinked goal it is simply the typed amount.
     pub saved_cents: i64,
     pub deadline: Option<String>,
     pub notes: Option<String>,
@@ -1148,7 +1148,7 @@ pub struct Disposal {
 pub struct Position {
     pub account_id: String,
     pub account_name: String,
-    /// How this position's value was rounded (§81): the account's own
+    /// How this position's value was rounded: the account's own
     /// choice, else the file's. The lot rows on screen round the same way.
     #[serde(default = "default_rounding")]
     pub rounding: String,
@@ -1179,7 +1179,7 @@ pub struct Portfolio {
     /// Rows the replay could not make sense of (a sale of more shares than
     /// were held). Shown, never hidden.
     pub problems: Vec<String>,
-    /// How values were rounded to the cent: "nearest" | "down" (§79), so the
+    /// How values were rounded to the cent: "nearest" | "down", so the
     /// lot rows on screen round the same way.
     #[serde(default = "default_rounding")]
     pub rounding: String,
@@ -1189,7 +1189,7 @@ fn default_rounding() -> String {
     "nearest".to_string()
 }
 
-/// Money's dated return on investment (§56): one row per period.
+/// Money's dated return on investment: one row per period.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct RoiPeriod {
     pub label: String,
@@ -1209,7 +1209,7 @@ pub struct RoiPeriod {
     pub return_bps: Option<i64>,
 }
 
-/// §172 — one period of the Investing tab's performance table: the value at
+/// One period of the Investing tab's performance table: the value at
 /// each end, what crossed the account's edge between, and the two returns.
 /// Every money field is cents; every return is basis points (10000 = 100%).
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1254,7 +1254,7 @@ pub struct PriceFailure {
     pub reason: String,
 }
 
-/// §115 — how old the prices are. The app fetches only when told to (see
+/// How old the prices are. The app fetches only when told to (see
 /// `prices.rs`), so the honest thing to show beside a portfolio value is the
 /// date it was priced on, not a number that looks live.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1288,13 +1288,13 @@ pub struct DbInfo {
     pub db_path: String,
     pub size_bytes: u64,
     pub has_key: bool,
-    /// The scratch data directory the app is running against, if any (§38).
+    /// The scratch data directory the app is running against, if any.
     /// `None` means the real database.
     pub scratch_dir: Option<String>,
 }
 
 // ---------------------------------------------------------------------------
-// Splits — one transaction itemized across several categories (§6.1e)
+// Splits — one transaction itemized across several categories
 // ---------------------------------------------------------------------------
 
 /// A single line of a split transaction. `description` is per-line and is NOT
@@ -1308,13 +1308,13 @@ pub struct Split {
     pub description: Option<String>,
     pub amount_cents: i64,
     pub sort_order: i64,
-    /// §94: this line moves money to another account rather than to a
+    /// This line moves money to another account rather than to a
     /// category — the principal part of a mortgage payment, the escrow part.
     #[serde(default)]
     pub transfer_account_id: Option<String>,
     #[serde(default)]
     pub transfer_account_name: Option<String>,
-    /// §112: the values this line carries on its own (not inherited).
+    /// The values this line carries on its own (not inherited).
     #[serde(default)]
     pub classes: Vec<ClassPick>,
 }
@@ -1325,10 +1325,10 @@ pub struct NewSplit {
     pub category_id: Option<String>,
     pub description: Option<String>,
     pub amount_cents: i64,
-    /// §94: set instead of `category_id` to make this line a transfer.
+    /// Set instead of `category_id` to make this line a transfer.
     #[serde(default)]
     pub transfer_account_id: Option<String>,
-    /// §112: this line's own classification values, one per axis at most.
+    /// This line's own classification values, one per axis at most.
     /// Empty = the line inherits the transaction's. Sent back on `Split`
     /// resolved, so re-opening a split shows what each line carries.
     #[serde(default)]
@@ -1336,7 +1336,7 @@ pub struct NewSplit {
 }
 
 // ---------------------------------------------------------------------------
-// Classifications (migration 0035, §112)
+// Classifications (migration 0035)
 // ---------------------------------------------------------------------------
 
 /// One tagging axis: "Property", "Person", "Project". Its values come with
@@ -1379,7 +1379,7 @@ pub struct ClassPick {
 // Payees (migration 0011)
 // ---------------------------------------------------------------------------
 
-/// §160 — a piece of text and how often it has been used: a split line's
+/// A piece of text and how often it has been used: a split line's
 /// description, offered as completion the way payees are.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UsedText {
@@ -1392,7 +1392,7 @@ pub struct Payee {
     pub id: String,
     pub name: String,
     /// The category this payee was last filed under — Money offers it on
-    /// re-entry (§6.1b).
+    /// re-entry.
     pub last_category_id: Option<String>,
     /// Resolved name of `last_category_id`, so the payee list can show the
     /// default category without a second round-trip.
@@ -1402,13 +1402,13 @@ pub struct Payee {
     pub usage_count: i64,
     pub updated_at: String,
     /// The amount of this payee's most recent non-void transaction, offered on
-    /// re-entry the way `last_category_id` is (§17.4). Derived in SQL, never
+    /// re-entry the way `last_category_id` is. Derived in SQL, never
     /// stored — see `PAYEE_SELECT`.
     pub last_amount_cents: Option<i64>,
 }
 
 // ---------------------------------------------------------------------------
-// Statements — reconcile (§6.1c / §6.1f, migration 0012)
+// Statements — reconcile (migration 0012)
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1514,7 +1514,7 @@ pub struct Recurrence {
     pub notes: Option<String>,
     pub is_active: bool,
     pub updated_at: String,
-    /// A scheduled transfer (§57): the account the money lands in.
+    /// A scheduled transfer: the account the money lands in.
     #[serde(default)]
     pub transfer_account_id: Option<String>,
     #[serde(default)]
@@ -1549,7 +1549,7 @@ pub struct Occurrence {
     /// What actually left the account, when it is known — a variable bill
     /// rarely matches its rule's amount.
     pub actual_amount_cents: Option<i64>,
-    /// §57: a scheduled transfer's receiving account.
+    /// A scheduled transfer's receiving account.
     #[serde(default)]
     pub transfer_account_id: Option<String>,
     #[serde(default)]
@@ -1582,17 +1582,17 @@ pub struct CashForecast {
     pub ending_balance_cents: i64,
     /// Occurrences that fall in the window and are still expected to happen.
     pub upcoming: Vec<Occurrence>,
-    /// §173 — recurring charges the detector found in this account and the
+    /// Recurring charges the detector found in this account and the
     /// forecast projected, with the dates it put them on. Empty when the
     /// caller asked for scheduled items only.
     #[serde(default)]
     pub detected: Vec<DetectedCharge>,
-    /// §173.2 — payees the detector found on a schedule but left to their
+    /// Payees the detector found on a schedule but left to their
     /// scheduled bills in this account (the bill projects them).
     pub covered_by_bills: Vec<String>,
 }
 
-/// §173 — one recurring charge the subscription detector (§60) found in the
+/// One recurring charge the subscription detector found in the
 /// account being projected: what it costs, how often, and the days inside
 /// the window the forecast expects it on.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1608,10 +1608,10 @@ pub struct DetectedCharge {
     pub charges: usize,
     /// The days in the window it is projected on, in order.
     pub dates: Vec<String>,
-    /// §173.1 — the amount differs charge to charge (a utility); what is
+    /// The amount differs charge to charge (a utility); what is
     /// projected is the median of the last three.
     pub varies: bool,
-    /// §173.3 — on the Home card's ignore list; projected all the same.
+    /// On the Home card's ignore list; projected all the same.
     pub ignored_on_home: bool,
 }
 
@@ -1629,19 +1629,19 @@ pub struct NewRecurrence {
     pub second_day: Option<i64>,
     pub weekend_rule: String,
     pub notes: Option<String>,
-    /// §57: the receiving account of a scheduled transfer; amount must be negative.
+    /// The receiving account of a scheduled transfer; amount must be negative.
     #[serde(default)]
     pub transfer_account_id: Option<String>,
-    /// §57: tag the receiving half for this goal (must watch the receiving account).
+    /// Tag the receiving half for this goal (must watch the receiving account).
     #[serde(default)]
     pub goal_id: Option<String>,
 }
 
-/// How automatic backups are configured (§34).
+/// How automatic backups are configured.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BackupConfig {
     pub enabled: bool,
-    /// §135 — also take one when the app closes, or a file is closed. Its own
+    /// Also take one when the app closes, or a file is closed. Its own
     /// switch: "once a day when I start" and "whenever I leave" are different
     /// habits, and the second should not require the first.
     pub on_exit: bool,

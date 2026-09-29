@@ -1,4 +1,4 @@
-// §141 — build next year from what this year did.
+// Build next year from what this year did.
 //
 // The question it answers: if a job ended partway through the year and you
 // build the new year from history, how do you say that job no longer exists?
@@ -39,8 +39,8 @@ export function rowsFrom(proposals: readonly PlanProposal[]): BuildRow[] {
  *  the line runs, so a seasonal line stays seasonal and a five-month line is
  *  never quietly turned into a twelve-month one.
  *
- *  §179 — and the spread goes with the mask. Without it the backend read
- *  every pick as "spent", so a set-aside bill (§143) came back as a lump in
+ *  And the spread goes with the mask. Without it the backend read
+ *  every pick as "spent", so a set-aside bill came back as a lump in
  *  the month it is due. A set-aside line's monthly figure is a twelfth, so
  *  its annual figure is twelve of them, whatever its mask says. */
 export function picksFrom(rows: readonly BuildRow[]) {
@@ -166,7 +166,7 @@ export default function BuildPlanDialog({
                     setEditing(null);
                     const text = e.target.value.trim();
                     const cents = parseMoneyToCents(text);
-                    // §183 — the old figure is put back either way, but said:
+                    // The old figure is put back either way, but said:
                     // a figure that silently reverted read as accepted.
                     if (cents === null) {
                       setError(
@@ -198,7 +198,7 @@ export default function BuildPlanDialog({
 
   return (
     <>
-      {/* §183 — not while the write is running: closing then left the plan
+      {/* Not while the write is running: closing then left the plan
           written with nothing on screen saying so, and a refusal nowhere. */}
       <div className="tm-dialog-backdrop" onClick={() => !busy && onCancel()} />
       <div className="tm-dialog tm-dialog-wide" role="dialog" aria-label="Build from history">

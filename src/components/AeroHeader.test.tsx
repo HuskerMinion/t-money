@@ -1,7 +1,7 @@
-// The Settings gear (§25).
+// The Settings gear.
 //
 // jsdom parses no stylesheet, so none of this can prove the gear *looks*
-// right — §19.2 is emphatic about that, and this button is a case in point:
+// right — only looking at it can, and this button is a case in point:
 // it was invisible for weeks while every test passed. What a test CAN pin is
 // the structure that made it invisible, so the same mistake cannot come back
 // silently.
@@ -33,8 +33,8 @@ describe("the Settings gear", () => {
 
   it("renders the settings glyph, tinted by the button rather than the icon", () => {
     // The tint lives on .aero-gear as custom properties, which inherit into
-    // the <use> shadow tree — so nothing on the icon can out-specify them
-    // (§19.2). jsdom cannot see the color; what it can see is that the gear
+    // the <use> shadow tree — so nothing on the icon can out-specify them.
+    // jsdom cannot see the color; what it can see is that the gear
     // carries no competing icon class of its own.
     render(<AeroHeader active="Home" onTab={vi.fn()} />);
     const svg = gear().querySelector("svg");
@@ -69,9 +69,9 @@ describe("the Settings gear", () => {
   });
 });
 
-// §183 — the light/dark button read the theme once, so a theme picked in
+// The light/dark button read the theme once, so a theme picked in
 // Settings left it offering the wrong switch.
-describe("§183 — the light/dark button follows Settings", () => {
+describe("The light/dark button follows Settings", () => {
   it("changes its label when a dark theme is applied elsewhere, and back", async () => {
     const { applyTheme, THEMES } = await import("../lib/theme");
     const darkTheme = THEMES.find((t) => t.dark)!;

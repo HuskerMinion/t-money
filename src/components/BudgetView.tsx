@@ -1,4 +1,4 @@
-// §129 — the Budget screen, rebuilt.
+// The Budget screen, rebuilt.
 //
 // > *"the Budget tab needs re-worked to make it easier to navigate/change/
 // > update as is its just overwhelming to try and figure out how to manage it.
@@ -27,7 +27,7 @@
 // the envelope rule, and `raise_parent_to_cover_children` for the floor a
 // parent is held to), and a parent expands when you want the detail.
 //
-// §137 — a parent with budgeted children now always HAS an envelope: the
+// A parent with budgeted children now always HAS an envelope: the
 // first child amount creates one at the next whole ten above the children if
 // the parent had none. "Mainly budget off of parent categories but be able to
 // see the child categories as well" does not survive a parent whose box is
@@ -43,16 +43,16 @@ import { currentMonth, formatAmountBare, parseMoneyToCents } from "../lib/format
 import { useBudgetStore } from "../stores/useBudgetStore";
 import type { BudgetGrid, BudgetLine, RaisedParent } from "../lib/types";
 
-/** §130/§137 — what to say about a parent this write moved.
+/** What to say about a parent this write moved.
  *
  *  Two different events, two different sentences. A parent that went UP had a
  *  number and now has a bigger one. A parent that was CREATED had none at
  *  all, and a figure appearing in a box nobody typed in has to say why — it
- *  is the one thing §130 refused to do, and doing it quietly would be worse
+ *  is the one thing this screen refused to do, and doing it quietly would be worse
  *  than not doing it. */
-/** §148 — where this figure came from, since it can no longer be typed here.
+/** Where this figure came from, since it can no longer be typed here.
  *
- * The year plan is the editor; this table is materialized from it (§138). A
+ * The year plan is the editor; this table is materialized from it. A
  * line with no plan behind it is one of the hand-set budgets that predate the
  * year plan, which still work and are still read — they are just no longer
  * the place to make a change. */
@@ -115,24 +115,24 @@ export default function BudgetView() {
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [showAll, setShowAll] = useState(false);
-  // §156 — Ctrl+F here finds a budget line, not a transaction.
+  // Ctrl+F here finds a budget line, not a transaction.
   const [find, setFind] = useState("");
   const finding = isFinding(find);
   const [dialog, setDialog] = useState<null | "history" | "starter">(null);
   const [notice, setNotice] = useState<string | null>(null);
   /** The row being typed in, so a half-typed "12" is not saved as $12 on
    *  every keystroke. Committed on blur or Enter. */
-  /** §130 — the row you are working on, highlighted so there is no doubt
+  /** The row you are working on, highlighted so there is no doubt
    *  which line a number is about to land on. Clicking anywhere in the row
    *  selects it; typing in its amount selects it too. */
   const [selected, setSelected] = useState<string | null>(null);
 
-  /** §183 — the categories whose rows for this month the Year plan wrote.
+  /** The categories whose rows for this month the Year plan wrote.
    *  `materialize` deletes and rewrites every row of a planned category for
    *  the whole year, so Clear on one of those looked like it worked and was
    *  undone by the next plan edit. Those lines say where to clear instead. */
   const [planned, setPlanned] = useState<Set<string>>(new Set());
-  /** §183 — which load's answer still counts. ‹ › pressed quickly sent two
+  /** Which load's answer still counts. ‹ › pressed quickly sent two
    *  requests, and a slow September arriving after October put September's
    *  figures under October's heading. */
   const latest = useRef(0);
@@ -142,7 +142,7 @@ export default function BudgetView() {
     try {
       const next = await api.getBudgetGrid(m);
       // Not fatal: without the plan the screen still reads, and Clear is
-      // offered on every budgeted line as it was before §183.
+      // offered on every budgeted line as it was before.
       const plan = await api.getYearPlan(Number(m.slice(0, 4))).catch(() => null);
       if (mine !== latest.current) return;
       setGrid(next);
@@ -166,9 +166,9 @@ export default function BudgetView() {
   /** Write one row's amount. Everything reloads afterwards, including the
    *  store the Home screen reads, because a budget change moves the
    *  parent's remaining as well as the child's. */
-  // §148 — `commit` and `setPeriod` lived here and are gone. This screen no
+  // `commit` and `setPeriod` lived here and are gone. This screen no
   // longer writes a budget figure: the year plan is the editor and `budgets`
-  // is materialized from it (§138), so a figure typed here was either
+  // is materialized from it, so a figure typed here was either
   // invisible to the year plan or wiped by the next materialize. `clear`
   // survives because removing a hand-set budget that predates the year plan
   // is still something you may need to do here.
@@ -205,7 +205,7 @@ export default function BudgetView() {
 
   function row(line: BudgetLine, isChild: boolean, group: BudgetGroup | null) {
     const expandable = group !== null && group.children.length > 0;
-    // §156 — a find opens the groups it found things in; a match you cannot
+    // A find opens the groups it found things in; a match you cannot
     // see is not a find.
     const isOpen = group !== null && (open.has(group.parent.category_id) || (finding && group.children.length > 0));
     const over = line.has_budget && line.remaining_cents < 0;
@@ -248,7 +248,7 @@ export default function BudgetView() {
                 incl. {formatAmountBare(line.rolled_cents)} below
               </span>
             )}
-            {/* §130 — how much of this envelope its parts have claimed. The
+            {/* How much of this envelope its parts have claimed. The
                 amount is kept strictly above this, so it never reads as
                 "fully spoken for". */}
             {line.children_budgeted_cents > 0 && (
@@ -258,12 +258,12 @@ export default function BudgetView() {
             )}
           </div>
         </td>
-        {/* §148 — READ-ONLY since the year plan became the editor.
+        {/* READ-ONLY since the year plan became the editor.
             > "I went to This Month, clicked forward to October, it showed
             >  Credit Card at 0.00 where I had set it and I changed it to 60.
             >  Where does that go? I went back to the year and it still shows
             >  nothing for annual or monthly."
-            Nowhere, was the answer. §138 materializes this table from
+            Nowhere, was the answer. This table is materialized from
             `budget_plans`, so a figure typed here is either invisible to the
             year plan (no plan on that category) or wiped by the next
             materialize (there is one). Two places to type the same number is
@@ -288,7 +288,7 @@ export default function BudgetView() {
         </td>
         <td className="num">
           <Money cents={line.spent_cents} tone="neutral" />
-          {/* §131 — a yearly line is measured against the YEAR, so say so
+          {/* A yearly line is measured against the YEAR, so say so
               rather than leave a number that looks like the month's. */}
           {line.period === "yearly" && line.has_budget && (
             <span className="tm-budget-note"> this year</span>

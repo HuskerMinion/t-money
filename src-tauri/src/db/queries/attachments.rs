@@ -1,4 +1,4 @@
-//! Attachments (§170): receipts, statements and photos on a transaction or an
+//! Attachments: receipts, statements and photos on a transaction or an
 //! account.
 
 use crate::models::Attachment;
@@ -7,7 +7,7 @@ use uuid::Uuid;
 use super::*;
 
 // ---------------------------------------------------------------------------
-// §170 — attachments: a receipt, a statement, a photo, on a transaction or
+// Attachments: a receipt, a statement, a photo, on a transaction or
 // an account. Bytes in `attachment_blobs`, the link in `attachments`.
 // ---------------------------------------------------------------------------
 
@@ -135,7 +135,7 @@ mod tests {
     use super::*;
     use crate::db::queries::test_support::*;
 
-    // §170 — a receipt on a transaction and a statement on an account: the
+    // A receipt on a transaction and a statement on an account: the
     // bytes in the file, the link photographed by undo, the orphans swept.
     #[test]
     fn attachments_are_stored_listed_returned_removed_and_survive_an_undone_delete() {

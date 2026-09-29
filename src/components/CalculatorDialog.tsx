@@ -1,4 +1,4 @@
-// §102, rebuilt in §104 — Tools → Calculator (Ctrl+K).
+// The calculator, rebuilt — Tools → Calculator (Ctrl+K).
 //
 // The first version was a tape and nothing else: type an amount, press Enter,
 // it adds up. That is the right *core* — you are entering a transaction, the
@@ -51,7 +51,7 @@ const KEYS: string[][] = [
 
 /** Apply one step. Cents in, cents out; the intermediate is a number because
  *  division has to be. Division by zero never reaches here — `commit` refuses
- *  it first (§183). */
+ *  it first. */
 function apply(total: number, op: Op, value: number): number {
   switch (op) {
     case "+":
@@ -75,7 +75,7 @@ export default function CalculatorDialog({ onClose }: Props) {
    *  through an invisible "+". */
   const [started, setStarted] = useState(false);
   const [copied, setCopied] = useState(false);
-  // §183 — a step that cannot be done. Dividing by zero used to keep the
+  // A step that cannot be done. Dividing by zero used to keep the
   // total and write "÷ $0.00" to the tape as if it had happened, so the tape
   // — the thing you read back to check the sum — recorded a step with no
   // result. Now it is refused, nothing is written, and the ÷ stays pending
@@ -93,7 +93,7 @@ export default function CalculatorDialog({ onClose }: Props) {
     //
     // `scrollTop`, not `scrollTo` — the smooth-scroll API is not implemented
     // everywhere this renders, and an effect that throws takes the whole
-    // dialog down with it (§102's boundary would catch it, which is not the
+    // dialog down with it (the error boundary would catch it, which is not the
     // same as it being fine).
     const tape = tapeRef.current;
     if (tape) tape.scrollTop = tape.scrollHeight;

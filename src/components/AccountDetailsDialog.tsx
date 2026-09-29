@@ -17,10 +17,10 @@ import { isDebt, isValuedAsset } from "../lib/accountTypes";
 import AttachmentsPanel from "./AttachmentsPanel";
 
 interface Props {
-  /** §93: the assets a debt can be secured on. Omit to hide the field. */
+  /** The assets a debt can be secured on. Omit to hide the field. */
   assets?: readonly Account[];
   account: Account;
-  /** Writes the details. §183 — it must NOT close the dialog: the rounding
+  /** Writes the details. It must NOT close the dialog: the rounding
    *  and "Secured by" writes come after it (the second depends on the type it
    *  just saved), and a refusal from either has to land on an open dialog. */
   onSave: (details: AccountDetails) => Promise<void>;
@@ -54,9 +54,9 @@ export default function AccountDetailsDialog({ account, assets = [], onSave, onS
   const [website, setWebsite] = useState(account.website ?? "");
   const [address, setAddress] = useState(account.address ?? "");
   const [accountNotes, setAccountNotes] = useState(account.account_notes ?? "");
-  // §81: how this account's holdings round to the cent; "" follows the file.
+  // How this account's holdings round to the cent; "" follows the file.
   const [rounding, setRounding] = useState<"" | HoldingRounding>(account.value_rounding ?? "");
-  // §93: the asset this debt is borrowed against.
+  // The asset this debt is borrowed against.
   const [securedBy, setSecuredBy] = useState(account.secured_by_account_id ?? "");
   const [reveal, setReveal] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -101,7 +101,7 @@ export default function AccountDetailsDialog({ account, assets = [], onSave, onS
       if ((account.secured_by_account_id ?? "") !== securedBy) {
         await api.setAccountSecurity(account.id, securedBy === "" ? null : securedBy);
       }
-      // §183 — only now. The shell used to reload and close inside `onSave`,
+      // Only now. The shell used to reload and close inside `onSave`,
       // so these two writes ran against a dialog that was already gone, and
       // a refused "Secured by" was an error nobody would ever see.
       await onSaved?.();
@@ -302,14 +302,14 @@ export default function AccountDetailsDialog({ account, assets = [], onSave, onS
           />
         )}
 
-        {/* §170 — statements and the like, on the account itself. Written
+        {/* Statements and the like, on the account itself. Written
             as it happens, not on OK: attaching a file is not a field. */}
         <div className="font-bold pb-1 pt-3" style={{ color: "var(--tm-ms-text-cardhdr)" }}>
           Attachments
         </div>
         <AttachmentsPanel accountId={account.id} />
 
-        {/* §181 — the shared refusal box, as every other refusal on the Account List. */}
+        {/* The shared refusal box, as every other refusal on the Account List. */}
         {error && (
           <Notice tone="error" boxed>
             {error}

@@ -1,13 +1,13 @@
-// §181 — the one notice strip: an info line, or a refusal.
+// The one notice strip: an info line, or a refusal.
 //
 // > "the warning should probably be a light red to highlight the message
 // >  about the void being refused"
 //
-// Refusals from the backend (§178's far rows, §179's deletes) were shown in
+// Refusals from the backend (on far rows, on deletes) were shown in
 // the register's cream info bar, or written to a status line behind the
 // dialog that caused them, or not shown at all. Every one of those read as
 // the button doing nothing. This is the shape they share now: `error` is the
-// §142 error box with a ⚠ and role="alert"; `info` is the cream strip it
+// shared error box with a ⚠ and role="alert"; `info` is the cream strip it
 // always was, role="status". `boxed` is for inside a dialog or a form.
 import type { ReactNode } from "react";
 

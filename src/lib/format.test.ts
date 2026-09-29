@@ -100,7 +100,7 @@ describe("date helpers", () => {
   });
 });
 
-describe("register formatting (§6.1a)", () => {
+describe("register formatting", () => {
   it("formatDateUS converts ISO to M/D/YYYY without zero padding", () => {
     expect(formatDateUS("2026-08-30")).toBe("8/30/2026");
     expect(formatDateUS("2026-01-05")).toBe("1/5/2026");
@@ -130,7 +130,7 @@ describe("register formatting (§6.1a)", () => {
   });
 });
 
-// §94 — a rate is millionths of a percent, for the same reason money is cents.
+// A rate is millionths of a percent, for the same reason money is cents.
 describe("parseRateToMicro / formatRate", () => {
   it("parses a rate as an exact integer of millionths", () => {
     expect(parseRateToMicro("5.875")).toBe(5_875_000);

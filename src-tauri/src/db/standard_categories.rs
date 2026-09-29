@@ -27,7 +27,7 @@ pub struct StdCategory {
     /// "income" | "expense". A child is forced to its parent's kind.
     pub kind: &'static str,
     /// Tax form line, where Money's mapping is unambiguous. These are the
-    /// seed for the Taxes module (§10.4 item 16) — the reason to set them now
+    /// seed for the Taxes module — the reason to set them now
     /// rather than when Taxes is built.
     pub tax_line: Option<&'static str>,
 }
@@ -163,7 +163,7 @@ pub fn seed(conn: &Connection) -> Result<usize, String> {
                 continue;
             }
 
-            // §180: the child takes the kind of the parent it lands under —
+            // The child takes the kind of the parent it lands under —
             // the user's parent, not the table's idea of it. A user who made
             // their own "Investment Income" an expense category got income
             // children under it, and a category picker that filters on kind
@@ -264,7 +264,7 @@ mod tests {
         .unwrap_or_else(|e| panic!("{parent:?} : {name}: {e}"))
     }
 
-    /// §180 — the user's "Investment Income" is an expense category. The
+    /// The user's "Investment Income" is an expense category. The
     /// standard children added under it are expense categories too, not the
     /// table's income.
     #[test]
@@ -283,6 +283,6 @@ mod tests {
         assert_eq!(kind_of(&conn, Some("Wages & Salary"), "Bonus"), "income");
         // Idempotent, as before.
         assert_eq!(seed(&conn).unwrap(), 0);
-        crate::db::test_db::assert_consistent(&conn); // §182
+        crate::db::test_db::assert_consistent(&conn); // 
     }
 }

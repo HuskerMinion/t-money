@@ -182,9 +182,9 @@ describe("addTransaction", () => {
     });
     await useAccountStore.getState().addTransaction(payload);
     // list_payees follows every write: the entry form's completion list and
-    // category recall read it, so it must not lag a transaction behind (§17).
+    // category recall read it, so it must not lag a transaction behind.
     // undo_status follows it too: the write is undoable, and the Edit menu's
-    // label is stale until it is asked again (§101).
+    // label is stale until it is asked again.
     expect(invokeCalls.map((c) => c.cmd)).toEqual([
       "create_transaction",
       "undo_status",
@@ -218,7 +218,7 @@ describe("addTransaction", () => {
   });
 });
 
-describe("§155 — reloadAll comes back to where the user was", () => {
+describe("reloadAll comes back to where the user was", () => {
   it("keeps the selected account and refetches its register", async () => {
     setIpcHandlers({
       get_all_accounts: () => [checking],
@@ -246,9 +246,9 @@ describe("§155 — reloadAll comes back to where the user was", () => {
   });
 });
 
-// §183 — update_transfer is recorded for undo like every other edit, and the
+// `update_transfer` is recorded for undo like every other edit, and the
 // store never told the Edit menu.
-describe("§183 — editTransfer tells the undo menu", () => {
+describe("editTransfer tells the undo menu", () => {
   it("asks for the undo status again after the write", async () => {
     setIpcHandlers({
       update_transfer: () => null,

@@ -30,7 +30,7 @@ export default function FavoriteAccountsWidget({ onOpen }: Props) {
   }
 
   return (
-    /* §109 — the watermark belongs to the CARD, not to the list inside it.
+    /* The watermark belongs to the CARD, not to the list inside it.
        It was on the scrolling rows container, so it covered only as much of
        the card as the rows happened to occupy — and it scrolled with them.
        On the section it spans the title band and the rows, which is what

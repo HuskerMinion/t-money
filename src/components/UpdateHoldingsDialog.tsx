@@ -1,4 +1,4 @@
-// Money's 401(k) Manager / "Update your shares" (§50). The statement says
+// Money's 401(k) Manager / "Update your shares". The statement says
 // what is held on a date; type it in — shares, or the value, with the price
 // if the statement gives one — and the app writes an Add Shares or Remove
 // Shares row per security for the difference, and records the price. For a
@@ -93,7 +93,7 @@ export default function UpdateHoldingsDialog({ account, securities, onCancel, on
       })
       .catch((e) => {
         if (canceled) return;
-        // §183 — the last good preview goes with the failure. Kept, it went on
+        // The last good preview goes with the failure. Kept, it went on
         // showing a change for figures that were no longer the ones typed, and
         // left Update enabled to write what the backend had just refused.
         setPlan(null);
@@ -118,7 +118,7 @@ export default function UpdateHoldingsDialog({ account, securities, onCancel, on
     setError(null);
     try {
       const done = await api.updateHoldings(account.id, date, request, false);
-      noteChanged(); // §185 — the backend cleared the undo stack.
+      noteChanged(); // The backend cleared the undo stack.
       onDone(done);
     } catch (e) {
       setError(String(e));

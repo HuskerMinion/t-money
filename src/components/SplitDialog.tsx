@@ -1,4 +1,4 @@
-// SplitDialog — "Transaction with Multiple Categories" (§6.1e).
+// SplitDialog — "Transaction with Multiple Categories".
 //
 // Modeled on reference/ms-money-04-split-dialog.png. Two stages, as in Money:
 //
@@ -12,12 +12,12 @@
 // Buttons follow Money: Delete / Delete All / Help on the right rail, then
 // Done / Cancel.
 //
-// §160 — what a morning of real entry asked for:
+// What a morning of real entry asked for:
 //   - When the transaction already has an amount, the footer shows that
 //     amount, the lines' total, and the DIFFERENCE, which reads 0.00 when the
 //     lines account for all of it. That is the number you are working toward.
 //   - Done with lines that total something else is allowed — the lines are
-//     the amount (§6.1e) — but it is CONFIRMED first, and the confirmation
+//     the amount — but it is CONFIRMED first, and the confirmation
 //     says when the transaction has already been reconciled, because moving a
 //     reconciled amount puts the next statement out by the difference.
 //   - Enter is Done and Escape is Cancel, as they are on the transaction form
@@ -40,15 +40,15 @@ interface SplitLine {
   categoryId: string;
   description: string;
   amount: string;
-  /** §112: this line's own classification values. Empty on an axis means the
+  /** This line's own classification values. Empty on an axis means the
    *  line follows the transaction's value for it. */
   classes: ClassPick[];
 }
 
 interface Props {
   categories: readonly Category[];
-  /** §102 — accounts a line may transfer to. A split line has been able to
-   *  carry a transfer since §94 — the column, the Rust and the ledger all
+  /** Accounts a line may transfer to. A split line has been able to
+   *  carry a transfer for some time — the column, the Rust and the ledger all
    *  handle it — but nothing could ever create one, because this dialog's
    *  picker offered categories only. Money puts transfers in the same field,
    *  so a paycheck can be split into salary, tax and "the part that went to
@@ -56,12 +56,12 @@ interface Props {
   transferTargets?: readonly Account[];
   /** The parent's signed amount, if it already has one. */
   parentAmountCents?: number | null;
-  /** §160 — the transaction has been reconciled against a statement, so a
+  /** The transaction has been reconciled against a statement, so a
    *  Done that moves its amount says what that costs. */
   reconciled?: boolean;
   /** Existing lines when re-opening a split transaction. */
   initialSplits?: readonly NewSplit[];
-  /** §112: the file's classification axes. Empty hides the columns. */
+  /** The file's classification axes. Empty hides the columns. */
   classifications?: readonly Classification[];
   /** What the transaction itself is tagged with — shown as the fallback in
    *  each line's picker, since a line with no value of its own inherits it. */
@@ -84,7 +84,7 @@ function toLines(splits: readonly NewSplit[]): SplitLine[] {
   }));
 }
 
-/** §160 — the Payee field's completion, fed descriptions instead of payees.
+/** The Payee field's completion, fed descriptions instead of payees.
  *  It only reads `name` and `usage_count`; the rest is the shape it asks for. */
 export function asPayees(texts: readonly UsedText[]): Payee[] {
   return texts.map((t) => ({
@@ -122,10 +122,10 @@ export default function SplitDialog({
     initialSplits.length ? toLines(initialSplits) : [BLANK]
   );
   const [selected, setSelected] = useState(0);
-  // §160 — Done with a total that is not the transaction's amount waits for
+  // Done with a total that is not the transaction's amount waits for
   // a yes. Holds the lines it would write, so the answer needs no re-read.
   const [confirming, setConfirming] = useState<{ splits: NewSplit[]; total: number } | null>(null);
-  // §183 — the lines whose amount Done could not read, by index. Such a
+  // The lines whose amount Done could not read, by index. Such a
   // line used to count as empty and drop out of the split without a word.
   const [unreadable, setUnreadable] = useState<number[]>([]);
   const [descriptions, setDescriptions] = useState<Payee[]>([]);
@@ -210,7 +210,7 @@ export default function SplitDialog({
     if (patch.amount !== undefined) setUnreadable((u) => u.filter((n) => n !== i));
   }
 
-  /** §183 — any change to the lines withdraws a pending confirmation. It
+  /** Any change to the lines withdraws a pending confirmation. It
    *  holds the lines as they were at the first Done, and Enter or its button
    *  wrote exactly those — a fix typed below the banner was lost. The next
    *  Done reads the grid again, and asks again if it still does not add up. */
@@ -245,7 +245,7 @@ export default function SplitDialog({
   }
 
   function done() {
-    // §183 — an amount that is there but is not money ("12.345", "1O.00")
+    // An amount that is there but is not money ("12.345", "1O.00")
     // is not an empty line. Refuse, and say which.
     const bad = lines.flatMap((l, n) => (l.amount.trim() !== "" && parseMoneyToCents(l.amount) === null ? [n] : []));
     setUnreadable(bad);
@@ -255,7 +255,7 @@ export default function SplitDialog({
     }
     const out = collect();
     const total = out.reduce((s, x) => s + x.amount_cents, 0);
-    // §160 — the lines ARE the amount, but moving an amount that was typed
+    // The lines ARE the amount, but moving an amount that was typed
     // (or, worse, reconciled) is asked about first. Clearing every line is
     // not a change of amount: the form keeps what it had.
     if (target !== null && out.length > 0 && total !== target) {
@@ -325,7 +325,7 @@ export default function SplitDialog({
                         label={`Category ${i + 1}`}
                         categories={categories}
                         // The spent/received answer IS the income/expense
-                        // filter (§6.1e) — a "spent" line never offers an
+                        // filter — a "spent" line never offers an
                         // income category.
                         kind={direction === "received" ? "income" : "expense"}
                         transferTargets={transferTargets}
@@ -350,7 +350,7 @@ export default function SplitDialog({
                           <select
                             className="aero-field w-full"
                             aria-label={`${c.name} ${i + 1}`}
-                            // §117.1 — same as the entry form: an axis with
+                            // Same as the entry form: an axis with
                             // no values cannot be used, and says why.
                             disabled={c.values.length === 0}
                             title={c.values.length === 0 ? `“${c.name}” has no values yet — add them under Budget → Classifications.` : undefined}
@@ -362,7 +362,7 @@ export default function SplitDialog({
                               ensureTrailingBlank(i);
                             }}
                           >
-                            {/* §117.5 — the brackets are the whole
+                            {/* The brackets are the whole
                                 distinction between a line that FOLLOWS the
                                 transaction and one that carries a value of
                                 its own, and "(418 Maple Street)" beside
@@ -385,7 +385,7 @@ export default function SplitDialog({
                       );
                     })}
                     <td>
-                      {/* §160 — completes from earlier split descriptions;
+                      {/* Completes from earlier split descriptions;
                           typing something new is still fine. */}
                       <PayeeField
                         className="aero-field w-full"
@@ -468,7 +468,7 @@ export default function SplitDialog({
           </div>
         </div>
 
-        {/* §160 — the amount the lines are working toward, and how far off
+        {/* The amount the lines are working toward, and how far off
             they are. "Difference" is the number you watch; 0.00 means done. */}
         <div className="pt-1" style={{ paddingRight: 118 }}>
           {target !== null && (

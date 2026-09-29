@@ -1,4 +1,4 @@
-// §99 — the Three-pane look's middle column.
+// The Three-pane look's middle column.
 //
 // A mail client's shape, and it earns its width for the same reason a mail
 // client's does: the list is not a menu you pass through, it is information
@@ -33,7 +33,7 @@ export default function AccountsPane({ accounts, selectedId, onSelect }: Props) 
   return (
     <nav className="tm-accounts-pane" aria-label="Accounts">
       {GROUPS.map(([title, kinds]) => {
-        // §169 — an account that has been placed (Favorites → Organize
+        // An account that has been placed (Favorites → Organize
         // favorites…) keeps its place; the unplaced sort by size after them,
         // as they always did.
         const rows = open

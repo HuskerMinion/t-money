@@ -1,4 +1,4 @@
-// §97 — the menu bar.
+// The menu bar.
 //
 // Money's five menus, and Money's behavior: click to open, then MOVE across
 // the bar and the menus follow the pointer without another click. That one
@@ -14,7 +14,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "
 import { isCommandAvailable, onAvailabilityChange, runCommand } from "../lib/commands";
 import { accelMatches, menuLeaves, type Menu, type MenuItem, ariaKeys } from "../lib/menus";
 
-/** Re-render whenever what the app can do changes. §183 — exported, because
+/** Re-render whenever what the app can do changes. Exported, because
  *  the Ribbon reads the same registry and used to read it only when something
  *  else happened to re-render it, so its buttons stayed gray (or live) until
  *  you clicked somewhere. */
@@ -42,7 +42,7 @@ function isEnabled(item: MenuItem): boolean {
 }
 
 /** Shortcuts that mean something to the field being typed in, so a field
- *  with focus keeps them. §183 — Ctrl+Z and Ctrl+Y as well: inside a field
+ *  with focus keeps them. Ctrl+Z and Ctrl+Y as well: inside a field
  *  they take back the TYPING, and handing them to the database undo instead
  *  meant a mistyped memo, corrected with Ctrl+Z, took back the transaction
  *  saved a minute ago. Edit → Undo in the menu still reaches the database. */
@@ -87,7 +87,7 @@ export default function MenuBar({ menus }: Props) {
   const [open, setOpen] = useState<number | null>(null);
   const [path, setPath] = useState<number[]>([]);
   const barRef = useRef<HTMLDivElement>(null);
-  // §183 — the header above promised arrow keys, Enter, and Escape handing
+  // The header above promised arrow keys, Enter, and Escape handing
   // focus back, and none of it existed: Alt+F opened a menu only a mouse
   // could use. Focus now goes INTO the menu. `pendingFocus` is where it lands
   // once the panel it names has rendered; `returnTo` is whatever had focus
@@ -132,7 +132,7 @@ export default function MenuBar({ menus }: Props) {
   }, [open, path, focusTick, panels]);
 
   // Click anywhere else closes. Escape closes and hands focus back; the
-  // arrows and Enter walk the open menu (§183).
+  // arrows and Enter walk the open menu.
   useEffect(() => {
     if (open === null) return;
     const cur = open;
@@ -299,7 +299,7 @@ export default function MenuBar({ menus }: Props) {
   );
 }
 
-/** §186 — the label with its Alt letter underlined: the first occurrence of
+/** The label with its Alt letter underlined: the first occurrence of
  *  the mnemonic, in either case. It used to be the first letter, always,
  *  which is right for File, Edit, Tools and Help and wrong for Favorites —
  *  Alt+A opens it, and it showed an underlined F that Alt+F cannot reach

@@ -227,7 +227,7 @@ pub fn occurrences(rule: &Rule, from: NaiveDate, to: NaiveDate) -> Vec<NaiveDate
                 let (ny, nm) = add_months(y, m, 1);
                 y = ny;
                 m = nm;
-                // §180: keep going while next month's 1st could still be
+                // Keep going while next month's 1st could still be
                 // pulled back into the window. `WeekendRule::Before` moves a
                 // Sunday the 1st two days earlier, so a window ending on
                 // Friday 27 February must still generate 1 March — stopping
@@ -390,7 +390,7 @@ mod tests {
 
     #[test]
     fn semi_monthly_catches_next_months_payday_shifted_back_into_the_window() {
-        // §180. 1 March 2026 is a Sunday, so with "the Friday before" it is
+        // 1 March 2026 is a Sunday, so with "the Friday before" it is
         // paid Friday 27 February — inside a February window even though the
         // month it belongs to starts after the window ends.
         let mut r = rule(Freq::SemiMonthly, "2026-01-01");

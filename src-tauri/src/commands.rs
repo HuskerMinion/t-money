@@ -40,7 +40,7 @@ use tauri::State;
 
 /// Lock the pool and hand back a live connection. The guard must outlive the
 /// connection, so callers keep `guard` in scope until the query completes.
-/// §98: the open file's path. Cloned out of the lock rather than borrowed —
+/// The open file's path. Cloned out of the lock rather than borrowed —
 /// every caller wants an owned path and holding the lock across file IO is
 /// how a UI freezes.
 fn db_path_of(state: &State<AppState>) -> Result<std::path::PathBuf, String> {
@@ -51,19 +51,19 @@ fn key_account_of(state: &State<AppState>) -> Result<String, String> {
     state.key_account.lock().map(|a| a.clone()).map_err(|_| "state lock poisoned".to_string())
 }
 
-/// §117 — what a command says when there is no file open. The UI shows the
+/// What a command says when there is no file open. The UI shows the
 /// start screen instead of calling these at all; this is the backstop for a
 /// call that gets through anyway, and it must read like something a person
 /// wrote.
 pub const NO_FILE: &str = "No file is open. Use File → Open, or File → New.";
 
 // ---------------------------------------------------------------------------
-// §134 — two sentinels for the two ways an Open can fail on a key.
+// Two sentinels for the two ways an Open can fail on a key.
 //
 // > *"I want to open my file on another computer but it requires the key. I
 // > think the file open for an existing file needs a way to paste the key in."*
 //
-// The backend has taken a key since §98; nothing ever passed one, so the only
+// The backend has long taken a key; nothing ever passed one, so the only
 // way this ended was an error message describing a door with no handle. The
 // UI needs to tell "locked" from "broken" apart to know whether to ASK, and a
 // message written for a human is the wrong thing to branch on — it is one
@@ -98,7 +98,7 @@ fn with_conn<'a>(
         .pool
         .lock()
         .map_err(|_| "state lock poisoned".to_string())?;
-    // §117: this is what every command says when File → Close has left the
+    // This is what every command says when File → Close has left the
     // app with no file open. It is a sentence the user can act on, because
     // it reaches the screen — "database pool not initialized" did not.
     let pool = guard
@@ -111,7 +111,7 @@ fn with_conn<'a>(
 /// Drop the pool (releasing file handles), then rebuild it from the keyring
 /// key. Used after restore and after a master-key change.
 fn rebuild_pool(state: &State<AppState>) -> Result<(), String> {
-    // §98: the OPEN file's key, not "the" key. With several files, the global
+    // The OPEN file's key, not "the" key. With several files, the global
     // account is only right for the app's own database.
     let key = keyring::get_key_in(&key_account_of(state)?).map_err(|e| format!("keyring get failed: {e}"))?;
     let pool = pool::init_pool(&db_path_of(&state)?, &key)
@@ -150,11 +150,11 @@ pub fn create_account(
     queries::create_account(&conn, &name, &account_type, opening_balance_cents, opened_on.as_deref())
 }
 
-/// §136 — deleting an account empties the undo stack.
+/// Deleting an account empties the undo stack.
 ///
 /// Deleting an account is not undoable and is not going to be (`undo.rs`'s
 /// header says why: it takes every transaction in the account with it, and
-/// something that consequential should stay confirm-then-commit). §132's rule
+/// something that consequential should stay confirm-then-commit). The undo rule
 /// is the other half of that decision and was never applied here: a write
 /// that cannot be undone must invalidate what came before it, or Ctrl+Z
 /// reaches straight PAST the delete and takes back the unrelated edit you
@@ -173,7 +173,7 @@ pub fn delete_account(state: State<AppState>, id: String) -> Result<(), String> 
     Ok(())
 }
 
-/// §136 — and so does merging two accounts, for the same reason.
+/// And so does merging two accounts, for the same reason.
 ///
 /// A merge re-points every row of one account into another and then deletes
 /// the empty one. It is at least as consequential as a delete and is equally
@@ -198,7 +198,7 @@ pub fn merge_accounts(
     Ok(summary)
 }
 
-/// A small per-file setting the frontend owns (§55: the Debt Reduction
+/// A small per-file setting the frontend owns (for example the Debt Reduction
 /// Planner's rates and minimums). Keys are namespaced so nothing here can
 /// reach the backup or key settings.
 #[tauri::command(rename_all = "camelCase")]
@@ -216,7 +216,7 @@ pub fn set_ui_setting(state: State<AppState>, key: String, value: String) -> Res
     queries::set_setting(&conn, &format!("ui.{key}"), &value)
 }
 
-/// Money's "Export an account as QIF" (§54): the register written to
+/// Money's "Export an account as QIF": the register written to
 /// `path`. Returns (records written, void rows left out).
 #[tauri::command(rename_all = "camelCase")]
 pub fn export_qif(state: State<AppState>, account_id: String, path: String) -> Result<(u32, u32), String> {
@@ -226,7 +226,7 @@ pub fn export_qif(state: State<AppState>, account_id: String, path: String) -> R
     Ok((q.records, q.voided))
 }
 
-/// Per-transaction tax line (§53): null follows the category, "" takes the
+/// Per-transaction tax line: null follows the category, "" takes the
 /// row out of the tax reports, a line name puts it on that line.
 #[tauri::command(rename_all = "camelCase")]
 pub fn set_transaction_tax_line(state: State<AppState>, transaction_id: String, tax_line: Option<String>) -> Result<(), String> {
@@ -244,9 +244,9 @@ pub fn update_holdings(
 ) -> Result<Vec<HoldingChange>, String> {
     let (_g, conn) = with_conn(&state)?;
     let changes = queries::update_holdings(&conn, &account_id, &date, &lines, dry_run)?;
-    // §185 — the real run writes buys and sells no undo step photographs, so
+    // The real run writes buys and sells no undo step photographs, so
     // an older step restored after it would put back balances that no longer
-    // hold (§132). The preview writes nothing and keeps the stack.
+    // hold. The preview writes nothing and keeps the stack.
     if !dry_run {
         undo_stack_invalidated(&state)?;
     }
@@ -281,11 +281,11 @@ pub fn create_transaction(
     payload: NewTransaction,
 ) -> Result<Transaction, String> {
     let (_g, conn) = with_conn(&state)?;
-    // §101 — recorded so Edit → Undo can take it back. The id does not exist
+    // Recorded so Edit → Undo can take it back. The id does not exist
     // yet, so there is nothing to photograph beforehand; `recording` widens
     // the "before" to cover whatever gets created, which is what makes undo
     // of a create a deletion of exactly that row.
-    // §168 — the split lines, when the form sends them, are written inside
+    // The split lines, when the form sends them, are written inside
     // this same step, so one Enter is one Ctrl+Z.
     let (out, step) = undo::recording(&conn, "add a transaction", &[], || {
         queries::create_transaction_with_splits(&conn, &payload)
@@ -306,7 +306,7 @@ pub fn update_transaction(
 ) -> Result<Transaction, String> {
     let (_g, conn) = with_conn(&state)?;
     let ids = undo::related_ids(&conn, &payload.id)?;
-    // §168 — the split lines, when the form sends them, are replaced inside
+    // The split lines, when the form sends them, are replaced inside
     // this same step (lines first, then the edit), so one Enter is one Ctrl+Z.
     let (out, step) = undo::recording(&conn, "edit a transaction", &ids, || {
         queries::update_transaction_with_splits(&conn, &payload)
@@ -386,9 +386,9 @@ pub fn update_category(
 /// Delete a category. `reassignTo` refiles everything that used it; omit it to
 /// leave those transactions uncategorized.
 ///
-/// §179 — undoable, like the merge it now shares a body with. It was neither
+/// Undoable, like the merge it now shares a body with. It was neither
 /// undoable nor did it empty the stack, so Ctrl+Z after a delete reached past
-/// it and took back whatever came before (§132's rule).
+/// it and took back whatever came before.
 #[tauri::command(rename_all = "camelCase")]
 pub fn delete_category(
     state: State<AppState>,
@@ -408,7 +408,7 @@ pub fn seed_standard_categories(state: State<AppState>) -> Result<usize, String>
     queries::seed_standard_categories(&conn)
 }
 
-/// §133 — what a merge is about to do, asked before it is done.
+/// What a merge is about to do, asked before it is done.
 ///
 /// The dialog calls this each time the destination changes, so the sentence
 /// it shows names both sides and the counts, and a merge the backend would
@@ -423,7 +423,7 @@ pub fn preview_category_merge(
     queries::preview_merge(&conn, &from_id, &into_id)
 }
 
-/// §133 — undoable, because a user asked for it: which way a merge went
+/// Undoable, because a user asked for it: which way a merge went
 /// was not obvious, and getting it backwards looked permanent without a
 /// backup taken just before.
 #[tauri::command(rename_all = "camelCase")]
@@ -448,7 +448,7 @@ pub fn get_spending_summary(
     queries::get_spending_summary(&conn, &month)
 }
 
-// §148 — `set_budget_line` was a tauri command and is not any more. The
+// `set_budget_line` was a tauri command and is not any more. The
 // Budget screen it served became a reading when the year plan took over the
 // typing, and `reachability.test.ts` will not have a wrapper nothing calls.
 //
@@ -456,7 +456,7 @@ pub fn get_spending_summary(
 // what `set_budget` below goes through, and it is where the envelope rule
 // runs.
 
-/// §129 — everything the Budget screen draws, in one call.
+/// Everything the Budget screen draws, in one call.
 #[tauri::command(rename_all = "camelCase")]
 pub fn get_budget_grid(
     state: State<AppState>,
@@ -466,7 +466,7 @@ pub fn get_budget_grid(
     queries::budget_grid(&conn, &month)
 }
 
-/// §129 — a budget to start from: the top-level categories this household
+/// A budget to start from: the top-level categories this household
 /// actually spends on, ranked by cost, with an amount proposed for each.
 /// Nothing is written; `apply_autobudget` does that, and takes these lines.
 #[tauri::command(rename_all = "camelCase")]
@@ -480,9 +480,9 @@ pub fn get_budget_starter(
     queries::budget_starter(&conn, &month, lookback.unwrap_or(12), limit.unwrap_or(12))
 }
 
-// ── The year plan (§139) ───────────────────────────────────────────────────
+// ── The year plan ───────────────────────────────────────────────────
 
-/// §139 — the whole Budget screen for one year, in one answer.
+/// The whole Budget screen for one year, in one answer.
 ///
 /// `today` is not a parameter: the elapsed-month count is a property of the
 /// calendar, not of the caller, and letting the frontend send it would let a
@@ -496,16 +496,16 @@ pub fn get_year_plan(state: State<AppState>, year: i32) -> Result<crate::models:
     plan::year_plan(&conn, year, &today)
 }
 
-/// §139 — set one line's plan: an annual figure and the months it runs.
+/// Set one line's plan: an annual figure and the months it runs.
 ///
 /// Returns the line as written and any parent this pushed up, so the screen
 /// can say what it did rather than leaving a number to change by itself.
 ///
-/// §143 — `spread` is "spent" or "aside": whether the `months` mask names
+/// `spread` is "spent" or "aside": whether the `months` mask names
 /// the months this is SPENT in (divide the annual figure by them) or the
 /// months the bill is DUE (divide by twelve, because the monthly figure is
 /// what is set aside). `None` means "spent", so a caller written against
-/// §139 keeps the behavior it was written for.
+/// the first year plan keeps the behavior it was written for.
 ///
 /// Kept out of the parameter list on purpose: `ipcContract.test.ts` reads
 /// these parameters out of this file, and a comment among them is parsed as
@@ -530,7 +530,7 @@ pub fn set_budget_plan(
     )
 }
 
-/// §139 — remove a line's plan, and the monthly rows that came from it.
+/// Remove a line's plan, and the monthly rows that came from it.
 /// Different from a plan of zero, which is a real budget of nothing.
 #[tauri::command(rename_all = "camelCase")]
 pub fn clear_budget_plan(
@@ -542,7 +542,7 @@ pub fn clear_budget_plan(
     plan::clear_plan(&conn, &category_id, year)
 }
 
-/// §141 — read one year and propose the next. Writes nothing.
+/// Read one year and propose the next. Writes nothing.
 #[tauri::command(rename_all = "camelCase")]
 pub fn plan_from_history(
     state: State<AppState>,
@@ -554,7 +554,7 @@ pub fn plan_from_history(
     plan::from_history(&conn, from_year, to_year, &today)
 }
 
-/// §141 — write the proposals that came back ticked, and rebuild the year's
+/// Write the proposals that came back ticked, and rebuild the year's
 /// monthly rows once rather than once per line.
 #[tauri::command(rename_all = "camelCase")]
 pub fn apply_year_plan(
@@ -573,13 +573,13 @@ pub fn apply_year_plan(
     plan::apply_proposals(&conn, year, &picks)
 }
 
-/// The pre-§130 single-budget write, kept because `useBudgetStore` and any
+/// The old single-budget write, kept because `useBudgetStore` and any
 /// saved script still name it.
 ///
-/// §142 — it now goes through `set_budget_line` rather than straight at
+/// It now goes through `set_budget_line` rather than straight at
 /// `queries::set_budget`, which wrote the row and ran no envelope rule at
 /// all. Two commands that write the same table, one of them keeping the
-/// §130/§131/§137 invariant and one of them not, is a bug waiting for
+/// envelope rule and one of them not, is a bug waiting for
 /// whichever caller picks the wrong one — and the low-level `queries::
 /// set_budget` stays as it is because demo seeding wants exactly that: a row
 /// and no consequences.
@@ -591,7 +591,7 @@ pub fn apply_year_plan(
 /// The existing period is read and passed back in rather than defaulted:
 /// this command has never been able to express one, and `set_budget_line`
 /// WRITES whatever it is given, so passing a flat "monthly" would silently
-/// demote a category that was being budgeted by the year (§131).
+/// demote a category that was being budgeted by the year.
 #[tauri::command(rename_all = "camelCase")]
 pub fn set_budget(
     state: State<AppState>,
@@ -696,7 +696,7 @@ pub fn update_goal(
     )
 }
 
-/// Count this account in tax reports, or not (§48).
+/// Count this account in tax reports, or not.
 ///
 /// The parameter is `account_id`, not `id`: `rename_all = "camelCase"` makes
 /// the wire name `accountId`, which is what `ipc.ts` has always sent. Named
@@ -711,7 +711,7 @@ pub fn set_account_tax_included(state: State<AppState>, account_id: String, incl
     queries::set_account_tax_included(&conn, &account_id, included)
 }
 
-/// §88: CSV import — look first, then import with the confirmed mapping.
+/// CSV import — look first, then import with the confirmed mapping.
 #[tauri::command(rename_all = "camelCase")]
 pub fn preview_csv(path: String, has_header: Option<bool>, mapping: Option<crate::import::csv::CsvMapping>) -> Result<crate::import::csv::CsvPreview, String> {
     crate::import::preview_csv(&path, has_header, mapping.as_ref())
@@ -726,7 +726,7 @@ pub fn import_csv(state: State<AppState>, path: String, account_id: String, mapp
     })
 }
 
-/// §89: read a statement and say which rows look like transactions already in
+/// Read a statement and say which rows look like transactions already in
 /// the register. Writes nothing; `mapping` is set for a CSV only.
 #[tauri::command(rename_all = "camelCase")]
 pub fn preview_import(
@@ -741,7 +741,7 @@ pub fn preview_import(
     crate::import::preview_import(pool, &path, &account_id, mapping.as_ref(), window_days.unwrap_or(3))
 }
 
-// ── TSP (§103) ─────────────────────────────────────────────────────────────
+// ── TSP ─────────────────────────────────────────────────────────────
 
 /// What a tsp.gov activity export contains, and what has to be asked about it.
 ///
@@ -757,7 +757,7 @@ pub fn preview_tsp(
     use crate::import::tsp;
     let text = std::fs::read_to_string(&path)
         .map_err(|e| format!("could not read {path}: {e}"))?;
-    // §155 — once an account is chosen, the preview says what of the
+    // Once an account is chosen, the preview says what of the
     // opening position is already in it. The dialog re-asks on every
     // account change for exactly this.
     let txns = tsp::collapse(&tsp::read(&text)?);
@@ -765,7 +765,7 @@ pub fn preview_tsp(
     tsp::plan(&text, &held)
 }
 
-/// §155 — what `account_id` already holds of each fund the file touches, on
+/// What `account_id` already holds of each fund the file touches, on
 /// the day before the export begins. Keyed by the plan's own fund name and in
 /// its units, so `tsp::net_of_held` can subtract it from the opening the file
 /// implies. Empty when no account is named.
@@ -802,7 +802,7 @@ fn tsp_held(
 /// It builds the QIF the script used to write and hands it to the ordinary
 /// importer, rather than writing rows itself. That is deliberate: the QIF path
 /// already knows how to create securities, match a transfer to a deposit that
-/// is already in the register, and run §90's treatment dialog. A second way
+/// is already in the register, and run the treatment dialog. A second way
 /// into the ledger would be a second set of those rules to keep in step.
 ///
 /// The prices go in the same way, as a `!Type:Prices` file, so the account's
@@ -833,14 +833,14 @@ pub fn import_tsp(
         ));
     }
 
-    // §155 — `check` used the opening the FILE implies, which is the right
+    // `check` used the opening the FILE implies, which is the right
     // thing to check the file against. What is WRITTEN is that opening less
     // what the account already holds on the open date: the register, not
     // the file, knows whether those shares are already there.
     let held = tsp_held(&state, Some(&account_id), &txns)?;
     let opening = tsp::net_of_held(&opening, &held);
 
-    // §154 — only asked for when the plan paid something out. A file of
+    // Only asked for when the plan paid something out. A file of
     // contributions and reallocations moves nothing to a bank, so there is
     // no account to name; `build_qif` refuses a file WITH a payment and no
     // account, before anything is written.
@@ -867,20 +867,20 @@ pub fn import_tsp(
     std::fs::write(&prices_path, &prices)
         .map_err(|e| format!("could not write {}: {e}", prices_path.display()))?;
 
-    // §153 — both passes inside ONE undo step. The prices are about
+    // Both passes inside ONE undo step. The prices are about
     // securities the transactions just created, so taking back the
     // transactions and leaving the prices would be half an import.
     importing(&state, "import a TSP activity detail", || {
         let guard = state.pool.lock().map_err(|_| "state lock poisoned".to_string())?;
         let pool = guard.as_ref().ok_or("database is not open")?;
-        // §172 — with the contribution memos' meaning supplied, so every
+        // With the contribution memos' meaning supplied, so every
         // payroll deferral, match and automatic 1% gets its cash side
         // (Retirement Contributions) instead of draining the plan's cash.
         let mut summary = import::import_file_with_rules(pool, &qif_path.to_string_lossy(), &account_id, &tsp::contribution_rules())?;
         // Prices second: they are about securities the transactions just created.
         let priced = import::import_file(pool, &prices_path.to_string_lossy(), &account_id)?;
         summary.imported += priced.imported;
-        // §167 — a reallocation day's Shares Out / Shares In rows are linked
+        // A reallocation day's Shares Out / Shares In rows are linked
         // to each other, which is what makes them an exchange to the lot
         // engine: the basis and dates of what went out carry into what came
         // in, instead of the day's price becoming the basis.
@@ -902,7 +902,7 @@ pub fn import_tsp(
     })
 }
 
-/// §89: import with the user's answers from the review dialog.
+/// Import with the user's answers from the review dialog.
 #[tauri::command(rename_all = "camelCase")]
 pub fn import_with_decisions(
     state: State<AppState>,
@@ -928,7 +928,7 @@ pub fn import_with_decisions(
     })
 }
 
-/// §93: what an asset is worth now — a dated revaluation, kept out of every
+/// What an asset is worth now — a dated revaluation, kept out of every
 /// income and spending report.
 #[tauri::command(rename_all = "camelCase")]
 pub fn set_account_value(
@@ -939,7 +939,7 @@ pub fn set_account_value(
     notes: Option<String>,
 ) -> Result<Option<crate::models::Transaction>, String> {
     let (_g, conn) = with_conn(&state)?;
-    // §119 — undoable. It was not, and the first person to fat-finger a
+    // Undoable. It was not, and the first person to fat-finger a
     // valuation had to go and delete the row by hand: "I had an error and I
     // couldn't undo and had to delete."
     //
@@ -976,7 +976,7 @@ pub fn set_account_value(
     Ok(out)
 }
 
-/// §93: the asset a debt is borrowed against; None unlinks.
+/// The asset a debt is borrowed against; None unlinks.
 #[tauri::command(rename_all = "camelCase")]
 pub fn set_account_security(state: State<AppState>, account_id: String, asset_id: Option<String>) -> Result<(), String> {
     let guard = state.pool.lock().map_err(|e| e.to_string())?;
@@ -985,7 +985,7 @@ pub fn set_account_security(state: State<AppState>, account_id: String, asset_id
     crate::db::queries::set_account_security(&conn, &account_id, asset_id.as_deref())
 }
 
-/// §93: what is owed against each asset, for the equity line.
+/// What is owed against each asset, for the equity line.
 #[tauri::command(rename_all = "camelCase")]
 pub fn debts_by_asset(state: State<AppState>) -> Result<std::collections::HashMap<String, i64>, String> {
     let guard = state.pool.lock().map_err(|e| e.to_string())?;
@@ -994,7 +994,7 @@ pub fn debts_by_asset(state: State<AppState>) -> Result<std::collections::HashMa
     crate::db::queries::debts_by_asset(&conn)
 }
 
-/// §94: this loan's rate, payment and where each part of it goes. None until
+/// This loan's rate, payment and where each part of it goes. None until
 /// the terms have been set.
 #[tauri::command(rename_all = "camelCase")]
 pub fn get_loan_terms(state: State<AppState>, account_id: String) -> Result<Option<crate::models::LoanTerms>, String> {
@@ -1002,21 +1002,21 @@ pub fn get_loan_terms(state: State<AppState>, account_id: String) -> Result<Opti
     crate::db::loans::get_terms(&conn, &account_id)
 }
 
-/// §94: save this loan's terms, overwriting whatever was there.
+/// Save this loan's terms, overwriting whatever was there.
 #[tauri::command(rename_all = "camelCase")]
 pub fn set_loan_terms(state: State<AppState>, terms: crate::models::LoanTerms) -> Result<(), String> {
     let (_g, conn) = with_conn(&state)?;
     crate::db::loans::set_terms(&conn, &terms)
 }
 
-/// §94: forget this loan's terms. The account and its history stay.
+/// Forget this loan's terms. The account and its history stay.
 #[tauri::command(rename_all = "camelCase")]
 pub fn clear_loan_terms(state: State<AppState>, account_id: String) -> Result<(), String> {
     let (_g, conn) = with_conn(&state)?;
     crate::db::loans::clear_terms(&conn, &account_id)
 }
 
-/// §94: the next `count` payments as the terms predict them, starting from
+/// The next `count` payments as the terms predict them, starting from
 /// what is actually owed today. A starting point to type over, not a promise.
 #[tauri::command(rename_all = "camelCase")]
 pub fn loan_schedule(
@@ -1043,7 +1043,7 @@ pub fn loan_schedule(
     }
 }
 
-/// §94: how the next payment divides at today's balance.
+/// How the next payment divides at today's balance.
 #[tauri::command(rename_all = "camelCase")]
 pub fn next_loan_payment(state: State<AppState>, account_id: String, date: Option<String>) -> Result<crate::models::LoanPeriod, String> {
     let (_g, conn) = with_conn(&state)?;
@@ -1054,7 +1054,7 @@ pub fn next_loan_payment(state: State<AppState>, account_id: String, date: Optio
     crate::db::loans::next_payment(&conn, &account_id, &date)
 }
 
-/// §94, §121: record a payment as ONE transaction split into interest,
+/// Record a payment as ONE transaction split into interest,
 /// principal, extra principal and escrow. Both principal lines reduce the
 /// loan, the escrow lands in the escrow account, and only the interest is
 /// spending. Whatever is passed is what is recorded — the bank's arithmetic
@@ -1075,7 +1075,7 @@ pub fn record_loan_payment(
     notes: Option<String>,
 ) -> Result<String, String> {
     let (_g, conn) = with_conn(&state)?;
-    // §119 — undoable, like every other way of writing a transaction. This is
+    // Undoable, like every other way of writing a transaction. This is
     // the one that most needed it: a mortgage payment is one row in the
     // checking account, three split lines, and two transfer rows in two other
     // accounts, so putting a mistake back by hand means finding all of them.
@@ -1100,7 +1100,7 @@ pub fn record_loan_payment(
     Ok(id)
 }
 
-/// §85: write text the frontend built (a CSV) to a path the user chose in
+/// Write text the frontend built (a CSV) to a path the user chose in
 /// the save dialog. UTF-8 with a BOM so Eelectric reads accents; nothing else.
 #[tauri::command(rename_all = "camelCase")]
 pub fn write_text_file(path: String, text: String) -> Result<(), String> {
@@ -1109,7 +1109,7 @@ pub fn write_text_file(path: String, text: String) -> Result<(), String> {
     std::fs::write(&path, bytes).map_err(|e| format!("could not write {path}: {e}"))
 }
 
-/// §84: payee rename rules.
+/// Payee rename rules.
 #[tauri::command(rename_all = "camelCase")]
 pub fn list_payee_rules(state: State<AppState>) -> Result<Vec<crate::models::PayeeRule>, String> {
     let (_g, conn) = with_conn(&state)?;
@@ -1138,7 +1138,7 @@ pub fn delete_payee_rule(state: State<AppState>, id: String) -> Result<(), Strin
     queries::delete_payee_rule(&conn, &id)
 }
 
-/// §106 — what applying the rules would change, row by row, changing nothing.
+/// What applying the rules would change, row by row, changing nothing.
 #[tauri::command(rename_all = "camelCase")]
 pub fn preview_payee_rules(
     state: State<AppState>,
@@ -1149,7 +1149,7 @@ pub fn preview_payee_rules(
 
 /// Apply the rules to what is already in the file; returns rows changed.
 ///
-/// §106 — two things it did not do before. It takes the ids the user left
+/// Two things it did not do before. It takes the ids the user left
 /// ticked in the preview (`None` = all of them, the old behavior), and it
 /// goes on the undo stack **as one step**: a bulk edit that can only be taken
 /// back one row at a time is not one you would dare run.
@@ -1179,27 +1179,27 @@ pub fn apply_payee_rules(
     Ok(changed.len() as u32)
 }
 
-/// §84: rows in one account that look entered twice.
+/// Rows in one account that look entered twice.
 #[tauri::command(rename_all = "camelCase")]
 pub fn find_duplicates(state: State<AppState>, account_id: String, window_days: u32) -> Result<Vec<crate::models::DuplicateGroup>, String> {
     let (_g, conn) = with_conn(&state)?;
     queries::find_duplicates(&conn, &account_id, window_days)
 }
 
-/// §83: read the file back against itself; `repair` recomputes drifted
+/// Read the file back against itself; `repair` recomputes drifted
 /// balances and unlinks half transfers.
 #[tauri::command(rename_all = "camelCase")]
 pub fn verify_file(state: State<AppState>, repair: bool) -> Result<crate::models::FileCheck, String> {
     let (_g, conn) = with_conn(&state)?;
     let check = queries::verify_file(&conn, repair)?;
-    // §177 — a repair writes rows the undo snapshots never saw (§132).
+    // A repair writes rows the undo snapshots never saw.
     if !check.repaired.is_empty() {
         undo_stack_invalidated(&state)?;
     }
     Ok(check)
 }
 
-/// §81: how this account's holdings round to the cent; null follows the file.
+/// How this account's holdings round to the cent; null follows the file.
 #[tauri::command(rename_all = "camelCase")]
 pub fn set_account_value_rounding(state: State<AppState>, id: String, rounding: Option<String>) -> Result<(), String> {
     let (_g, conn) = with_conn(&state)?;
@@ -1207,7 +1207,7 @@ pub fn set_account_value_rounding(state: State<AppState>, id: String, rounding: 
 }
 
 // ---------------------------------------------------------------------------
-// Classifications (§112)
+// Classifications
 // ---------------------------------------------------------------------------
 
 #[tauri::command(rename_all = "camelCase")]
@@ -1233,8 +1233,8 @@ pub fn rename_classification(state: State<AppState>, id: String, name: String) -
 pub fn delete_classification(state: State<AppState>, id: String) -> Result<i64, String> {
     let (_g, conn) = with_conn(&state)?;
     let links = classes::delete_classification(&conn, &id)?;
-    // §185 — the links it took with it are in older undo steps' photographs;
-    // restoring one would point a row at a value that no longer exists (§132).
+    // The links it took with it are in older undo steps' photographs;
+    // restoring one would point a row at a value that no longer exists.
     undo_stack_invalidated(&state)?;
     Ok(links)
 }
@@ -1260,7 +1260,7 @@ pub fn rename_classification_value(state: State<AppState>, id: String, name: Str
 pub fn delete_classification_value(state: State<AppState>, id: String) -> Result<i64, String> {
     let (_g, conn) = with_conn(&state)?;
     let links = classes::delete_classification_value(&conn, &id)?;
-    // §185 — as `delete_classification`.
+    // As `delete_classification`.
     undo_stack_invalidated(&state)?;
     Ok(links)
 }
@@ -1270,7 +1270,7 @@ pub fn delete_classification_value(state: State<AppState>, id: String) -> Result
 #[tauri::command(rename_all = "camelCase")]
 pub fn set_transaction_classes(state: State<AppState>, transaction_id: String, picks: Vec<ClassPick>) -> Result<Vec<ClassPick>, String> {
     let (_g, conn) = with_conn(&state)?;
-    // §101: tagging is an edit like any other from where the user sits — and
+    // Tagging is an edit like any other from where the user sits — and
     // a mis-picked value on the wrong row is exactly the mis-click undo
     // exists for. The snapshot photographs `transaction_classes` beside the
     // rows, and `related_ids` reaches the transfer partner this writes to.
@@ -1283,14 +1283,14 @@ pub fn set_transaction_classes(state: State<AppState>, transaction_id: String, p
 }
 
 /// Tag a row (or the half of a transfer that landed in the goal's account)
-/// for a savings goal; `goalId` null untags (§46).
+/// for a savings goal; `goalId` null untags.
 #[tauri::command(rename_all = "camelCase")]
 pub fn set_transaction_goal(state: State<AppState>, transaction_id: String, goal_id: Option<String>) -> Result<(), String> {
     let (_g, conn) = with_conn(&state)?;
     queries::set_transaction_goal(&conn, &transaction_id, goal_id.as_deref())
 }
 
-/// A transfer into the goal's account, tagged for the goal (§46).
+/// A transfer into the goal's account, tagged for the goal.
 #[tauri::command(rename_all = "camelCase")]
 pub fn contribute_to_goal(
     state: State<AppState>,
@@ -1302,8 +1302,8 @@ pub fn contribute_to_goal(
 ) -> Result<Goal, String> {
     let (_g, conn) = with_conn(&state)?;
     let goal = queries::contribute_to_goal(&conn, &goal_id, &from_account_id, &date, amount_cents, notes.as_deref())?;
-    // §185 — a transfer no undo step recorded moves two balances; an older
-    // step restored past it would put one of them back wrong (§132).
+    // A transfer no undo step recorded moves two balances; an older
+    // step restored past it would put one of them back wrong.
     undo_stack_invalidated(&state)?;
     Ok(goal)
 }
@@ -1316,13 +1316,13 @@ pub fn delete_goal(state: State<AppState>, id: String) -> Result<(), String> {
 
 // ── Payments ───────────────────────────────────────────────────────────────
 //
-// Retired by §32. Migration 0019 folded one-off payments into recurrence rules
+// Retired. Migration 0019 folded one-off payments into recurrence rules
 // with frequency 'once', so there is one list of upcoming money rather than two
 // concepts that both mean "a bill". The `payments` TABLE is deliberately left
 // in place rather than dropped: it is the source the migration read, and
 // keeping it costs nothing while the new model settles.
 
-// ── Investments (§41): securities, prices, lots ────────────────────────────
+// ── Investments: securities, prices, lots ────────────────────────────
 
 #[tauri::command(rename_all = "camelCase")]
 pub fn list_securities(state: State<AppState>) -> Result<Vec<Security>, String> {
@@ -1404,7 +1404,7 @@ pub fn update_investment_transaction(
     queries::update_investment_transaction(&conn, &id, &transaction)
 }
 
-/// Move shares between investment accounts, lots and all (§45).
+/// Move shares between investment accounts, lots and all.
 #[tauri::command(rename_all = "camelCase")]
 pub fn create_share_transfer(
     state: State<AppState>,
@@ -1462,9 +1462,9 @@ pub fn get_portfolio(
     lots::portfolio(&conn, account_id.as_deref().filter(|a| !a.is_empty()), &asof)
 }
 
-/// §172 — time-weighted and money-weighted returns by period, for the
+/// Time-weighted and money-weighted returns by period, for the
 /// Investing tab. `account_id` None is every investment account;
-/// `security_id` (§172.2) narrows it to one holding, valued without cash.
+/// `security_id` narrows it to one holding, valued without cash.
 #[tauri::command(rename_all = "camelCase")]
 pub fn get_performance(state: State<AppState>, account_id: Option<String>, security_id: Option<String>, as_of: Option<String>) -> Result<Vec<Performance>, String> {
     let (_g, conn) = with_conn(&state)?;
@@ -1472,7 +1472,7 @@ pub fn get_performance(state: State<AppState>, account_id: Option<String>, secur
     lots::performance(&conn, account_id.as_deref().filter(|a| !a.is_empty()), security_id.as_deref().filter(|s| !s.is_empty()), &asof)
 }
 
-/// Money's dated ROI (§56): past month / YTD / 12 months / all time.
+/// Money's dated ROI: past month / YTD / 12 months / all time.
 #[tauri::command(rename_all = "camelCase")]
 pub fn get_roi(state: State<AppState>, account_id: Option<String>, as_of: Option<String>) -> Result<Vec<RoiPeriod>, String> {
     let (_g, conn) = with_conn(&state)?;
@@ -1482,7 +1482,7 @@ pub fn get_roi(state: State<AppState>, account_id: Option<String>, as_of: Option
 
 // ── Reports ────────────────────────────────────────────────────────────────
 
-// Saved, named reports (§39).
+// Saved, named reports.
 #[tauri::command(rename_all = "camelCase")]
 pub fn list_saved_reports(state: State<AppState>) -> Result<Vec<SavedReport>, String> {
     let (_g, conn) = with_conn(&state)?;
@@ -1502,7 +1502,7 @@ pub fn delete_saved_report(state: State<AppState>, id: String) -> Result<(), Str
 }
 
 /// Which account a transaction lives in — so a report row (which carries the
-/// transaction id but not its account) can open the right register (§39).
+/// transaction id but not its account) can open the right register.
 #[tauri::command(rename_all = "camelCase")]
 pub fn get_transaction_account(state: State<AppState>, id: String) -> Result<String, String> {
     let (_g, conn) = with_conn(&state)?;
@@ -1511,9 +1511,9 @@ pub fn get_transaction_account(state: State<AppState>, id: String) -> Result<Str
 }
 
 /// The report gallery — every report the engine answers, grouped the way
-/// Money's "View a report" page groups them (§39).
+/// Money's "View a report" page groups them.
 ///
-/// §114: the Classifications group is left out until the file has at least
+/// The Classifications group is left out until the file has at least
 /// one classification. Those reports cannot say anything without an axis,
 /// and a gallery entry that always errors is worse than one that is not
 /// there — the Classifications screen is where you make the first one.
@@ -1535,7 +1535,7 @@ pub fn list_reports(state: State<AppState>) -> Vec<ReportGalleryEntry> {
         .collect()
 }
 
-/// Run one report (§39).
+/// Run one report.
 #[tauri::command(rename_all = "camelCase")]
 pub fn run_report(state: State<AppState>, request: ReportRequest) -> Result<Report, String> {
     let (_g, conn) = with_conn(&state)?;
@@ -1588,7 +1588,7 @@ pub fn change_master_key(state: State<AppState>, new_key: String) -> Result<(), 
         return Err("that is already the master key".into());
     }
 
-    // Order matters, and this is the whole point of §34.
+    // Order matters, and this is the whole point.
     //
     // The previous implementation stored the new key in the OS keyring and
     // rebuilt the pool — WITHOUT re-encrypting the file. The database stayed
@@ -1625,7 +1625,7 @@ pub fn change_master_key(state: State<AppState>, new_key: String) -> Result<(), 
     rebuild_pool(&state)
 }
 
-/// §179 — the keyring would not take the new key, but the file is already
+/// The keyring would not take the new key, but the file is already
 /// re-encrypted with it.
 ///
 /// This returned the error and nothing else, with the pool still `None` from
@@ -1739,7 +1739,7 @@ pub fn backup_now(state: State<AppState>) -> Result<String, String> {
 /// asking you to trust one registry hive with your entire financial history.
 #[tauri::command(rename_all = "camelCase")]
 pub fn export_master_key(state: State<AppState>) -> Result<String, String> {
-    // §98: the key for the file that is OPEN. Handing back the app database's
+    // The key for the file that is OPEN. Handing back the app database's
     // key while looking at another file would be worse than useless — it would
     // be written down and filed as the key to the wrong thing.
     keyring::get_key_in(&key_account_of(&state)?)
@@ -1759,7 +1759,7 @@ pub fn save_master_key(state: State<AppState>, path: String) -> Result<(), Strin
 }
 
 // ---------------------------------------------------------------------------
-// §98 — T-Money files: open another one, make a new one, list the recents.
+// T-Money files: open another one, make a new one, list the recents.
 // ---------------------------------------------------------------------------
 
 #[derive(serde::Serialize)]
@@ -1772,7 +1772,7 @@ pub struct OpenFile {
     /// it should not be a mystery.
     pub is_default: bool,
     pub scratch: bool,
-    /// §117 — false after File → Close: there is genuinely no file open, and
+    /// False after File → Close: there is genuinely no file open, and
     /// the app shows its start screen. `path` and `name` are then the file
     /// that WAS open, so the start screen can offer to reopen it.
     pub is_open: bool,
@@ -1781,7 +1781,7 @@ pub struct OpenFile {
 #[tauri::command(rename_all = "camelCase")]
 pub fn current_file(state: State<AppState>) -> Result<OpenFile, String> {
     let p = db_path_of(&state)?;
-    // §117: the pool IS the answer to "is a file open" — it is dropped by
+    // The pool IS the answer to "is a file open" — it is dropped by
     // Close and rebuilt by Open, and there is no second flag to disagree
     // with it.
     let is_open = state.pool.lock().map_err(|_| "state lock poisoned".to_string())?.is_some();
@@ -1794,9 +1794,9 @@ pub fn current_file(state: State<AppState>) -> Result<OpenFile, String> {
     })
 }
 
-/// §117 — File → Close. Close the file. No file is then open.
+/// File → Close. Close the file. No file is then open.
 ///
-/// §104 made this "go back to T-Money's own database", on the reasoning that
+/// An earlier change made this "go back to T-Money's own database", on the reasoning that
 /// a start screen would exist for one purpose. What that actually produced,
 /// the first time it met a real machine: two files with the same data in
 /// them, a Close that swapped one for the other, and a screen that looked
@@ -1809,7 +1809,7 @@ pub fn current_file(state: State<AppState>) -> Result<OpenFile, String> {
 /// can offer it back.
 #[tauri::command(rename_all = "camelCase")]
 pub fn close_file(state: State<AppState>) -> Result<OpenFile, String> {
-    // §135 — a snapshot on the way out, BEFORE the pool goes: once it is
+    // A snapshot on the way out, BEFORE the pool goes: once it is
     // dropped there is no connection left to `VACUUM INTO` from.
     //
     // Close counts as leaving. It is the moment a person swaps to another
@@ -1833,8 +1833,8 @@ pub fn close_file(state: State<AppState>) -> Result<OpenFile, String> {
         let mut guard = state.pool.lock().map_err(|_| "state lock poisoned".to_string())?;
         *guard = None;
     }
-    // A different file is a different history, and no file is no history
-    // (§101). Undo across a close would restore rows into whatever is opened
+    // A different file is a different history, and no file is no history.
+    // Undo across a close would restore rows into whatever is opened
     // next.
     if let Ok(mut j) = state.undo.lock() {
         j.clear();
@@ -1844,7 +1844,7 @@ pub fn close_file(state: State<AppState>) -> Result<OpenFile, String> {
 
 #[tauri::command(rename_all = "camelCase")]
 pub fn list_recent_files(state: State<AppState>) -> Result<Vec<crate::files::RecentFile>, String> {
-    // §134 — `files::recent` knows about paths and nothing else, which is why
+    // `files::recent` knows about paths and nothing else, which is why
     // it leaves `needs_key` false. The keyring and the default database's path
     // both live here, so the flag is filled in here: the start screen can then
     // say which of these files this computer cannot open BEFORE you click one,
@@ -1877,7 +1877,7 @@ pub fn open_file(state: State<AppState>, path: String, create: bool, key: Option
     open_file_impl(&state, path, create, key)
 }
 
-/// `open_file`'s body, callable from another command (§128's sample file).
+/// `open_file`'s body, callable from another command (the sample file).
 /// Tauri commands take `State` by value, so the shared work lives here rather
 /// than one command pretending to be a caller of another.
 fn open_file_impl(state: &State<AppState>, path: String, create: bool, key: Option<String>) -> Result<OpenFile, String> {
@@ -1903,7 +1903,7 @@ fn open_file_impl(state: &State<AppState>, path: String, create: bool, key: Opti
     let key = match &typed {
         // A key typed by the user: a file carried from another machine.
         //
-        // §134 — it is NOT stored here. It used to be, one line before the
+        // It is NOT stored here. It used to be, one line before the
         // open was even attempted, and that made the first typo permanent in
         // a way no message explained: the wrong key went into the keyring,
         // `has_key_in` then said this computer had a key, and every later
@@ -1934,7 +1934,7 @@ fn open_file_impl(state: &State<AppState>, path: String, create: bool, key: Opti
     let pool = match pool::init_pool(&target, &key) {
         Ok(p) => p,
         Err(e) => {
-            // §134 — say which of the three things went wrong, because they
+            // Say which of the three things went wrong, because they
             // want three different responses from the user.
             //
             // A key that does not decrypt is not a broken file, and the
@@ -1955,7 +1955,7 @@ fn open_file_impl(state: &State<AppState>, path: String, create: bool, key: Opti
                 )
             };
             // Put back what was open, so a failed Open does not leave the app
-            // with no database at all — unless nothing WAS open (§117), in
+            // with no database at all — unless nothing WAS open, in
             // which case the start screen is where a failed Open belongs.
             if !was_open {
                 return Err(why);
@@ -1971,7 +1971,7 @@ fn open_file_impl(state: &State<AppState>, path: String, create: bool, key: Opti
         }
     };
 
-    // §134 — NOW the key is worth keeping: it opened the file. A keyring
+    // NOW the key is worth keeping: it opened the file. A keyring
     // write that fails here means being asked for the key again next time,
     // which is a mild and self-announcing failure — and strictly better than
     // the alternative this replaced, which was storing a key that opens
@@ -1983,7 +1983,7 @@ fn open_file_impl(state: &State<AppState>, path: String, create: bool, key: Opti
     *state.db_path.lock().map_err(|_| "state lock poisoned".to_string())? = target.clone();
     *state.key_account.lock().map_err(|_| "state lock poisoned".to_string())? = account;
 
-    // §101: a different file is a different history. The stack holds row ids
+    // A different file is a different history. The stack holds row ids
     // and whole rows from the file that was open a moment ago; undoing one of
     // those steps against this file would insert rows that never belonged to
     // it. Nothing about the previous file survives the swap.
@@ -1991,7 +1991,7 @@ fn open_file_impl(state: &State<AppState>, path: String, create: bool, key: Opti
         j.clear();
     }
 
-    // §170 — with the undo history gone, attachment bytes nothing points at
+    // With the undo history gone, attachment bytes nothing points at
     // any more (a removed attachment, or one that went with a deleted row)
     // can go too. Nothing that fails here should keep the file from opening.
     if let Ok(guard) = state.pool.lock() {
@@ -2002,7 +2002,7 @@ fn open_file_impl(state: &State<AppState>, path: String, create: bool, key: Opti
         }
     }
 
-    // §102 — a scratch run must not touch the real recents.
+    // A scratch run must not touch the real recents.
     //
     // This wrote to the shared config directory unconditionally, and the
     // config directory is NOT redirected by `--data-dir`. So opening a file
@@ -2023,7 +2023,7 @@ fn open_file_impl(state: &State<AppState>, path: String, create: bool, key: Opti
     })
 }
 
-/// §102 — the reason the app is not on the file you left it on, if there is
+/// The reason the app is not on the file you left it on, if there is
 /// one. Read-and-clear: it is news exactly once, and a banner that will not
 /// go away is a banner people learn to ignore.
 #[tauri::command(rename_all = "camelCase")]
@@ -2074,9 +2074,9 @@ pub fn backup_database(state: State<AppState>, path: String) -> Result<u64, Stri
 ///
 /// `key` is the passphrase that backup was encrypted with, for when it is not
 /// the one this machine already holds. That is the actual recovery path — a
-/// backup carried from an old machine is unreadable without it, and before §34
+/// backup carried from an old machine is unreadable without it, and before this parameter
 /// there was no way to supply one. (Doc comments cannot sit on a parameter in
-/// Rust; §24.3 is the same lesson.)
+/// Rust.)
 #[tauri::command(rename_all = "camelCase")]
 pub fn restore_database(
     state: State<AppState>,
@@ -2256,7 +2256,7 @@ pub fn restore_database(
     if let Err(e) = rebuild_pool(&state) {
         return Err(put_back(format!("the restored database could not be opened: {e}")));
     }
-    // §101: the rows the undo stack was holding belong to the file that was
+    // The rows the undo stack was holding belong to the file that was
     // here before the restore. Same reasoning as `open_file`.
     if let Ok(mut j) = state.undo.lock() {
         j.clear();
@@ -2267,7 +2267,7 @@ pub fn restore_database(
     Ok(())
 }
 
-// ── Scheduled bills and income (§32) ───────────────────────────────────────
+// ── Scheduled bills and income ───────────────────────────────────────
 //
 // These replace the one-off `payments` commands, which migration 0019 folded
 // into recurrence rules so there is ONE list of upcoming money rather than two
@@ -2314,7 +2314,7 @@ pub fn set_recurrence_active(
     queries::set_recurrence_active(&conn, &id, active)
 }
 
-/// Occurrences between two dates, for the bill calendar (§52). Resolved
+/// Occurrences between two dates, for the bill calendar. Resolved
 /// against the register the same way `get_upcoming` is.
 #[tauri::command(rename_all = "camelCase")]
 pub fn get_occurrences(state: State<AppState>, from: String, to: String) -> Result<Vec<Occurrence>, String> {
@@ -2328,7 +2328,7 @@ pub fn get_occurrences(state: State<AppState>, from: String, to: String) -> Resu
 }
 
 /// Occurrences from today across `days`, each resolved against what actually
-/// happened — including bills the user paid by hand (§32).
+/// happened — including bills the user paid by hand.
 #[tauri::command(rename_all = "camelCase")]
 pub fn get_upcoming(state: State<AppState>, days: i64) -> Result<Vec<Occurrence>, String> {
     let (_g, conn) = with_conn(&state)?;
@@ -2383,7 +2383,7 @@ pub fn clear_occurrence(
 
 /// Project one account's balance forward, with the low point called out.
 #[tauri::command(rename_all = "camelCase")]
-/// §173 — `include_detected` also projects the recurring charges the
+/// `include_detected` also projects the recurring charges the
 /// detector has noticed; absent means yes, and the Bills tab has the switch.
 /// (No comment inside the parameter list: the IPC contract test reads it.)
 pub fn get_cash_forecast(
@@ -2397,7 +2397,7 @@ pub fn get_cash_forecast(
     queries::cash_forecast_with(&conn, &account_id, today, days, include_detected.unwrap_or(true))
 }
 
-// ── Common Transactions (§31) ──────────────────────────────────────────────
+// ── Common Transactions ──────────────────────────────────────────────
 
 /// The saved entry-form templates, most-used first.
 #[tauri::command(rename_all = "camelCase")]
@@ -2431,7 +2431,7 @@ pub fn delete_common_transaction(state: State<AppState>, id: String) -> Result<(
     queries::delete_common_transaction(&conn, &id)
 }
 
-/// §115 — how old the prices are, and what the user asked for.
+/// How old the prices are, and what the user asked for.
 ///
 /// The app still fetches only when told to; "automatically" here means the
 /// app asks ONCE a day (or a week) while it is open, and only after the user
@@ -2487,7 +2487,7 @@ pub fn price_status(state: State<AppState>) -> Result<PriceStatus, String> {
 ///
 /// **This is the only command in the app that makes an outbound network
 /// request.** It runs when the user presses "Refresh prices", or on the
-/// schedule they opted into (§115). Only ticker symbols leave the machine;
+/// schedule they opted into. Only ticker symbols leave the machine;
 /// quantities, cost basis, balances and account names do not. See
 /// `prices.rs`.
 ///
@@ -2495,12 +2495,12 @@ pub fn price_status(state: State<AppState>) -> Result<PriceStatus, String> {
 /// carry, an unreadable quantity, or a stale quote leaves that holding's
 /// stored value exactly as it was and adds a line to `failures` for the screen
 /// to show. A refresh that reaches nothing changes nothing.
-/// `auto` marks the run as the scheduled one (§115), which stamps
+/// `auto` marks the run as the scheduled one, which stamps
 /// `ui.prices.lastAuto` so the next check knows a day has passed. A refresh
 /// the user pressed does not, so turning the timer on tomorrow does not
 /// think it already ran.
 ///
-/// §180 — three things this used to get wrong. A price was stored under the
+/// Three things this used to get wrong. A price was stored under the
 /// day of the refresh, so Friday's close fetched on Monday morning became
 /// Monday's price and Friday had none; it is stored under the quote's own
 /// trading day now. A source that could not be reached at all (no network, a
@@ -2508,7 +2508,7 @@ pub fn price_status(state: State<AppState>) -> Result<PriceStatus, String> {
 /// each; the run stops at the first such failure and says the rest were not
 /// tried. And the securities are read from the file open when the run
 /// starts, but each write went to whichever file was open when it landed —
-/// §158 starts this the moment a file opens, so switching files straight away
+/// and the refresh starts the moment a file opens, so switching files straight away
 /// sent the rest of file A's prices at file B and stamped B's `lastAuto`. The
 /// run now stops without writing once the open file has changed.
 #[tauri::command(rename_all = "camelCase")]
@@ -2594,13 +2594,13 @@ pub async fn refresh_investment_prices(
 /// Fill the file with a realistic set of demo accounts and transactions.
 ///
 /// **Development only** — this command, not the generator. `db::demo` is
-/// compiled in every build (§128 needs it to make a sample file); what is
+/// compiled in every build (the sample file needs it); what is
 /// behind `#[cfg(debug_assertions)]` is the ability to seed demo rows into
 /// *the file that is already open*. The command itself stays registered
 /// (Tauri's `generate_handler!` cannot take a `cfg` on an entry) but in
 /// release it resolves to the stub below and returns an error, so a shipped
 /// app has no code path that can write fake transactions into somebody's real
-/// finances. §128's sample file is the opposite case and is allowed in
+/// finances. The sample file is the opposite case and is allowed in
 /// release precisely because it can only ever write into a file it just
 /// created.
 ///
@@ -2628,7 +2628,7 @@ pub fn seed_demo_data(state: State<AppState>) -> Result<SeedSummary, String> {
     seed_demo_impl(&state)
 }
 
-/// §128 — create a NEW file, full of demo data, and open it.
+/// Create a NEW file, full of demo data, and open it.
 ///
 /// For handing the app to somebody to try. A tester who opens an empty file
 /// sees an empty app: no register to scroll, no report with anything in it,
@@ -2670,7 +2670,7 @@ pub fn create_sample_file(state: State<AppState>, path: String) -> Result<SeedSu
 /// Edit a transfer in place, including moving the other half to a different
 /// account. See `queries::update_transfer`.
 ///
-/// §178 — undoable. It was the one way of editing a transaction that wrote
+/// Undoable. It was the one way of editing a transaction that wrote
 /// no step, so Ctrl+Z after moving a transfer to the wrong account reached
 /// past it and took back whatever came before. Both halves are photographed
 /// BEFORE the edit, while the partner still sits in the old account; the
@@ -2695,7 +2695,7 @@ pub fn update_transfer(
     Ok(out)
 }
 
-/// §164 — an ordinary transaction becomes a transfer to another account: the
+/// An ordinary transaction becomes a transfer to another account: the
 /// partner row is written and linked, this row's category cleared. Undoable:
 /// `recording` re-derives the related ids afterwards, so the partner it
 /// created is in the "after" photograph and undo deletes it.
@@ -2710,7 +2710,7 @@ pub fn convert_to_transfer(state: State<AppState>, id: String, other_account_id:
     Ok(out)
 }
 
-/// §164 — the reverse: the partner row goes, this one is filed under a
+/// The reverse: the partner row goes, this one is filed under a
 /// category. The partner is in the "before" photograph, so undo puts it back.
 #[tauri::command(rename_all = "camelCase")]
 pub fn convert_from_transfer(state: State<AppState>, id: String, category_id: Option<String>) -> Result<Transaction, String> {
@@ -2723,7 +2723,7 @@ pub fn convert_from_transfer(state: State<AppState>, id: String, category_id: Op
     Ok(out)
 }
 
-// ── Splits (§6.1e) ─────────────────────────────────────────────────────────
+// ── Splits ─────────────────────────────────────────────────────────
 
 #[tauri::command(rename_all = "camelCase")]
 pub fn list_splits(state: State<AppState>, transaction_id: String) -> Result<Vec<Split>, String> {
@@ -2732,7 +2732,7 @@ pub fn list_splits(state: State<AppState>, transaction_id: String) -> Result<Vec
 }
 
 
-// ── Transfers (§10.2 item 5) ───────────────────────────────────────────────
+// ── Transfers ──────────────────────────────────────────────────────────────
 
 /// Move money between accounts. Creates the two linked halves in one go;
 /// `amount_cents` is a magnitude, direction comes from the account arguments.
@@ -2756,7 +2756,7 @@ pub fn create_transfer(
     )
 }
 
-/// §169 — the order the accounts are listed in, everywhere. `ids` is the
+/// The order the accounts are listed in, everywhere. `ids` is the
 /// whole arrangement; an account not in it sorts after the placed ones.
 #[tauri::command(rename_all = "camelCase")]
 pub fn set_account_order(state: State<AppState>, ids: Vec<String>) -> Result<usize, String> {
@@ -2764,7 +2764,7 @@ pub fn set_account_order(state: State<AppState>, ids: Vec<String>) -> Result<usi
     queries::set_account_order(&conn, &ids)
 }
 
-// ── Attachments (§170) ─────────────────────────────────────────────────────
+// ── Attachments ─────────────────────────────────────────────────────
 
 /// A MIME type from the file's extension — enough for the OS to pick a
 /// viewer and for the list to say "PDF". Anything else is bytes.
@@ -2865,7 +2865,7 @@ pub fn save_attachment(state: State<AppState>, id: String, path: String) -> Resu
     std::fs::write(&path, &data).map_err(|e| format!("could not write {path}: {e}"))
 }
 
-// ── Account details (§6.1g / migration 0010) ───────────────────────────────
+// ── Account details (migration 0010) ───────────────────────────────────────
 
 #[tauri::command(rename_all = "camelCase")]
 pub fn get_account(state: State<AppState>, id: String) -> Result<Account, String> {
@@ -2921,7 +2921,7 @@ pub fn list_payees(state: State<AppState>) -> Result<Vec<Payee>, String> {
     queries::list_payees(&conn)
 }
 
-/// §160 — descriptions split lines have carried, for the split dialog's completion.
+/// Descriptions split lines have carried, for the split dialog's completion.
 #[tauri::command(rename_all = "camelCase")]
 pub fn list_split_descriptions(state: State<AppState>) -> Result<Vec<UsedText>, String> {
     let (_g, conn) = with_conn(&state)?;
@@ -2963,13 +2963,13 @@ pub fn update_payee(
     last_category_id: Option<String>,
 ) -> Result<Payee, String> {
     let (_g, conn) = with_conn(&state)?;
-    // §186 — recorded for undo; so are the name copies it now rewrites.
+    // Recorded for undo; so are the name copies it now rewrites.
     let (payee, step) = queries::update_payee(&conn, &id, &name, last_category_id.as_deref())?;
     push_undo(&state, step)?;
     Ok(payee)
 }
 
-/// §186 — undoable, like a category merge (§133).
+/// Undoable, like a category merge.
 ///
 /// > *"I merged Best Buy into Chewy … CTRL+Z did not undo it."*
 #[tauri::command(rename_all = "camelCase")]
@@ -2984,7 +2984,7 @@ pub fn merge_payees(
     Ok(payee)
 }
 
-/// §186 — recorded for undo; see `queries::delete_payee` for why that and
+/// Recorded for undo; see `queries::delete_payee` for why that and
 /// not `undo_stack_invalidated`.
 #[tauri::command(rename_all = "camelCase")]
 pub fn delete_payee(state: State<AppState>, id: String) -> Result<(), String> {
@@ -2993,7 +2993,7 @@ pub fn delete_payee(state: State<AppState>, id: String) -> Result<(), String> {
     push_undo(&state, step)
 }
 
-// ── Reconcile (§6.1f) ──────────────────────────────────────────────────────
+// ── Reconcile ──────────────────────────────────────────────────────
 
 /// The postponed statement for this account, if any — drives the resume dialog.
 #[tauri::command(rename_all = "camelCase")]
@@ -3042,14 +3042,14 @@ pub fn start_statement(
     )
 }
 
-/// §75: securities with no symbol whose name reads as a ticker get it.
+/// Securities with no symbol whose name reads as a ticker get it.
 #[tauri::command]
 pub fn fill_symbols_from_names(state: State<AppState>) -> Result<u32, String> {
     let (_g, conn) = with_conn(&state)?;
     queries::fill_symbols_from_names(&conn)
 }
 
-/// Mark everything on or before a date reconciled (§70). `dry_run` counts.
+/// Mark everything on or before a date reconciled. `dry_run` counts.
 #[tauri::command(rename_all = "camelCase")]
 pub fn reconcile_through(state: State<AppState>, account_id: String, through: String, dry_run: bool) -> Result<u32, String> {
     let (_g, conn) = with_conn(&state)?;
@@ -3091,7 +3091,7 @@ pub fn finish_statement(
     )
 }
 
-/// Void or un-void a transaction (§6.1h). The row stays in the register; the
+/// Void or un-void a transaction. The row stays in the register; the
 /// money leaves every balance.
 #[tauri::command(rename_all = "camelCase")]
 pub fn set_void(state: State<AppState>, id: String, is_void: bool) -> Result<(), String> {
@@ -3104,7 +3104,7 @@ pub fn set_void(state: State<AppState>, id: String, is_void: bool) -> Result<(),
 }
 
 // ---------------------------------------------------------------------------
-// §101 — undo and redo.
+// Undo and redo.
 // ---------------------------------------------------------------------------
 
 fn push_undo(state: &State<AppState>, step: undo::Step) -> Result<(), String> {
@@ -3112,13 +3112,13 @@ fn push_undo(state: &State<AppState>, step: undo::Step) -> Result<(), String> {
     Ok(())
 }
 
-/// §132 — a write that cannot be undone INVALIDATES everything before it.
+/// A write that cannot be undone INVALIDATES everything before it.
 ///
 /// Imports are not on the undo stack and are not going to be: one file can
 /// write hundreds of rows across several accounts, create securities, book
-/// lots and link transfers. §119 said so and meant it.
+/// lots and link transfers. That was decided on purpose.
 ///
-/// What §119 did not do is clear the stack, and that is the dangerous half.
+/// What that decision did not do is clear the stack, and that is the dangerous half.
 /// A user edited a checking account, went to their TSP account, imported, and
 /// **Undo was still offered — pointing at the checking edit.** Ctrl+Z there
 /// does not undo the import; it reaches straight past it and takes back
@@ -3127,9 +3127,9 @@ fn push_undo(state: &State<AppState>, step: undo::Step) -> Result<(), String> {
 ///
 /// So an import empties the stack. Undo grays out, which is the truth: there
 /// is nothing here that can be taken back, and the way out of a bad import is
-/// the backup (§34), not Ctrl+Z.
+/// the backup, not Ctrl+Z.
 ///
-/// §136 — the rule is not about imports. It is about any write this app does
+/// The rule is not about imports. It is about any write this app does
 /// that undo does not photograph, and there are three: an import, deleting an
 /// account, and merging two accounts. All three call this. A fourth belongs
 /// here the day one is written, and the test for "does it belong" is the only
@@ -3140,7 +3140,7 @@ fn undo_stack_invalidated(state: &State<AppState>) -> Result<(), String> {
     Ok(())
 }
 
-/// §153 — run an import and put it on the undo stack.
+/// Run an import and put it on the undo stack.
 ///
 /// > *"I'm just thinking if I've been updating other things and then go and
 /// >  do an import of a few weeks of stuff from another account, I'm not
@@ -3223,7 +3223,7 @@ pub fn undo_last(state: State<AppState>) -> Result<UndoStatus, String> {
         j.take_undo()
     };
     let Some(step) = step else { return status_of(&state) };
-    // §186 — a refused restore rolls back whole (one SQL transaction), so the
+    // A refused restore rolls back whole (one SQL transaction), so the
     // file is as it was and the step still describes it. Put it back: dropped,
     // a merge refused because its old name was re-created could never be
     // undone, even after the user cleared the clash.
@@ -3243,7 +3243,7 @@ pub fn redo_last(state: State<AppState>) -> Result<UndoStatus, String> {
         j.take_redo()
     };
     let Some(step) = step else { return status_of(&state) };
-    // §186 — as `undo_last`: a refused redo leaves the step where it was.
+    // As `undo_last`: a refused redo leaves the step where it was.
     if let Err(e) = undo::restore(&conn, &step.after, &step.before.accounts) {
         state.undo.lock().map_err(|_| "state lock poisoned".to_string())?.put_undone(step);
         return Err(e);
@@ -3292,7 +3292,7 @@ mod key_tests {
         assert!(!WRONG_KEY.contains(NEEDS_KEY));
     }
 
-    /// §179 — the keyring refused the new key after the file was re-encrypted
+    /// The keyring refused the new key after the file was re-encrypted
     /// with it. The pool comes back up on the NEW key, so the session goes on
     /// working, and the message carries the key in full.
     #[test]
@@ -3304,7 +3304,7 @@ mod key_tests {
         let path = dir.join("live.db");
         {
             let p = pool::init_pool(&path, "old-key").unwrap();
-            // §182: the balance and the row it comes from, so the check below
+            // The balance and the row it comes from, so the check below
             // has a consistent file to agree with.
             let c = pool::get(&p).unwrap();
             c.execute("INSERT INTO accounts (id, name, type, balance_cents) VALUES ('a1','Checking','checking', 4242)", []).unwrap();

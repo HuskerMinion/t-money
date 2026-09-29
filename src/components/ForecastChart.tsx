@@ -1,4 +1,4 @@
-// The 90-day balance projection (§33).
+// The 90-day balance projection.
 //
 // The first version was 91 saturated bars anchored to a zero line, and when
 // the selected account was already negative every bar was full-height red —

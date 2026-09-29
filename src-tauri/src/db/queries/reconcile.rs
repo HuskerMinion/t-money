@@ -1,4 +1,4 @@
-//! Reconcile (§6.1c / §6.1f, migration 0012): statements and cleared marks.
+//! Reconcile (migration 0012): statements and cleared marks.
 
 use crate::models::Statement;
 use chrono::NaiveDate;
@@ -7,7 +7,7 @@ use uuid::Uuid;
 use super::*;
 
 // ---------------------------------------------------------------------------
-// Reconcile (§6.1c / §6.1f, migration 0012)
+// Reconcile (migration 0012)
 // ---------------------------------------------------------------------------
 
 fn map_statement(row: &Row) -> rusqlite::Result<Statement> {
@@ -34,7 +34,7 @@ const STATEMENT_COLS: &str = "id, account_id, statement_date, starting_balance_c
      adjustment_cents, adjustment_category_id";
 
 /// The postponed statement for this account, if there is one. Its presence is
-/// what triggers Money's resume dialog (§6.1f [A]).
+/// what triggers Money's resume dialog.
 pub fn get_open_statement(conn: &Conn, account_id: &str) -> Result<Option<Statement>, String> {
     let sql = format!(
         "SELECT {STATEMENT_COLS} FROM statements
@@ -47,7 +47,7 @@ pub fn get_open_statement(conn: &Conn, account_id: &str) -> Result<Option<Statem
 }
 
 /// The most recently completed statement — supplies "Last statement
-/// reconciled" and the next starting balance (§6.1c).
+/// reconciled" and the next starting balance.
 pub fn get_last_statement(conn: &Conn, account_id: &str) -> Result<Option<Statement>, String> {
     let sql = format!(
         "SELECT {STATEMENT_COLS} FROM statements
@@ -63,7 +63,7 @@ pub fn get_last_statement(conn: &Conn, account_id: &str) -> Result<Option<Statem
 ///
 /// Service charge and interest each become a real categorized transaction, as
 /// they do in Money — that is how bank fees and interest normally enter a file
-/// at all (§6.1c). Re-starting an in-progress statement updates it in place and
+/// at all. Re-starting an in-progress statement updates it in place and
 /// does NOT duplicate those transactions.
 #[allow(clippy::too_many_arguments)]
 pub fn start_statement(
@@ -182,7 +182,7 @@ fn insert_reconcile_txn(
 }
 
 /// Toggle one transaction's cleared state. Written as the user clicks so that
-/// Postpone really does preserve the marks (§6.1f [A]).
+/// Postpone really does preserve the marks.
 pub fn set_cleared(conn: &Conn, transaction_id: &str, state: &str) -> Result<(), String> {
     if !matches!(state, "" | "C" | "R") {
         return Err(format!("invalid cleared state: {state:?}"));
@@ -196,7 +196,7 @@ pub fn set_cleared(conn: &Conn, transaction_id: &str, state: &str) -> Result<(),
 }
 
 /// Mark every non-void row in the account dated on or before `through` as
-/// reconciled (§70): the way to catch up an account whose history was
+/// reconciled: the way to catch up an account whose history was
 /// imported already balanced, without walking each old statement. Returns
 /// how many rows changed; `dry_run` only counts.
 pub fn reconcile_through(conn: &Conn, account_id: &str, through: &str, dry_run: bool) -> Result<u32, String> {
@@ -228,7 +228,7 @@ pub fn reconcile_through(conn: &Conn, account_id: &str, through: &str, dry_run: 
 /// fees) is discarded and the next attempt starts by re-entering the ending
 /// balance. The per-transaction `C` marks are deliberately NOT touched — they
 /// are everyday marks that live on the transaction, not on the statement, so
-/// they survive (§6.1f).
+/// they survive.
 ///
 /// Any service-charge or interest transactions the statement created stay too:
 /// they are real transactions that happened, not statement scratch state.
@@ -243,7 +243,7 @@ pub fn discard_statement(conn: &Conn, statement_id: &str) -> Result<(), String> 
 
 /// Finish balancing: promote every cleared row to reconciled, stamp the
 /// statement, and optionally write the adjustment transaction Money offers when
-/// the account will not balance (§6.1f [D]).
+/// the account will not balance.
 pub fn finish_statement(
     conn: &Conn,
     statement_id: &str,
@@ -314,7 +314,7 @@ mod tests {
     // service charge, the interest and the balance adjustment all become real
     // transactions. It is also the only flow with resumable state, so the
     // question these answer is "does Postpone lose anything, and does a
-    // restart charge the fee twice?" (§21.5).
+    // restart charge the fee twice?".
 
     /// A helper: the cleared_state of one transaction, read straight from the
     /// register so the tests exercise the same path the UI does.
@@ -413,7 +413,7 @@ mod tests {
         assert_eq!(balance(&c, &acct), 99_500, "the fee was applied twice");
     }
 
-    // §70 — reconciling by date, for history brought in already balanced.
+    // Reconciling by date, for history brought in already balanced.
     #[test]
     fn reconcile_through_marks_everything_up_to_the_date_and_nothing_after() {
         let db = TestDb::new("reconcile-through");
@@ -479,7 +479,7 @@ mod tests {
 
     #[test]
     fn postpone_discards_the_statement_but_keeps_the_cleared_marks_and_the_fee() {
-        // §6.1f: Postpone is a cancel of the *header*. The C marks are
+        // Postpone is a cancel of the *header*. The C marks are
         // everyday marks that live on the transaction, and the fee is a real
         // transaction that happened. Losing either is the bug this catches.
         let db = TestDb::new("stmt-postpone");
@@ -643,7 +643,7 @@ mod tests {
     }
 
     // -----------------------------------------------------------------------
-    // §38 — what the review found
+    // What the review found
     // -----------------------------------------------------------------------
 
     #[test]

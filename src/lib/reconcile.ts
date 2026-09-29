@@ -1,5 +1,5 @@
 // Reconcile arithmetic, kept out of the component so it can be tested directly.
-// (§6.1f)
+//
 import type { RegisterRow } from "./types";
 
 /**
@@ -20,7 +20,7 @@ export function reconcileDifferenceCents(
 ): number {
   const cleared = rows
     // A voided row is on no statement and contributes nothing to any balance
-    // (§6.1h) — belt and braces, since voiding also clears the mark.
+    // — belt and braces, since voiding also clears the mark.
     .filter((r) => r.cleared_state === "C" && !r.is_void)
     .reduce((sum, r) => sum + r.amount_cents, 0);
   return endingBalanceCents - (startingBalanceCents + cleared);
@@ -54,7 +54,7 @@ export type AutoReconcileHit =
   | { kind: "amount"; row: null; explanation: string };
 
 /**
- * AutoReconcile (§6.1f [D]). Money names the three things that go wrong, so
+ * AutoReconcile. Money names the three things that go wrong, so
  * look for exactly those, cheapest first:
  *
  *   1. a statement transaction never cleared here — clearing one row whose
@@ -66,7 +66,7 @@ export type AutoReconcileHit =
  *      says to check them against the statement.
  *
  * Returns nothing when nothing is cleared and no single row explains the gap.
- * Voided rows are on no statement (§6.1h) and are never suggested.
+ * Voided rows are on no statement and are never suggested.
  */
 export function autoReconcile(
   rows: readonly RegisterRow[],

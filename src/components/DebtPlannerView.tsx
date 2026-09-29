@@ -1,4 +1,4 @@
-// Money's Debt Reduction Planner (§55), both sizes:
+// Money's Debt Reduction Planner, both sizes:
 //
 // - the mini planner: one debt, "how long at this payment?" or "how much a
 //   month to be done by then?", with the schedule;
@@ -40,7 +40,7 @@ export default function DebtPlannerView() {
   const [miniPayment, setMiniPayment] = useState("");
   const [miniMonths, setMiniMonths] = useState("36");
   const [showSchedule, setShowSchedule] = useState(false);
-  // §183 — a save that failed. The rates and the budget are saved on every
+  // A save that failed. The rates and the budget are saved on every
   // keystroke, and a failure used to be swallowed: the plan on screen looked
   // kept, and was gone the next time the planner opened.
   const [saveError, setSaveError] = useState<string | null>(null);

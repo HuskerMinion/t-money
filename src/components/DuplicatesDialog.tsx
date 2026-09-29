@@ -1,4 +1,4 @@
-// Find duplicate transactions (§84) — rows in this account that share a
+// Find duplicate transactions — rows in this account that share a
 // date (or a few days), an amount and a payee. Overlapping downloads leave
 // these behind when the file carried no ids. Each set is shown with what
 // tells the copies apart — cleared mark, category, memo, check number,
@@ -62,7 +62,7 @@ export default function DuplicatesDialog({ accountId, accountName, onDelete, onC
       <div className="tm-dialog" role="dialog" aria-label="Find duplicate transactions" style={{ minWidth: 640, maxWidth: "90vw" }}>
         <div className="tm-dialog-title">Find duplicate transactions — {accountName}</div>
         <div className="tm-dialog-body text-[12px]">
-          {/* §183 — only the sets scroll. The error and Close used to sit at
+          {/* Only the sets scroll. The error and Close used to sit at
               the foot of the scrolling list, so a refused Delete near the top
               of a long one wrote its reason somewhere out of view and read as
               the button doing nothing. */}

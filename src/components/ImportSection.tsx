@@ -20,7 +20,7 @@ export default function ImportSection() {
   const accounts = useAccountStore((s) => s.accounts);
   const loadAccounts = useAccountStore((s) => s.loadAccounts);
   const selectedAccountId = useAccountStore((s) => s.selectedAccountId);
-  // §159 — the review's category picker.
+  // The review's category picker.
   const categories: readonly Category[] = useAccountStore((s) => s.categories);
   const loadCategories = useAccountStore((s) => s.loadCategories);
 
@@ -29,16 +29,16 @@ export default function ImportSection() {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<ImportSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // §88: a CSV goes through the mapping dialog instead of straight in.
+  // A CSV goes through the mapping dialog instead of straight in.
   const [csvPath, setCsvPath] = useState<string | null>(null);
-  // §89: the match review, and the CSV mapping it belongs to (null for QIF/OFX).
+  // The match review, and the CSV mapping it belongs to (null for QIF/OFX).
   const [preview, setPreview] = useState<ImportMatchPreview | null>(null);
   const [mapping, setMapping] = useState<CsvMapping | null>(null);
-  // §90: a plan statement asks what its memos mean first, and the answers
+  // A plan statement asks what its memos mean first, and the answers
   // travel with the import that follows.
   const [memoPreview, setMemoPreview] = useState<ImportMatchPreview | null>(null);
   const [memoRules, setMemoRules] = useState<MemoRule[]>([]);
-  // Money's "Export an account as QIF" (§54).
+  // Money's "Export an account as QIF".
   const [exportId, setExportId] = useState<string>("");
   const [exportMsg, setExportMsg] = useState<string | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
@@ -54,7 +54,7 @@ export default function ImportSection() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // §102 — File → Import. All three named the same screen and none of them
+  // File → Import. All three named the same screen and none of them
   // had an owner, so every one was grayed out. They differ only in which file
   // types the picker offers, which is the whole point of having three items:
   // "Prices only" should not invite you to pick a bank statement.
@@ -73,8 +73,8 @@ export default function ImportSection() {
       ],
     });
     if (typeof selected !== "string") return;
-    // §155 — the wrong door, shut at the threshold. A tsp.gov export is a
-    // .csv, and §152 caught it only after Import CSV… was pressed — then made
+    // The wrong door, shut at the threshold. A tsp.gov export is a
+    // .csv, and an earlier check caught it only after Import CSV… was pressed — then made
     // the user choose the same file again in the right importer:
     //
     // > *"it would make sense that ... when I click the choose file button
@@ -100,7 +100,7 @@ export default function ImportSection() {
 
   const isCsv = /\.(csv|txt)$/i.test(filePath);
 
-  /// §89: look before writing. Rows that are near misses against what is
+  /// Look before writing. Rows that are near misses against what is
   /// already in the account open the review dialog; a file with none of them
   /// imports exactly as it did before, without an extra click.
   async function reviewThenImport(path: string, m: CsvMapping | null, windowDays = 3, rules: MemoRule[] | null = null) {
@@ -108,7 +108,7 @@ export default function ImportSection() {
     setError(null);
     try {
       const p = await api.previewImport(path, accountId, m, windowDays);
-      // §90 first: a plan statement's memos decide what its rows even are,
+      // Treatments first: a plan statement's memos decide what its rows even are,
       // which has to be settled before anything else about them.
       if (rules === null && p.memo_groups.length > 0) {
         setMapping(m);
@@ -116,11 +116,11 @@ export default function ImportSection() {
         return;
       }
       const memo = rules ?? memoRules;
-      // §159 — rows with nothing to file them under are a reason to look
+      // Rows with nothing to file them under are a reason to look
       // too, not only near misses.
       if (p.rows.length === 0 && p.uncategorized.length === 0) {
         // Nothing to decide. With no memo rules either, this is the same call
-        // the import made before §89.
+        // the import made originally.
         if (memo.length === 0) {
           await afterImport(m ? await api.importCsv(path, accountId, m) : await api.importQifOfx(path, accountId));
         } else {
@@ -146,13 +146,13 @@ export default function ImportSection() {
     const store = useAccountStore.getState();
     if (store.selectedAccountId === accountId) await store.loadRegister(accountId);
     await store.loadPayees();
-    // §183 — and the categories. A CSV's category column, a plan memo's
+    // And the categories. A CSV's category column, a plan memo's
     // "Retirement Contributions" and a QIF's category lines all create the
     // ones that are not there yet, and the pickers everywhere else read this
     // list: without the reload the new ones could not be chosen until the
     // file was opened again.
     await store.loadCategories();
-    // §132 — an import empties the undo stack on the Rust side, because it
+    // An import empties the undo stack on the Rust side, because it
     // cannot itself be undone and leaving older steps there means Ctrl+Z
     // reaches PAST the import and takes back something unrelated. Read the
     // status back so the Edit menu grays out to match.
@@ -305,7 +305,7 @@ export default function ImportSection() {
         )}
       </form>
     </section>
-    {/* §183 — the dialogs sit OUTSIDE the form. Inside it, Enter in any of
+    {/* The dialogs sit OUTSIDE the form. Inside it, Enter in any of
         their fields (a plan memo's category, a category picker) was the
         form's implicit submission, and started the import over again from
         under the dialog that was still asking about it. */}

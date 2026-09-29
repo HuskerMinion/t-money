@@ -1,4 +1,4 @@
-// §183 — what a code review found in the shell: refusals that showed nothing,
+// What a code review found in the shell: refusals that showed nothing,
 // a selection left pointing at an account that is gone, a reset that missed
 // two fields, and File menu items that were gray almost all the time.
 import { act, render, screen, waitFor, within } from "@testing-library/react";
@@ -40,7 +40,7 @@ const account = (id: string, name: string, over: Partial<Account> = {}): Account
 
 const CHECKING = account("a-chk", "Demo Checking");
 const SAVINGS = account("a-sav", "Demo Savings");
-// Sorts first, and is closed — the rail does not list it (§181).
+// Sorts first, and is closed — the rail does not list it.
 const OLD = account("a-old", "Aardvark Old Checking", { balance_cents: 0, is_closed: true });
 
 const BACKUP_CFG = { enabled: false, on_exit: false, folder: "D:\\Backups", keep: 10, last_at: null, existing: [] };
@@ -77,7 +77,7 @@ beforeEach(() => {
   useBudgetStore.setState({ summary: [], budgets: [] });
 });
 
-describe("§183 — a refused undo says why", () => {
+describe("A refused undo says why", () => {
   it("shows the backend's refusal in an error notice", async () => {
     stubEverything({
       undo_status: () => ({ undo: "delete a transaction", redo: null }),
@@ -97,7 +97,7 @@ describe("§183 — a refused undo says why", () => {
   });
 });
 
-describe("§183 — the account store's error is shown", () => {
+describe("The account store's error is shown", () => {
   it("a failed account load reads as an error, not an empty file", async () => {
     stubEverything({
       get_all_accounts: () => {
@@ -112,7 +112,7 @@ describe("§183 — the account store's error is shown", () => {
   });
 });
 
-describe("§183 — File → Close lets go of everything about the file", () => {
+describe("File → Close lets go of everything about the file", () => {
   it("clears favorites and the pending row as well as the accounts", async () => {
     useAccountStore.setState({ favorites: [CHECKING], pendingRowId: "t-42" });
     render(<App />);
@@ -127,7 +127,7 @@ describe("§183 — File → Close lets go of everything about the file", () => 
   });
 });
 
-describe("§183 — an account that is gone is not left selected", () => {
+describe("An account that is gone is not left selected", () => {
   it("deleting the selected account clears the selection and its register", async () => {
     let deleted = false;
     stubEverything({
@@ -159,7 +159,7 @@ describe("§183 — an account that is gone is not left selected", () => {
   });
 });
 
-describe("§183 — File → Back up now and Verify work with Settings closed", () => {
+describe("File → Back up now and Verify work with Settings closed", () => {
   it("are live in the File menu without Settings open", async () => {
     render(<App />);
     await screen.findByRole("menubar", { name: "Main menu" });

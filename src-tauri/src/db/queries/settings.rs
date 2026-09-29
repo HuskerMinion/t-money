@@ -1,4 +1,4 @@
-//! App settings (migration 0020) and saved reports (§39), which are kept in
+//! App settings (migration 0020) and saved reports, which are kept in
 //! one.
 
 use rusqlite::{params, OptionalExtension};
@@ -10,7 +10,7 @@ use super::*;
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
-// Saved reports (§39)
+// Saved reports
 // ---------------------------------------------------------------------------
 
 const SAVED_REPORTS_KEY: &str = "reports.saved";
@@ -125,7 +125,7 @@ mod tests {
         let list = list_saved_reports(&c).expect("list");
         assert_eq!(list.len(), 1);
         assert_eq!(list[0].account_ids.len(), 2);
-        // §113: a report saved before the scope grew still loads — every new
+        // A report saved before the scope grew still loads — every new
         // field defaults rather than failing the whole list.
         set_setting(
             &c,

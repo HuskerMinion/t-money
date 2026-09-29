@@ -1,4 +1,4 @@
-// §90 — the memo dialog: the guess is shown per memo, the user can overrule
+// The memo dialog: the guess is shown per memo, the user can overrule
 // it, and the rules come back for the import.
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -57,7 +57,7 @@ const preview: ImportMatchPreview = {
   ],
 };
 
-describe("PlanMemoDialog (§90)", () => {
+describe("PlanMemoDialog", () => {
   beforeEach(() => {
     resetIpc();
     setIpcHandlers({ get_ui_setting: () => null, set_ui_setting: () => null });
@@ -131,7 +131,7 @@ describe("PlanMemoDialog (§90)", () => {
   });
 });
 
-describe("§183 — one Import is one import", () => {
+describe("One Import is one import", () => {
   beforeEach(() => resetIpc());
 
   it("stays disabled while the answers are being remembered, so a second click does not import twice", async () => {

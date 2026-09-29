@@ -1,4 +1,4 @@
-// §97 — the menu bar's contents.
+// The menu bar's contents.
 //
 // Modeled on MS Money Plus (File, Edit, Favorites, Tools, Help) and kept in
 // that order, because muscle memory is the whole reason to have a menu bar in
@@ -52,18 +52,18 @@ export interface MenuData {
   savedReports: { id: string; name: string }[];
   openAccount: (id: string) => void;
   openReport: (id: string) => void;
-  /** §98 — the last few T-Money files, newest first. A missing one is shown
+  /** The last few T-Money files, newest first. A missing one is shown
    *  struck through rather than hidden. */
   recentFiles: { path: string; name: string; exists: boolean }[];
   openFile: (path: string) => void;
-  /** §101 — what undo and redo would do, in the backend's own words
+  /** What undo and redo would do, in the backend's own words
    *  ("delete a transaction"), or null when that side of the stack is empty.
    *  The label is what makes the item worth reading: "Undo delete a
    *  transaction" tells you what you are about to get back, where a bare
    *  "Undo" after a few minutes of typing is a guess. */
   undoLabel: string | null;
   redoLabel: string | null;
-  /** §98 — drop the entries whose files are gone. They are shown until asked
+  /** Drop the entries whose files are gone. They are shown until asked
    *  about, never removed behind your back; this is how you ask. */
   forgetMissingFiles: () => void;
 }
@@ -78,7 +78,7 @@ export function buildMenus(d: MenuData): Menu[] {
           label: "New",
           items: [
             { label: "T-Money file…", command: "file.new" },
-            // §128 — for handing the app to somebody to try. It can only ever
+            // For handing the app to somebody to try. It can only ever
             // create a new file, never seed one that exists.
             { label: "Sample file with demo data…", command: "file.sample" },
             { label: "Account…", command: "new.account", separatorBefore: true },
@@ -91,7 +91,7 @@ export function buildMenus(d: MenuData): Menu[] {
           ],
         },
         { label: "Open a T-Money file…", command: "file.open", accel: "Ctrl+O", separatorBefore: true },
-        // §117 — Close closes: no file open, and the start screen. §104 had
+        // Close closes: no file open, and the start screen. An earlier version had
         // it return to the app's own database instead, which on a machine
         // with the same accounts in both files looked like nothing happening
         // at all.
@@ -152,7 +152,7 @@ export function buildMenus(d: MenuData): Menu[] {
         { label: "Copy", command: "edit.copy", accel: "Ctrl+C" },
         { label: "Paste", command: "edit.paste", accel: "Ctrl+V" },
         { label: "Find…", command: "edit.find", accel: "Ctrl+F", separatorBefore: true },
-        // §106 — "Find and replace…" is gone. Money's version was a bulk
+        // "Find and replace…" is gone. Money's version was a bulk
         // editor over any field, and promising it here while nothing served
         // it made the Edit menu carry a permanently gray lie. What T-Money
         // actually has is narrower and more useful: the payee rules, applied
@@ -160,9 +160,9 @@ export function buildMenus(d: MenuData): Menu[] {
         // next to the rules themselves, under its own name.
         { label: "Delete transaction", command: "edit.delete", accel: "Del", separatorBefore: true },
         { label: "Void transaction", command: "edit.void" },
-        // §102 — Ctrl+M was bound inside the register's grid and printed
+        // Ctrl+M was bound inside the register's grid and printed
         // nowhere, so the shortcut existed and nothing said so. Two rules,
-        // both learned from F1 being bound twice (§97): the accelerator is
+        // both learned from F1 being bound twice: the accelerator is
         // declared HERE, and whoever performs it registers the command rather
         // than listening for the key itself.
         { label: "Mark as cleared", command: "edit.clear", accel: "Ctrl+M" },
@@ -173,7 +173,7 @@ export function buildMenus(d: MenuData): Menu[] {
       label: "Favorites",
       mnemonic: "a",
       items: [
-        // §102 — two items rather than one that changes its name, because
+        // Two items rather than one that changes its name, because
         // each can then be grayed honestly: "Add" is dead once the account is
         // starred, "Remove" is dead until it is. Both need an account open,
         // so both gray out everywhere else.

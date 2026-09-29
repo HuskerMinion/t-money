@@ -15,14 +15,12 @@ pub type Conn = PooledConnection<SqliteConnectionManager>;
 /// spending from every budget and report. This CTE expands each transaction
 /// into its split lines when it has them, and yields the transaction itself
 /// when it does not — so callers can group by category without caring which.
-/// See §6.1e and §10.3 item 7.
-///
-/// Investment rows (§41): buys, sells, share moves and splits are exchanges
+/// Investment rows: buys, sells, share moves and splits are exchanges
 /// of one asset for another, not income or spending, and are left out; the
 /// income activities count, and a REINVESTED dividend counts for the amount
 /// reinvested (`gross_cents`), because its cash effect is zero but the income
 /// is real — and taxable.
-/// §138 — `pub(crate)` so `db::plan` can read the same lines the budget
+/// `pub(crate)` so `db::plan` can read the same lines the budget
 /// screen does. One definition of "what counts as money against a category",
 /// or the year plan and the month screen would disagree about a split.
 pub(crate) const CATEGORY_LINES: &str = r#"
@@ -36,7 +34,7 @@ pub(crate) const CATEGORY_LINES: &str = r#"
         FROM transactions t
         LEFT JOIN splits s ON s.transaction_id = t.id
         WHERE t.is_void = 0 AND t.transfer_id IS NULL
-          -- §93/§94: a revaluation is not spending, and neither half of a
+          -- A revaluation is not spending, and neither half of a
           -- split transfer is. Same exclusions as `reports::LINES`.
           AND t.is_revaluation = 0 AND t.is_split_transfer = 0
           AND (s.id IS NULL OR s.transfer_account_id IS NULL)

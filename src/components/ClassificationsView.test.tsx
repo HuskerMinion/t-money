@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// Classifications manager (§112).
+// Classifications manager.
 //
 // The two things worth locking down here are the ones Money got wrong: a
 // value must be deletable, and the delete must say how many lines it will
@@ -134,7 +134,7 @@ describe("the classifications screen", () => {
   });
 });
 
-describe("§183 — the parent picker follows the classification", () => {
+describe("The parent picker follows the classification", () => {
   it("does not carry a parent from one classification to another", async () => {
     setIpcHandlers({
       list_classifications: () => [PROPERTY, { ...PERSON, values: [value({ id: "v-me", name: "Me", classification_id: "cl-per" })] }],
@@ -180,7 +180,7 @@ describe("§183 — the parent picker follows the classification", () => {
     );
   });
 
-  it("does not claim a category delete is outside undo (§179 made it undoable)", async () => {
+  it("does not claim a category delete is outside undo (it is undoable now)", async () => {
     render(<ClassificationsView />);
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: "Person" }));

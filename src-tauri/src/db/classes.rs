@@ -1,4 +1,4 @@
-//! §112 — classifications: Money's second tagging axis, made general.
+//! Classifications: Money's second tagging axis, made general.
 //!
 //! A category says what KIND of money a line is (Repairs, Utilities). A
 //! classification says what it was FOR (the Maple Street house, the Pickup, the
@@ -16,7 +16,7 @@
 //! Money's three limits, deliberately not repeated: exactly two axes; a value
 //! that can never be deleted once used; and reports that honor the axis
 //! inconsistently. Here an axis is a row, deleting drops links after the UI
-//! has said how many, and the report scope (§113) reads the same effective
+//! has said how many, and the report scope reads the same effective
 //! value every report does.
 
 use crate::db::queries::Conn;
@@ -206,7 +206,7 @@ pub fn create_classification_value(
 
 pub fn rename_classification_value(conn: &Conn, id: &str, name: &str) -> Result<ClassificationValue, String> {
     let name = clean_name(name, "classification value")?;
-    // §180: the same rule as creating one, which a rename walked straight
+    // The same rule as creating one, which a rename walked straight
     // past — two "Maple"s under one axis are two picks nobody can tell
     // apart, and a report that groups by value splits one house in two. The
     // value's own row is left out, so changing only its capitals is allowed.
@@ -383,7 +383,7 @@ pub(crate) fn classes_by_transaction(conn: &Connection, account_id: &str) -> Res
     Ok(out)
 }
 
-/// §117.3 — what a transaction's SPLIT LINES say, for the rows where the
+/// What a transaction's SPLIT LINES say, for the rows where the
 /// transaction itself carries nothing.
 ///
 /// The register row has always shown `split_id IS NULL` values — the
@@ -457,7 +457,7 @@ mod tests {
     use crate::db::queries;
     use crate::models::NewSplit;
 
-    // §182 — checked whole when the test ends.
+    // Checked whole when the test ends.
     use crate::db::test_db::TestDb;
 
     fn pick(axis: &str, value: &str) -> ClassPick {
@@ -482,7 +482,7 @@ mod tests {
         assert_eq!(axes[0].values.iter().map(|v| v.full_name.as_str()).collect::<Vec<_>>(), vec!["Maple Street house", "Maple Street house : Roof 2026"]);
     }
 
-    /// §180 — renaming is held to the rule creating is.
+    /// Renaming is held to the rule creating is.
     #[test]
     fn a_rename_cannot_make_a_duplicate_but_can_change_its_own_capitals() {
         let db = TestDb::new("rename-dup");
@@ -604,7 +604,7 @@ mod tests {
 
     #[test]
     fn a_row_shows_what_its_split_lines_say_when_it_says_nothing_itself() {
-        // §117.3 — the register row has always shown `split_id IS NULL`
+        // The register row has always shown `split_id IS NULL`
         // values. A mortgage split into principal, interest and escrow, with
         // every line tagged to a house and the transaction itself untagged,
         // therefore showed NOTHING on its row and "(none)" in its field —

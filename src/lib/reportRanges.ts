@@ -1,4 +1,4 @@
-// Money's "Date range:" dropdown (§39), as pure functions of today.
+// Money's "Date range:" dropdown, as pure functions of today.
 //
 // Every report carries the same list, and the selected range is what the
 // subtitle prints ("1/1/2025 through 12/31/2025"). Ranges are inclusive,
@@ -80,7 +80,7 @@ export function resolveRange(id: string, today: string, current?: DateRange): Da
       return { from: iso(sy, sm, 1), to: iso(y, m, daysInMonth(y, m)) };
     }
     case "last_24_months": {
-      // Twenty-four whole months ending with this one (§60: long enough to see a yearly charge twice).
+      // Twenty-four whole months ending with this one (long enough to see a yearly charge twice).
       const [sy, sm] = m === 12 ? [y - 1, 1] : [y - 2, m + 1];
       return { from: iso(sy, sm, 1), to: iso(y, m, daysInMonth(y, m)) };
     }

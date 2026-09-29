@@ -6,7 +6,7 @@ vi.mock("@tauri-apps/api/webview", () => ({ getCurrentWebview: () => ({ setZoom 
 
 import { DEFAULT_ZOOM, ZOOM_LEVELS, applyZoom, readZoom, saveZoom } from "./zoom";
 
-describe("text size (§58)", () => {
+describe("text size", () => {
   beforeEach(() => {
     window.localStorage.clear();
     setZoom.mockClear();

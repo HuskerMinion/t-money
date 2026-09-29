@@ -1,4 +1,4 @@
-// §99 — the Document tabs look.
+// The Document tabs look.
 //
 // A register per tab, the way a browser does it. The workflow it changes is
 // comparison: with two accounts open you switch between them in time rather

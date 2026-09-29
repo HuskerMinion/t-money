@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// The report chart's styles (§59): every one draws from the same numbers,
+// The report chart's styles: every one draws from the same numbers,
 // and the depth switch changes the marks, not the data.
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -16,9 +16,9 @@ const two: ChartData = {
   ],
 };
 
-// §166 — a slice, a bar or a legend entry is a click on the thing it stands
+// A slice, a bar or a legend entry is a click on the thing it stands
 // for; without a handler the chart is inert, as it always was.
-describe("ReportChart clicks (§166)", () => {
+describe("ReportChart clicks", () => {
   it("a bar says what it is and hands its label to onPick", async () => {
     const onPick = vi.fn();
     render(<ReportChart chart={one} style="bar" onPick={onPick} />);
@@ -47,7 +47,7 @@ describe("ReportChart clicks (§166)", () => {
   });
 });
 
-describe("ReportChart (§59)", () => {
+describe("ReportChart", () => {
   it("maps every style onto an engine kind", () => {
     expect(CHART_STYLES.map((c) => baseKind(c.value))).toEqual(["bar", "bar", "bar", "line", "line", "pie", "pie"]);
   });
@@ -125,7 +125,7 @@ describe("ReportChart (§59)", () => {
   });
 });
 
-// §183 — an axis label is the value at its gridline.
+// An axis label is the value at its gridline.
 describe("shortMoney", () => {
   it("keeps one decimal under $10k, so $1,500 is not 2k", () => {
     expect(shortMoney(150_000)).toBe("1.5k");

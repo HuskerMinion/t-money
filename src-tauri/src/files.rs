@@ -1,4 +1,4 @@
-//! §98 — T-Money files: which database is open, and which ones were open before.
+//! T-Money files: which database is open, and which ones were open before.
 //!
 //! > *"for the database location it needs to be changeable … that needs to be
 //! > selectable and is one of the reasons I wanted the File menu too so users
@@ -50,7 +50,7 @@ pub struct RecentFile {
     /// a database that has gone missing is the most important thing this list
     /// can tell you.
     pub exists: bool,
-    /// §134 — true when this computer holds no key that opens this file.
+    /// True when this computer holds no key that opens this file.
     ///
     /// Always false out of `recent()`: this module knows about paths and the
     /// recents store, and deliberately not about the keyring. The command
@@ -185,7 +185,7 @@ fn canonical_string(path: &Path) -> String {
         .to_string()
 }
 
-/// `same_path` over two `Path`s — §124.
+/// `same_path` over two `Path`s.
 ///
 /// The reason this exists as its own function: startup compared a remembered
 /// path with the app's own with plain `PathBuf` equality, and on Windows they
@@ -216,7 +216,7 @@ pub fn same_path(a: &str, b: &str) -> bool {
 mod tests {
     use super::*;
 
-    /// §124 — the comparison startup got wrong. `canonicalize` writes the
+    /// The comparison startup got wrong. `canonicalize` writes the
     /// verbatim prefix on Windows and Tauri's config dir does not, so the two
     /// spellings of one file are unequal as `PathBuf`s and identical as files.
     #[test]

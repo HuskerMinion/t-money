@@ -68,9 +68,9 @@ interface AeroSidebarProps {
   accounts?: readonly Account[];
   selectedAccountId?: string | null;
   onSelectAccount?: (id: string) => void;
-  /** Rail width in px — the user drags the edge (§42). */
+  /** Rail width in px — the user drags the edge. */
   width?: number;
-  /** §99: the Sidebar look has no tab strip, so the tabs live here, above the
+  /** The Sidebar look has no tab strip, so the tabs live here, above the
    *  rail's own items. Absent for every other look. */
   tabs?: { active: string; onTab: (t: never) => void };
 }
@@ -88,11 +88,11 @@ export default function AeroSidebar({
   // The Accounts item expands to the account list; open by default so the
   // accounts are visible the way Money's rail shows them.
   const [accountsOpen, setAccountsOpen] = useState(true);
-  // §181 — the rail lists OPEN accounts. A closed one sat at the bottom with
+  // The rail lists OPEN accounts. A closed one sat at the bottom with
   // its $0.00 (N9: "The rail … also shows it at the bottom of the list");
   // closing an account is asking for it to get out of the way. Account List's
   // "Show closed accounts" is where it is still found, as the Three-pane
-  // look's account bar already had it (§99).
+  // look's account bar already had it.
   const open = accounts.filter((a) => !a.is_closed);
 
   return (
@@ -101,7 +101,7 @@ export default function AeroSidebar({
       style={{ width }}
       aria-label="Money navigation"
     >
-      {/* §99 — the Sidebar look's navigation. The tab strip is gone from the
+      {/* The Sidebar look's navigation. The tab strip is gone from the
           header, so the tabs are here, above the rail's own items and marked
           off from them: they are different things and looking like one list
           would make the rail's items read as sub-tabs of nothing. */}
@@ -132,7 +132,7 @@ export default function AeroSidebar({
                 }}
               >
                 <span className="w-4 flex justify-center">
-                  {/* The rail is LIGHT in Money (§11.1), so icons use the normal
+                  {/* The rail is LIGHT in Money, so icons use the normal
                       --tm-icon-* tones — no inverse treatment. */}
                   <TmIcon name={it.icon} size={16} />
                 </span>

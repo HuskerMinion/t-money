@@ -1,4 +1,4 @@
-// Money's "Merge duplicate accounts" (§49). One account survives; the other's
+// Money's "Merge duplicate accounts". One account survives; the other's
 // transactions move into it and it is deleted. The dialog runs the merge as
 // a dry run first so it can say exactly what will happen — rows moved, rows
 // the survivor already had, transfers between the two that disappear — and
@@ -97,7 +97,7 @@ export default function MergeAccountsDialog({ from, accounts, onCancel, onMerged
             Only transactions after {into ? into.name : "the kept account"}'s last one
           </label>
         </fieldset>
-        {/* §181 — the shared refusal box, as every other refusal on the Account List. */}
+        {/* The shared refusal box, as every other refusal on the Account List. */}
         {error && (
           <Notice tone="error" boxed>
             {error}

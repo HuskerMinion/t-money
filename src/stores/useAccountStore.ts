@@ -41,7 +41,7 @@ interface AccountState {
     openedOn?: string
   ) => Promise<Account>;
   toggleFavorite: (accountId: string) => Promise<void>;
-  /** §169 — put the accounts in this order everywhere they are listed. */
+  /** Put the accounts in this order everywhere they are listed. */
   reorderAccounts: (ids: string[]) => Promise<void>;
   addTransaction: (payload: NewTransaction) => Promise<Transaction>;
   editTransaction: (payload: UpdateTransaction) => Promise<Transaction>;
@@ -61,13 +61,13 @@ interface AccountState {
   /** A one-shot request from the rail's "Reconcile" item. Non-zero means
    *  "open the reconcile wizard once"; the register must call
    *  `ackReconcileRequest` when it acts on it. It is NOT a counter to compare
-   *  against — see the bug in §26.1. */
+   *  against — treating it as one was an earlier bug. */
   reconcileRequest: number;
   requestReconcile: () => void;
   /** Clear the request once the register has acted on it. */
   ackReconcileRequest: () => void;
   /** A row the register should select and scroll to once it has loaded —
-   *  set by a Search result (§38). Consumed by the register. */
+   *  set by a Search result. Consumed by the register. */
   pendingRowId: string | null;
   focusRow: (id: string | null) => void;
   loadCategories: () => Promise<void>;
@@ -131,7 +131,7 @@ export const useAccountStore = create<AccountState>((set, get) => ({
   },
 
   reloadAll: async () => {
-    // §155 — come back to where the user was. This used to clear the selection
+    // Come back to where the user was. This used to clear the selection
     // outright, so finishing a TSP import with the TSP register on screen
     // left "Select an account" and made the user find it again to see what the
     // import did. The account is kept if it still exists after the reload
@@ -248,7 +248,7 @@ export const useAccountStore = create<AccountState>((set, get) => ({
 
   removeCategory: async (id, reassignTo) => {
     await api.deleteCategory(id, reassignTo);
-    // §179 — a delete is on the undo stack too now, like the merge below.
+    // A delete is on the undo stack too now, like the merge below.
     noteChanged();
     await get().loadCategories();
     const accountId = get().selectedAccountId;
@@ -257,7 +257,7 @@ export const useAccountStore = create<AccountState>((set, get) => ({
 
   mergeCategories: async (fromId, intoId) => {
     await api.mergeCategories(fromId, intoId);
-    // §133 — a merge is on the undo stack now, so the Edit menu has to hear
+    // A merge is on the undo stack now, so the Edit menu has to hear
     // about it like every other write does.
     noteChanged();
     await get().loadCategories();
@@ -273,7 +273,7 @@ export const useAccountStore = create<AccountState>((set, get) => ({
 
   editTransfer: async (id, date, otherAccountId, amountCents, notes) => {
     await api.updateTransfer(id, date, otherAccountId, amountCents, notes);
-    // §183 — the backend records "edit a transfer" like every other edit;
+    // The backend records "edit a transfer" like every other edit;
     // without this the Edit menu kept naming the step before it.
     noteChanged();
     // Both halves moved, and possibly between accounts — reload the lot
@@ -294,7 +294,7 @@ export const useAccountStore = create<AccountState>((set, get) => ({
 
   editPayee: async (id, name, lastCategoryId) => {
     await api.updatePayee(id, name, lastCategoryId);
-    // §186 — a rename is on the undo stack now, like a merge.
+    // A rename is on the undo stack now, like a merge.
     noteChanged();
     await get().loadPayees();
     // The register shows the denormalized payee text, which the rename
@@ -310,7 +310,7 @@ export const useAccountStore = create<AccountState>((set, get) => ({
 
   mergePayees: async (fromId, intoId) => {
     await api.mergePayees(fromId, intoId);
-    // §186 — on the undo stack now, like a category merge (§133); without
+    // On the undo stack now, like a category merge; without
     // this the Edit menu went on naming the step before the merge.
     noteChanged();
     await get().loadPayees();
@@ -320,17 +320,17 @@ export const useAccountStore = create<AccountState>((set, get) => ({
 
   removePayee: async (id) => {
     await api.deletePayee(id);
-    // §186 — so is deleting an unused payee.
+    // So is deleting an unused payee.
     noteChanged();
     await get().loadPayees();
   },
 
-  /** Edit a transaction in place (§6.1b). The amount may change, so the
+  /** Edit a transaction in place. The amount may change, so the
    *  account balance and the running-balance register are both refreshed
    *  from the backend rather than patched locally. */
   editTransaction: async (payload) => {
     const txn = await api.updateTransaction(payload);
-    // §101: the backend recorded a step for this; the menu's label changes.
+    // The backend recorded a step for this; the menu's label changes.
     noteChanged();
     const accountId = get().selectedAccountId;
     if (accountId) {
@@ -365,7 +365,7 @@ export const useAccountStore = create<AccountState>((set, get) => ({
     if (get().selectedAccountId === payload.account_id) {
       await get().loadRegister(payload.account_id);
     }
-    // Every write creates or updates a payee now (§16), so the completion
+    // Every write creates or updates a payee now, so the completion
     // list and the category recall would otherwise be one entry behind.
     await get().loadPayees();
     return txn;

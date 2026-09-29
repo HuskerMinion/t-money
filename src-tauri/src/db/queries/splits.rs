@@ -1,4 +1,4 @@
-//! Splits (§6.1e): a transaction's lines, including lines that transfer to
+//! Splits: a transaction's lines, including lines that transfer to
 //! another account.
 
 use crate::models::{NewSplit, Split};
@@ -7,7 +7,7 @@ use uuid::Uuid;
 use super::*;
 
 // ---------------------------------------------------------------------------
-// Splits (§6.1e)
+// Splits
 // ---------------------------------------------------------------------------
 
 fn map_split(row: &Row) -> rusqlite::Result<Split> {
@@ -24,7 +24,7 @@ fn map_split(row: &Row) -> rusqlite::Result<Split> {
     })
 }
 
-/// §94: remove the rows a transaction's transfer split lines wrote in other
+/// Remove the rows a transaction's transfer split lines wrote in other
 /// accounts, putting each account's balance back. Called before the lines are
 /// rewritten, and before the parent is deleted.
 pub(crate) fn delete_split_transfer_rows(tx: &Connection, transaction_id: &str) -> Result<(), String> {
@@ -66,7 +66,7 @@ pub fn list_splits(conn: &Conn, transaction_id: &str) -> Result<Vec<Split>, Stri
         )
         .map_err(|e| e.to_string())?;
     // Bind the collected Vec before returning it — a tail-expression here
-    // outlives `stmt` (E0597, §8).
+    // outlives `stmt` (E0597).
     let mut out: Vec<Split> = stmt
         .query_map(params![transaction_id], map_split)
         .map_err(|e| e.to_string())?
@@ -87,8 +87,7 @@ pub fn list_splits(conn: &Conn, transaction_id: &str) -> Result<Vec<Split>, Stri
 /// a split set that disagrees with its parent.
 ///
 /// A split transaction has no single category, so the parent's `category_id`
-/// is cleared. Reporting must aggregate `splits`, not `transactions.category_id`
-/// (§10.3 item 7).
+/// is cleared. Reporting must aggregate `splits`, not `transactions.category_id`.
 pub fn set_splits(
     conn: &Conn,
     transaction_id: &str,
@@ -100,7 +99,7 @@ pub fn set_splits(
     list_splits(conn, transaction_id)
 }
 
-/// §178 — the body of `set_splits`, inside a SQL transaction the caller
+/// The body of `set_splits`, inside a SQL transaction the caller
 /// holds, so a row and its lines (`create_transaction_with_splits`), an edit
 /// and its lines (`update_transaction_with_splits`) and a loan payment are
 /// each written whole or not at all.
@@ -120,7 +119,7 @@ pub(crate) fn set_splits_in(
         .map_err(|e| e.to_string())?
         .ok_or_else(|| format!("no such transaction: {transaction_id}"))?;
 
-    // §178: a transfer half cannot be split at all — not only when the lines
+    // A transfer half cannot be split at all — not only when the lines
     // would change its total. Lines that happened to add up used to be
     // accepted, clearing nothing and writing far rows off a row whose partner
     // already carries the money. The far row of a split line is refused for
@@ -134,7 +133,7 @@ pub(crate) fn set_splits_in(
         }
     }
 
-    // The split lines ARE the amount (§6.1e). When they do not sum to what
+    // The split lines ARE the amount. When they do not sum to what
     // the parent holds, the parent follows the lines — this is the one
     // place a split transaction's total changes, now that
     // `update_transaction` refuses to change it behind the lines. The
@@ -159,7 +158,7 @@ pub(crate) fn set_splits_in(
         }
     }
 
-    // §181 — the accounts the lines already transfer to. The lines are
+    // The accounts the lines already transfer to. The lines are
     // rebuilt below, so a line that keeps its account is not a new link and
     // is allowed even when that account (or this one) has since been closed;
     // a line to any other account is, and a closed account refuses it.
@@ -180,7 +179,7 @@ pub(crate) fn set_splits_in(
         }
     }
 
-    // §94: a split line can be a transfer. Its far row is rebuilt with the
+    // A split line can be a transfer. Its far row is rebuilt with the
     // lines, so editing a split never leaves a stale row in another account.
     delete_split_transfer_rows(tx, transaction_id)?;
     tx.execute(
@@ -251,7 +250,7 @@ pub(crate) fn set_splits_in(
             ],
         )
         .map_err(|e| e.to_string())?;
-        // §112: the line's own classification values. The old lines' links
+        // The line's own classification values. The old lines' links
         // went with the DELETE above (CASCADE on split_id).
         crate::db::classes::write_line_classes(tx, transaction_id, Some(&id), &split.classes)?;
     }
@@ -361,7 +360,7 @@ mod tests {
 
         // A far row no line points at any more is only clean-up, and may go.
         // Cutting the link takes raw SQL, and the line is left naming a row
-        // that is gone — which is what `verify_file` then says (§182).
+        // that is gone — which is what `verify_file` then says.
         db.expect_inconsistent("cuts a split line's link by raw SQL to prove its orphaned far row may be deleted");
         c.execute("UPDATE splits SET transfer_txn_id = NULL WHERE transfer_txn_id = ?1", params![principal]).unwrap();
         delete_transaction(&c, &principal).unwrap();
@@ -530,7 +529,7 @@ mod tests {
     }
 
     // -----------------------------------------------------------------------
-    // §38 — what the review found
+    // What the review found
     // -----------------------------------------------------------------------
 
     #[test]
@@ -599,7 +598,7 @@ mod tests {
         assert_eq!(balance(&c, &acct), 0, "a voided row moved the balance");
     }
 
-    // §168 — Enter on a split entry is ONE undo step: the row and its lines
+    // Enter on a split entry is ONE undo step: the row and its lines
     // are written together and taken back together.
     #[test]
     fn a_split_entry_is_written_and_undone_as_one_step() {
@@ -673,7 +672,7 @@ mod tests {
         assert_eq!(list_splits(&c, &made.id).unwrap().len(), 0);
     }
 
-    /// §181 — a split line is a transfer too. A NEW line to a closed account
+    /// A split line is a transfer too. A NEW line to a closed account
     /// is refused; a payment whose line already went there before the close
     /// can still be edited and saved with that line.
     #[test]
@@ -718,7 +717,7 @@ mod tests {
         assert_consistent(&c);
     }
 
-    /// §181 — the register row says it is a split line's far row, and which
+    /// The register row says it is a split line's far row, and which
     /// account the payment is in, so the form can say so before a refusal.
     #[test]
     fn the_register_marks_a_far_row_and_names_its_payment_account() {

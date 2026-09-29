@@ -31,14 +31,14 @@ function formatBytes(bytes: number): string {
 
 export type GroupId = "appearance" | "file" | "money" | "security" | "advanced";
 
-/** §100 — the two levels. A group whose only pane is itself draws no second
+/** The two levels. A group whose only pane is itself draws no second
  *  strip: one tab under one tab is a decoration, not a navigation. */
 const GROUPS: { id: GroupId; label: string; panes: { id: string; label: string }[] }[] = [
   {
     id: "appearance",
     label: "Appearance",
     panes: [
-      // §102 — Text size lives WITH the layout, not beside it. Both answer
+      // Text size lives WITH the layout, not beside it. Both answer
       // "how is this app arranged for my eyes"; splitting them meant picking
       // a look, leaving, and coming back for the size of the type in it.
       { id: "look", label: "Looks" },
@@ -61,7 +61,7 @@ const GROUPS: { id: GroupId; label: string; panes: { id: string; label: string }
 
 const PANE_KEY = "tm.settingsPane";
 
-/** §102 — open Settings ON a pane.
+/** Open Settings ON a pane.
  *
  *  File → Restore from a backup and File → Backup settings are menu items for
  *  things that live inside Settings. Making them open Settings and leave you
@@ -78,7 +78,7 @@ export function aimSettingsAt(group: GroupId, pane: string): void {
   }
 }
 
-/** §183 — something the shell asked Settings to DO as it opens: File → Back
+/** Something the shell asked Settings to DO as it opens: File → Back
  *  up now and Verify this file, chosen while Settings was closed. Held here
  *  and taken exactly once by the next Settings to mount, the same one-way
  *  hand-off `aimSettingsAt` uses for the pane. */
@@ -107,12 +107,12 @@ export default function SettingsView() {
   const [dbInfo, setDbInfo] = useState<DbInfo | null>(null);
   const [zoom, setZoom] = useState<number>(() => readZoom());
   const [themeId, setThemeId] = useState<string>(() => readTheme());
-  // §79: how a holding's shares × price is rounded to the cent — a fact
+  // How a holding's shares × price is rounded to the cent — a fact
   // about the broker, kept in the file.
   const [rounding, setRounding] = useState<HoldingRounding>("nearest");
-  // §115 — the price timer and how old the prices are.
+  // The price timer and how old the prices are.
   const [priceStatus, setPriceStatus] = useState<PriceStatus | null>(null);
-  // §83: Verify this file.
+  // Verify this file.
   const [check, setCheck] = useState<FileCheck | null>(null);
   const [checking, setChecking] = useState(false);
 
@@ -124,7 +124,7 @@ export default function SettingsView() {
       const r = await api.verifyFile(repair);
       setCheck(r);
       if (repair) {
-        // §183 — a repair empties the undo stack on the Rust side (§177);
+        // A repair empties the undo stack on the Rust side;
         // the Edit menu has to hear it or it names a step that is gone.
         void refreshUndo();
         await useAccountStore.getState().reloadAll();
@@ -139,7 +139,7 @@ export default function SettingsView() {
   const [keyStatus, setKeyStatus] = useState<KeyStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lookId, setLookId] = useState(() => readLook());
-  // §100 — layered tabs. A wall of nine cards is a wall however it is
+  // Layered tabs. A wall of nine cards is a wall however it is
   // sorted; two shallow levels turn "where is the backup setting" into two
   // obvious clicks. Top level is the KIND of thing, the level under it is the
   // thing — which is the only split that stays obvious as settings are added.
@@ -160,7 +160,7 @@ export default function SettingsView() {
     setPane(GROUPS.find((x) => x.id === g)!.panes[0].id);
   };
   const [msg, setMsg] = useState<string | null>(null);
-  // §98 — WHICH card the message belongs to. There was one status line at the
+  // WHICH card the message belongs to. There was one status line at the
   // bottom of the whole page, so the result of a restore — the single most
   // consequential thing on this screen — appeared below the fold, and you had
   // to scroll to find out whether your database had just been replaced.
@@ -176,7 +176,7 @@ export default function SettingsView() {
   // Automatic backup.
   const [backupCfg, setBackupCfg] = useState<BackupConfig | null>(null);
   // Restore: the key of a backup made on ANOTHER machine. Blank = this one's.
-  // The command has accepted this since §34; nothing on screen offered it,
+  // The command has long accepted this; nothing on screen offered it,
   // so the actual recovery path — new machine, old backup, saved key — was
   // unreachable.
   const [restoreKey, setRestoreKey] = useState("");
@@ -209,7 +209,7 @@ export default function SettingsView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // §183 — run what the shell asked for on the way in (File → Back up now,
+  // Run what the shell asked for on the way in (File → Back up now,
   // Verify this file). Taken once, so a second mount does not run it again.
   const actionTaken = useRef(false);
   useEffect(() => {
@@ -254,7 +254,7 @@ export default function SettingsView() {
     setWhere("autobackup");
     const dir = await open({ directory: true, title: "Where should backups go?" });
     if (typeof dir !== "string") return;
-    // §183 — a new folder is not a new decision about WHETHER to back up.
+    // A new folder is not a new decision about WHETHER to back up.
     // This saved enabled:true every time, so moving the folder turned back on
     // the daily backup the user had switched off. Only the first folder turns
     // it on, which is what the card says choosing one does.
@@ -266,14 +266,14 @@ export default function SettingsView() {
    *  "Back up automatically" and "Back up now" used to be `disabled` until a
    *  folder was set, with nothing on screen saying so — two dead controls that
    *  looked like a broken build. A control the user is meant to press should
-   *  ask for what it needs, not sit there grayed out (§37.2). */
+   *  ask for what it needs, not sit there grayed out. */
   async function ensureBackupFolder(
-    // §135 — which switch the folder is being chosen FOR. There are two of
+    // Which switch the folder is being chosen FOR. There are two of
     // them now, and choosing a folder because you ticked "when I close" must
     // not quietly turn on the daily one as well.
     turnOn: "enabled" | "on_exit" | "neither" = "enabled"
   ): Promise<string | null> {
-    // §183 — asked afresh when it has not loaded yet: File → Back up now can
+    // Asked afresh when it has not loaded yet: File → Back up now can
     // run the moment Settings opens (runInSettings), before `load` has
     // answered, and a null here asked for a folder the file already has.
     const current = backupCfg ?? (await api.getBackupConfig().catch(() => null));
@@ -298,7 +298,7 @@ export default function SettingsView() {
     }
   }
 
-  /** §135 — a patch rather than four positional arguments.
+  /** A patch rather than four positional arguments.
    *
    *  There are two switches, a folder and a retention count now, and every
    *  caller changing one of them had to restate the other three correctly. One
@@ -328,8 +328,8 @@ export default function SettingsView() {
     }
   }
 
-  // §97 — File → Back up now / Verify, and Tools → Settings' own corner of
-  // the menu. §183 — the shell serves both too, by opening Settings and
+  // File → Back up now / Verify, and Tools → Settings' own corner of
+  // the menu. The shell serves both too, by opening Settings and
   // handing over the action; while Settings is open it serves them itself, at
   // the higher priority, so the result lands on the pane already on screen.
   useCommand("file.backup", () => void backupNow(), true, 10);
@@ -412,7 +412,7 @@ export default function SettingsView() {
       await api.restoreDatabase(path, restoreKey.trim() || null);
       setRestoreKey("");
       setMsg(`Restored from ${path}.`);
-      // §183 — every step on the undo stack described the database that was
+      // Every step on the undo stack described the database that was
       // just replaced; the backend dropped them and the menu must too.
       void refreshUndo();
       await load();
@@ -459,7 +459,7 @@ export default function SettingsView() {
 
   return (
     <div className="tm-settings">
-      {/* §100 — the two levels. The top strip is the kind of thing; the strip
+      {/* The two levels. The top strip is the kind of thing; the strip
           under it is the thing. A group with one pane draws no second strip:
           one tab under one tab is a decoration, not a navigation. */}
       <div className="tm-settings-tabs" role="tablist" aria-label="Settings sections">
@@ -506,7 +506,7 @@ export default function SettingsView() {
       )}
       {at("money", "holdings") && (
         <>
-          {/* Holding values (§79) */}
+          {/* Holding values */}
       <section className="aero-card">
         <div className="aero-card-title flex items-center gap-2">
           <TmIcon name="investments" size={15} /> Holding values — broker's rounding
@@ -522,7 +522,7 @@ export default function SettingsView() {
                 const r: HoldingRounding = e.target.value === "down" ? "down" : "nearest";
                 const was = rounding;
                 setRounding(r);
-                // §183 — this pane had no status line, so the message and the
+                // This pane had no status line, so the message and the
                 // refusal were both written where nothing showed them, and a
                 // refused save left the select saying the new rounding.
                 setWhere("holdings");
@@ -559,7 +559,7 @@ export default function SettingsView() {
 
       {at("money", "prices") && (
         <>
-          {/* §115 — the price timer. The app has never fetched anything on
+          {/* The price timer. The app has never fetched anything on
               its own, and the default here keeps that promise: "Only when I
               ask" is off, and the other two ask ONCE a day or a week while
               T-Money is open. Nothing runs when the app is closed, and only
@@ -577,7 +577,7 @@ export default function SettingsView() {
                   value={priceStatus?.interval ?? "off"}
                   onChange={(e) => {
                     const v = e.target.value as PriceInterval;
-                    // §183 — said on this pane, which had no status line. The
+                    // Said on this pane, which had no status line. The
                     // select follows `priceStatus`, so a refused save leaves it
                     // on the interval that is actually stored.
                     setWhere("prices");
@@ -631,7 +631,7 @@ export default function SettingsView() {
 
       {at("appearance", "theme") && (
         <>
-          {/* Theme (§63) */}
+          {/* Theme */}
       <section className="aero-card">
         <div className="aero-card-title flex items-center gap-2">
           <TmIcon name="settings" size={15} /> Theme
@@ -666,7 +666,7 @@ export default function SettingsView() {
 
       {at("appearance", "look") && (
         <>
-          {/* §99 — Look. Two settings, deliberately: the LOOK is the shape and
+          {/* Look. Two settings, deliberately: the LOOK is the shape and
           the THEME is the colors, so Sidebar in Evening and Compact in
           Copper are both things you can have. */}
       <section className="aero-card">
@@ -674,7 +674,7 @@ export default function SettingsView() {
           <TmIcon name="settings" size={15} /> Looks
         </div>
         <div className="p-3 text-[12px]">
-          {/* §104 — text size is one line above the looks, not a card beside
+          {/* Text size is one line above the looks, not a card beside
               them. It is a single choice; giving it a card of its own took a
               third of the pane away from the thing the pane is for, and left
               the looks in a column half the width they want. */}
@@ -797,7 +797,7 @@ export default function SettingsView() {
 
       {at("file", "verify") && (
         <>
-          {/* Verify this file (§83) */}
+          {/* Verify this file */}
       <section className="aero-card">
         <div className="aero-card-title flex items-center gap-2">
           <TmIcon name="settings" size={15} /> Verify this file
@@ -1004,7 +1004,7 @@ export default function SettingsView() {
               />
               Back up automatically
             </label>
-            {/* §135 — asked for: a backup on exit.
+            {/* Asked for: a backup on exit.
                 The daily one answers "you have not backed up today". This one
                 answers the question that matters when the file gets carried
                 between machines: is what I just did safe anywhere but here. */}
@@ -1119,10 +1119,10 @@ export default function SettingsView() {
   );
 }
 
-/** §98 — a result, shown against the thing that produced it. */
+/** A result, shown against the thing that produced it. */
 function StatusLine({ text, bad }: { text: string | null; bad: boolean }) {
   if (!text) return null;
-  // §183 — a refusal is the shared Notice (§181), as it is everywhere else.
+  // A refusal is the shared Notice, as it is everywhere else.
   if (bad)
     return (
       <Notice tone="error" boxed className="mt-2">
@@ -1145,7 +1145,7 @@ function StatusLine({ text, bad }: { text: string | null; bad: boolean }) {
 }
 
 /**
- * §99 — a look's shape, drawn as a wireframe.
+ * A look's shape, drawn as a wireframe.
  *
  * Deliberately not a screenshot: a screenshot would carry a theme's colors
  * and the point of this picker is that a look has none. Gray boxes in the

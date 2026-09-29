@@ -1,4 +1,4 @@
-//! CSV statements (§88). Every bank offers one; no two agree on the columns.
+//! CSV statements. Every bank offers one; no two agree on the columns.
 //! So the file is read twice: `preview` shows the first rows and GUESSES a
 //! mapping from the header names; the user confirms or corrects it; then
 //! `rows_to_txns` turns the file into the same `ParsedTxn`s QIF and OFX
@@ -95,12 +95,12 @@ pub struct CsvPreview {
     pub mapping: CsvMapping,
     /// The sample rows as the mapping reads them — the dialog's proof.
     pub parsed: Vec<PreviewRow>,
-    /// §132 — this file is a tsp.gov activity detail and belongs in the TSP
+    /// This file is a tsp.gov activity detail and belongs in the TSP
     /// importer, which is the only one that can read its funds, units and
     /// prices. The dialog says so rather than importing it flat.
     #[serde(default)]
     pub looks_like_tsp: bool,
-    /// §175 — a brokerage or plan history (Symbol and Quantity columns:
+    /// A brokerage or plan history (Symbol and Quantity columns:
     /// Fidelity, Schwab, Vanguard exports). Imported flat, every row would
     /// be a bare cash entry with no fund, no shares and no price.
     pub looks_like_brokerage: bool,
@@ -112,7 +112,7 @@ pub struct PreviewRow {
     pub payee: Option<String>,
     pub amount_cents: Option<i64>,
     pub error: Option<String>,
-    /// §165 — the rest of what the mapping writes, so the preview shows
+    /// The rest of what the mapping writes, so the preview shows
     /// every field the import will put in the register, not only three.
     #[serde(default)]
     pub memo: Option<String>,
@@ -196,7 +196,7 @@ pub fn sniff_delimiter(text: &str) -> char {
 }
 
 fn norm(h: &str) -> String {
-    // §175 — "Trans. Date" (Discover) is "trans date", one space, so the
+    // "Trans. Date" (Discover) is "trans date", one space, so the
     // exact matches below can name it.
     h.trim().trim_matches('"').to_lowercase().replace(['_', '-', '.'], " ").split_whitespace().collect::<Vec<_>>().join(" ")
 }
@@ -419,7 +419,7 @@ pub fn preview(text: &str, n: usize, has_header: Option<bool>, given: Option<&Cs
     } else {
         Vec::new()
     };
-    // §132 — before offering to import this flat, check it is not a file
+    // Before offering to import this flat, check it is not a file
     // that has a reader of its own.
     let looks_like_tsp = crate::import::tsp::looks_like_tsp(&headers);
     let looks_like_brokerage = !looks_like_tsp && looks_like_brokerage(&headers);
@@ -435,7 +435,7 @@ pub fn preview(text: &str, n: usize, has_header: Option<bool>, given: Option<&Cs
     })
 }
 
-/// §175 — a Symbol (or Ticker) column beside a Quantity (or Shares, Units)
+/// A Symbol (or Ticker) column beside a Quantity (or Shares, Units)
 /// column is a holdings history, not a bank statement.
 pub fn looks_like_brokerage(headers: &[String]) -> bool {
     let has = |pred: &dyn Fn(&str) -> bool| headers.iter().any(|h| pred(&norm(h)));
@@ -496,7 +496,7 @@ mod tests {
         assert_eq!((m.date, m.check_number, m.payee, m.debit, m.credit, m.amount), (Some(0), Some(1), Some(2), Some(3), Some(4), None));
     }
 
-    // §175 — the first hour: the headers real banks ship. Each must land
+    // The first hour: the headers real banks ship. Each must land
     // date, payee and an amount without the user touching the mapping.
     #[test]
     fn guesses_the_headers_real_banks_ship() {
@@ -523,7 +523,7 @@ mod tests {
         assert_eq!((p.mapping.date, p.mapping.amount, p.mapping.payee, p.mapping.has_header), (Some(0), Some(1), Some(4), false));
         assert_eq!(p.parsed.len(), 2);
         // Fidelity's brokerage history is NOT a cash register, and the guess
-        // will happily map it as one — which is what §175 says the dialog
+        // will happily map it as one — which is what the dialog
         // has to catch: Symbol / Quantity / Price columns mean "use the
         // Investing import", not a bank import.
         let fidelity = h(&["Run Date", "Action", "Symbol", "Description", "Type", "Quantity", "Price ($)", "Commission ($)", "Fees ($)", "Accrued Interest ($)", "Amount ($)", "Settlement Date"]);

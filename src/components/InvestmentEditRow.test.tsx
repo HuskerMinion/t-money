@@ -1,4 +1,4 @@
-// The investment entry form (§41): what it derives, what it refuses, what it sends.
+// The investment entry form: what it derives, what it refuses, what it sends.
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -147,7 +147,7 @@ describe("a sale", () => {
     expect(onCommit).toHaveBeenCalledWith(null, expect.objectContaining({ activity: "split", shares_micro: 2_000_000, gross_cents: 0 }));
   });
 
-  it("Transfer Shares needs a destination and sends both halves as one call (§45)", async () => {
+  it("Transfer Shares needs a destination and sends both halves as one call", async () => {
     const { onCommit, onTransferShares } = setup();
     await userEvent.selectOptions(screen.getByLabelText("Activity"), "transfer_shares");
     await userEvent.click(screen.getByRole("combobox", { name: "Investment" }));
@@ -177,7 +177,7 @@ describe("a sale", () => {
     expect(onCommit).not.toHaveBeenCalled();
   });
 
-  it("Max gain picks the cheapest lot first and sends it as specified lots (§48)", async () => {
+  it("Max gain picks the cheapest lot first and sends it as specified lots", async () => {
     const { onCommit } = setup();
     await userEvent.selectOptions(screen.getByLabelText("Activity"), "sell");
     await userEvent.click(screen.getByRole("combobox", { name: "Investment" }));
@@ -202,8 +202,8 @@ describe("a sale", () => {
   });
 });
 
-// §71 — an existing buy opens with, and can change, the account it was paid from.
-describe("Pay from on an existing buy (§71)", () => {
+// An existing buy opens with, and can change, the account it was paid from.
+describe("Pay from on an existing buy", () => {
   it("shows the funding account and sends a changed one", async () => {
     const row = {
       id: "t-buy", date: "2026-03-01", payee: "Fund", category_name: null, category_id: null, transfer_account_id: null, transfer_account_name: null,
@@ -220,14 +220,14 @@ describe("Pay from on an existing buy (§71)", () => {
     expect(onCommit).toHaveBeenCalledWith("t-buy", expect.objectContaining({ funding_account_id: "a-sav" }));
   });
 
-  it("starts a new entry on the date passed in (§71)", () => {
+  it("starts a new entry on the date passed in", () => {
     setup({ defaultDate: "2026-08-14" });
     expect((screen.getByLabelText("Date") as HTMLInputElement).value).toBe("8/14/2026");
   });
 });
 
-// §78 — price and total are each the user's once typed; a row can carry both.
-describe("price and total kept as typed (§78)", () => {
+// Price and total are each the user's once typed; a row can carry both.
+describe("price and total kept as typed", () => {
   it("an existing row opens with its stored price and total; changing the price leaves the total alone", async () => {
     const row = {
       id: "t-buy", date: "2026-03-01", payee: "VTSAX", category_name: null, category_id: null, transfer_account_id: null, transfer_account_name: null,
@@ -272,8 +272,8 @@ describe("price and total kept as typed (§78)", () => {
   });
 });
 
-// §74 — income paid in cash can be swept to another account.
-describe("Deposit to on income (§74)", () => {
+// Income paid in cash can be swept to another account.
+describe("Deposit to on income", () => {
   it("a dividend offers Deposit to and sends it; a reinvested one does not", async () => {
     const { onCommit } = setup();
     await userEvent.selectOptions(screen.getByLabelText("Activity"), "dividend");
@@ -288,7 +288,7 @@ describe("Deposit to on income (§74)", () => {
   });
 });
 
-describe("cash entries in the Activity list (§91)", () => {
+describe("cash entries in the Activity list", () => {
   beforeEach(() => resetIpc());
 
   it("offers Contribution and the other cash kinds beside the share activities", () => {
@@ -298,7 +298,7 @@ describe("cash entries in the Activity list (§91)", () => {
     // The share activities are still first and unchanged.
     expect(labels[0]).toBe("Buy");
     // The user's ask: a way to enter the contribution by hand, where they look
-    // for it. The capability existed since §41 as a separate toolbar button
+    // for it. The capability already existed as a separate toolbar button
     // nobody found.
     expect(labels).toContain("Contribution");
     expect(labels).toContain("Employer Contribution");
@@ -323,8 +323,8 @@ describe("cash entries in the Activity list (§91)", () => {
   });
 });
 
-// §183 — fixes from the code review.
-describe("saving once, and lot picks that follow the security (§183)", () => {
+// Fixes from the code review.
+describe("saving once, and lot picks that follow the security", () => {
   const bond: Security = { ...fund, id: "s-2", name: "Bond Index", symbol: "VBTLX" };
   const bondLots: Lot[] = [
     { id: "lot-9", account_id: "a-1", security_id: "s-2", acquired_on: "2023-02-01", shares_micro: 80_000_000, cost_cents: 80_000, original_shares_micro: 80_000_000, original_cost_cents: 80_000 },
@@ -398,7 +398,7 @@ describe("saving once, and lot picks that follow the security (§183)", () => {
     expect(onCommit).not.toHaveBeenCalled();
   });
 
-  it("an untouched sale with hand-picked lots is not saved again on leaving (§73)", async () => {
+  it("an untouched sale with hand-picked lots is not saved again on leaving", async () => {
     setIpcHandlers({
       list_lots: () => lots,
       get_disposals: () => [{ sell_id: "t-sell", lot_id: "lot-2", account_id: "a-1", security_id: "s-1", acquired_on: "2025-06-10", sold_on: "2026-03-01", shares_micro: 50_000_000, proceeds_cents: 150_000, cost_cents: 100_000, gain_cents: 50_000 }],

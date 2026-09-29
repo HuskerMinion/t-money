@@ -1,4 +1,4 @@
-// §102 — the app must never present as a blank window.
+// The app must never present as a blank window.
 //
 // There was no error boundary anywhere in this app, which means React's
 // default applied: one thrown error in one component's render unmounts the

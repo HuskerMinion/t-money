@@ -104,7 +104,7 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         "0007",
         "create_splits",
         r#"
-        -- A transaction split across several categories (§6.1e).
+        -- A transaction split across several categories.
         -- `description` is PER LINE and is distinct from transactions.notes
         -- (Money's Memo). `sort_order` preserves the grid's row order, which
         -- matters because rows are individually deletable.
@@ -126,7 +126,7 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         -- A transfer is TWO linked transactions, one per account, pointing at
         -- each other. In Money you enter one by choosing the category
         -- "Transfer : <Account>"; the paired row is created for you, and
-        -- deleting either deletes both. See §10.2 item 5.
+        -- deleting either deletes both.
         ALTER TABLE transactions ADD COLUMN transfer_id TEXT REFERENCES transactions(id);
         CREATE INDEX IF NOT EXISTS idx_transactions_transfer ON transactions(transfer_id);
         "#,
@@ -136,7 +136,7 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         "widen_account_types",
         r#"
         -- Money's account taxonomy is far larger than the original four values
-        -- (checking|savings|credit|cash) — see §6.1g. SQLite
+        -- (checking|savings|credit|cash). SQLite
         -- cannot alter a CHECK constraint in place, so this is the standard
         -- table-rebuild: create, copy, drop, rename.
         --
@@ -201,12 +201,12 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         "0011",
         "payees_and_cleared_state",
         r#"
-        -- Payees as first-class rows (§10.3 item 8), plus the register columns
+        -- Payees as first-class rows, plus the register columns
         -- Money shows that the app could not: the check Number and the
-        -- three-state cleared flag (§6.1a).
+        -- three-state cleared flag.
         --
         -- NOTE ON MEMO: the plan called for a `memo` column separate from
-        -- `notes`. The sampled transaction form (§6.1b) shows only ONE such
+        -- `notes`. The sampled transaction form shows only ONE such
         -- field, "Memo:", so `transactions.notes` IS the memo. No second column.
         CREATE TABLE IF NOT EXISTS payees (
             id               TEXT PRIMARY KEY,
@@ -244,7 +244,7 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         "0012",
         "statements",
         r#"
-        -- Reconcile ("Balance this account", §6.1c / §6.1f). One row per
+        -- Reconcile ("Balance this account"). One row per
         -- statement. `status` is what makes Postpone and the resume dialog
         -- work: an 'in_progress' row is picked up next time.
         CREATE TABLE IF NOT EXISTS statements (
@@ -289,7 +289,7 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         -- Money's categories are a two-level tree (category / subcategory),
         -- each one either INCOME or EXPENSE, and each optionally mapped to a
         -- tax line. `kind` is load-bearing: every category picker filters on
-        -- it (§6.1e), and Taxes (§10.4 item 16) is built on
+        -- it, and Taxes is built on
         -- `tax_line`.
         ALTER TABLE categories ADD COLUMN parent_id TEXT REFERENCES categories(id) ON DELETE SET NULL;
         ALTER TABLE categories ADD COLUMN kind TEXT NOT NULL DEFAULT 'expense'
@@ -316,7 +316,7 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
          );
 
         -- budgets was keyed by `category_name` TEXT, so renaming a category
-        -- silently orphaned its budget (§10.1). Re-key to category_id.
+        -- silently orphaned its budget. Re-key to category_id.
         -- Any budget naming a category that no longer exists gets that
         -- category created first, so NO budget row is dropped by the rebuild.
         INSERT INTO categories (id, name)
@@ -403,7 +403,7 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         -- current afterwards. `upsert_payee` was written but never called, so
         -- every transaction entered, edited, transferred, reconciled or
         -- imported since 0011 has `payee_id = NULL` and its payee is absent
-        -- from the table. See §13.
+        -- from the table.
         --
         -- The write paths are fixed as of this migration. This repairs the
         -- rows they left behind. It is 0011's backfill run again, unchanged
@@ -436,7 +436,7 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         -- price source does not carry, or a file whose owner has never asked
         -- for a refresh.
         --
-        -- Nothing fetches automatically. See `prices.rs` and §27:
+        -- Nothing fetches automatically. See `prices.rs`:
         -- this is the only feature in the app that talks to the outside world,
         -- and it does so only when the user presses the button.
         ALTER TABLE investments ADD COLUMN last_price_cents INTEGER;
@@ -454,7 +454,7 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         -- A template is deliberately NOT a transaction. It has no account, no
         -- date and no cleared state — those belong to the moment you enter it,
         -- not to the pattern. Everything else the form owns is here, including
-        -- split lines, because the motivating example (§10.1) is a Walmart
+        -- split lines, because the motivating example is a Walmart
         -- trip split across groceries, household and pharmacy: a template that
         -- could not carry splits would miss the case that made splits matter.
         --
@@ -568,7 +568,7 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         "0020",
         "app_settings",
         r#"
-        -- Small key/value store for app preferences (§34).
+        -- Small key/value store for app preferences.
         --
         -- Inside the encrypted database rather than a plaintext config file
         -- beside it: the app's whole premise is that one file holds everything
@@ -587,7 +587,7 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         "0021",
         "opening_balance_rows_and_fitid",
         r#"
-        -- Two repairs (§38).
+        -- Two repairs.
         --
         -- 1. OFX carries a bank-assigned unique id per transaction (FITID).
         --    It is the honest duplicate key for re-imports — two $4.50 coffees
@@ -645,7 +645,7 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         "0022",
         "investment_lots",
         r#"
-        -- Investments become a portfolio (§41).
+        -- Investments become a portfolio.
         --
         -- Before this, `investments` was a flat list of holdings with a typed
         -- quantity, a typed cost and a typed value, belonging to no account.
@@ -765,7 +765,7 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         "0023",
         "goal_linkage",
         r#"
-        -- Savings goals that watch an account (§46).
+        -- Savings goals that watch an account.
         --
         -- `saved_cents` was a number the user typed and then had to keep
         -- typing. A goal may now be linked to an account, and transactions
@@ -782,8 +782,8 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         "0024",
         "accounts_tax_included",
         r#"
-        -- Money's "Choose accounts to include in tax return information"
-        -- (§48). Income, dividends and gains inside a tax-deferred
+        -- Money's "Choose accounts to include in tax return information".
+        -- Income, dividends and gains inside a tax-deferred
         -- account are not taxable events, so Money leaves retirement
         -- accounts out of its tax reports; the tax reports here did not,
         -- which overstated Schedule B and D for anyone with a 401(k).
@@ -798,7 +798,7 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         "transaction_tax_line",
         r#"
         -- Money's "add a single transaction to a tax line / remove a single
-        -- transaction from a tax line" (§53). Tax lines belong to
+        -- transaction from a tax line". Tax lines belong to
         -- categories; this is the per-transaction exception. NULL = follow
         -- the category (every existing row); '' = this one is NOT
         -- tax-related whatever its category says; a line name = this one
@@ -811,11 +811,11 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         "0026",
         "recurring_transfers",
         r#"
-        -- Recurring transfers and scheduled goal contributions
-        -- (§57). A rule with a transfer_account_id is Money's scheduled
+        -- Recurring transfers and scheduled goal contributions.
+        -- A rule with a transfer_account_id is Money's scheduled
         -- transfer: `amount_cents` (negative) leaves account_id and the
         -- same amount lands in transfer_account_id, entered as one linked
-        -- pair. goal_id tags the receiving half for a savings goal (§46).
+        -- pair. goal_id tags the receiving half for a savings goal.
         ALTER TABLE recurrences ADD COLUMN transfer_account_id TEXT REFERENCES accounts(id) ON DELETE SET NULL;
         ALTER TABLE recurrences ADD COLUMN goal_id TEXT REFERENCES goals(id) ON DELETE SET NULL;
         "#,
@@ -825,9 +825,9 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         "funding_transfer_link",
         r#"
         -- A buy paid from, or a sell deposited to, another account writes a
-        -- linked cash pair (§41). Until now the buy row did not
+        -- linked cash pair. Until now the buy row did not
         -- know which pair was its own, so "Pay from" could not be changed
-        -- after entry (§71). funding_txn_id is the id of the pair's row in
+        -- after entry. funding_txn_id is the id of the pair's row in
         -- the investment account; its transfer_id leads to the other side.
         ALTER TABLE transactions ADD COLUMN funding_txn_id TEXT REFERENCES transactions(id) ON DELETE SET NULL;
         "#,
@@ -865,7 +865,7 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         "0029",
         "register_index",
         r#"
-        -- §80: the register reads one account in (date, rowid) order and the
+        -- The register reads one account in (date, rowid) order and the
         -- running balance is a window over that order. With only the
         -- account index SQLite sorted every load; this index hands the rows
         -- over already ordered. lot_allocations(sell_id) is the PK's prefix
@@ -877,9 +877,9 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         "0030",
         "account_value_rounding",
         r#"
-        -- §81: how THIS account's holdings are rounded to the cent —
+        -- How THIS account's holdings are rounded to the cent —
         -- 'nearest' | 'down' — or NULL to follow the file's setting
-        -- (app_settings 'ui.holding_rounding', §79). Brokers differ, and a
+        -- (app_settings 'ui.holding_rounding'). Brokers differ, and a
         -- file can hold more than one broker.
         ALTER TABLE accounts ADD COLUMN value_rounding TEXT
             CHECK (value_rounding IS NULL OR value_rounding IN ('nearest', 'down'));
@@ -889,7 +889,7 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         "0031",
         "payee_rules",
         r#"
-        -- §84: Money's payee rename rules. A downloaded row whose payee
+        -- Money's payee rename rules. A downloaded row whose payee
         -- CONTAINS match_text (case-insensitive) is filed under payee_name,
         -- and under category_id when the file gave it none. Applied at import
         -- and, on request, to what is already in the file. Longest match
@@ -908,7 +908,7 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         "0032",
         "asset_revaluations_and_security",
         r#"
-        -- §93: what a house or a car is worth changes without anyone spending
+        -- What a house or a car is worth changes without anyone spending
         -- anything. A revaluation row moves the account's balance and shows in
         -- net worth, but is NOT income and NOT spending: booking a $20,000
         -- rise on a house as income would swamp every category report with
@@ -917,7 +917,7 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         -- worth queries do not.
         ALTER TABLE transactions ADD COLUMN is_revaluation INTEGER NOT NULL DEFAULT 0;
 
-        -- §93: the debt an asset carries. On the LIABILITY, pointing at the
+        -- The debt an asset carries. On the LIABILITY, pointing at the
         -- asset, so a house can have both a mortgage and a HELOC against it
         -- while each debt is secured on exactly one thing.
         ALTER TABLE accounts ADD COLUMN secured_by_account_id TEXT
@@ -930,12 +930,12 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         "0033",
         "split_transfers_and_loan_terms",
         r#"
-        -- §94: a split line that moves money to another account, not to a
+        -- A split line that moves money to another account, not to a
         -- category. Without this a mortgage payment cannot be one
         -- transaction: interest is a category, escrow and principal are other
         -- accounts, and a split could only ever hold categories. This is also
         -- what QIF's bracketed account inside a split line has always meant
-        -- (§65 noted it was dropped).
+        -- (the importer used to drop it).
         ALTER TABLE splits ADD COLUMN transfer_account_id TEXT
             REFERENCES accounts(id) ON DELETE SET NULL;
         -- The row this line wrote in that account. SET NULL rather than
@@ -946,7 +946,7 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
 
         CREATE INDEX IF NOT EXISTS idx_splits_transfer ON splits(transfer_account_id);
 
-        -- §94: what a loan costs and how a payment divides.
+        -- What a loan costs and how a payment divides.
         --
         -- `apr_micro` is the annual rate in millionths (5.875% = 5_875_000),
         -- so a rate is exact rather than a float. Interest for a period is
@@ -982,7 +982,7 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         "0034",
         "mark_split_transfer_rows",
         r#"
-        -- §94: the row a transfer split line writes in the OTHER account.
+        -- The row a transfer split line writes in the OTHER account.
         --
         -- It is one half of a transfer, so no category, payee or tax report
         -- may count it — the same reason `transfer_id IS NULL` excludes an
@@ -999,7 +999,7 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         "0035",
         "classifications",
         r#"
-        -- §112: Money's classifications — a second (and third, and Nth)
+        -- Money's classifications — a second (and third, and Nth)
         -- tagging axis, orthogonal to the category tree. A category says what
         -- KIND of spending a line is; a classification says what it was FOR.
         -- "Repairs" is the category; "Lake house" is the classification
@@ -1035,7 +1035,7 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         -- splits a property expense across two categories.
         --
         -- CASCADE from both parents, so a deleted row or a rewritten split set
-        -- takes its links with it, and §101's undo — which photographs this
+        -- takes its links with it, and undo — which photographs this
         -- table beside `transactions` and `splits` — puts them back.
         CREATE TABLE IF NOT EXISTS transaction_classes (
             transaction_id    TEXT NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
@@ -1055,7 +1055,7 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         "0036",
         "loan_extra_principal",
         r#"
-        -- §121: the part of a mortgage payment that is not on the schedule.
+        -- The part of a mortgage payment that is not on the schedule.
         --
         -- A payment larger than the scheduled P&I plus escrow is not a bank
         -- rounding difference: the remainder is principal paid ahead,
@@ -1078,7 +1078,7 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         "0037",
         "budget_period",
         r#"
-        -- §131: is this budget a monthly figure or a yearly one?
+        -- Is this budget a monthly figure or a yearly one?
         --
         -- Some costs are only ever known annually. Vehicle registration is
         -- "about $100 a year"; typed into a monthly budget it claims $100
@@ -1101,7 +1101,7 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         "0038",
         "create_budget_plans",
         r#"
-        -- §138: the YEAR plan.
+        -- The YEAR plan.
         --
         -- > "I'm seeing that I have to budget every single month. Not put a
         -- >  budget in and see how it holds up for every month of the year."
@@ -1148,7 +1148,7 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         "0039",
         "budget_plans_spread_mode",
         r#"
-        -- §143: what the months mask MEANS.
+        -- What the months mask MEANS.
         --
         -- > "if I designate say Jan and Jul as the months a certain bill gets
         -- >  paid I still want that bill's monthly amount in all the other
@@ -1189,19 +1189,19 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         "0040",
         "envelope_provenance",
         r#"
-        -- §147: who put that figure there.
+        -- Who put that figure there.
         --
         -- A child set back to 0 (it could not be deleted) left its parent at
         -- the figure the child had raised it to: once a mistake was made, the
         -- parent never corrected.
         --
-        -- §130/§131/§137's envelope rule only ever RAISES a parent. Nothing
+        -- The envelope rule only ever RAISES a parent. Nothing
         -- has ever lowered one, so a parent raised by a figure later reduced
         -- or mistyped keeps the high-water mark for ever. One user found an
         -- Automobile envelope of $300 sitting over children that were all
         -- blank.
         --
-        -- The fix cannot be "parent always equals its children": §130's whole
+        -- The fix cannot be "parent always equals its children": the envelope rule's whole
         -- point is HEADROOM, and a deliberately roomy parent -- $900 over
         -- $500 of children -- has to survive its children changing. So the
         -- rule needs to know which figures are ITS and which are the user's.
@@ -1229,7 +1229,7 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         "0041",
         "envelope_asked_for",
         r#"
-        -- §150: the figure the user asked for, kept.
+        -- The figure the user asked for, kept.
         --
         -- 0040 asked "whose figure is this", which fixed the stuck envelope
         -- but threw away a real decision on the way. Typing 600 into Bills
@@ -1254,11 +1254,11 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         -- This REPLACES `auto_envelope` rather than joining it: "who owns
         -- this" stops being a question. A parent nobody ever typed has no
         -- asked_for, so when its children stop claiming there is nothing to
-        -- fall back to and the envelope goes -- which is §137's rule falling
+        -- fall back to and the envelope goes -- which is the empty-envelope rule falling
         -- out of the arithmetic instead of being a special case.
         --
         -- NULL, not 0: "never typed one" and "typed zero" are different
-        -- answers, and §138 has already established that a plan of zero is a
+        -- answers, and the year plan already treats a plan of zero as a
         -- real decision that gets measured against.
         ALTER TABLE budgets ADD COLUMN asked_for_cents INTEGER;
         ALTER TABLE budget_plans ADD COLUMN asked_for_cents INTEGER;
@@ -1276,7 +1276,7 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         "0042",
         "tsp_reallocations_are_exchanges",
         r#"
-        -- §167: a TSP reallocation was written as a Sell of one fund and a
+        -- A TSP reallocation was written as a Sell of one fund and a
         -- Buy of another at that day's price. That booked a realized gain
         -- inside a tax-deferred plan and replaced the contributions' cost
         -- basis and dates with the day's market value -- so the plan's cost
@@ -1329,7 +1329,7 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         "0043",
         "account_sort_order",
         r#"
-        -- §169: where an account sits in every list of accounts -- the
+        -- Where an account sits in every list of accounts -- the
         -- account bar, the Home page's favorites, the Favorites menu, the
         -- Account List. NULL means never placed: those sort after the placed
         -- ones, by name, so a file that has never arranged anything reads
@@ -1341,23 +1341,23 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         "0044",
         "tsp_contributions_have_a_cash_side",
         r#"
-        -- §172: a TSP contribution -- payroll deferral, agency match, the
+        -- A TSP contribution -- payroll deferral, agency match, the
         -- automatic 1%, a loan repayment withheld from pay -- is a Buy paid
-        -- with money that never touched a bank account, and §90 gives such a
+        -- with money that never touched a bank account, and the importer gives such a
         -- buy a deposit for the same amount on the same day. Which buys HAVE
         -- that deposit depends on the road they came in by: the Import QIF
         -- dialog proposes the Contribution treatment from the memo wording
-        -- and writes the deposit; the TSP importer (§103) ran the QIF path
+        -- and writes the deposit; the TSP importer ran the QIF path
         -- with no memo rules, so its buys are bare and the plan's cash
-        -- drifts negative by every dollar paid in. §172 made the importer
-        -- supply the rules; this writes the cash side for the bare buys
-        -- already in the file -- and ONLY the bare ones. §172.1: contributions
+        -- drifts negative by every dollar paid in. The TSP importer now
+        -- supplies the rules; this writes the cash side for the bare buys
+        -- already in the file -- and ONLY the bare ones. Contributions
         -- that came in through the dialog already have their deposits, under
         -- the file's own categories; the first draft of this wrote
         -- a second one beside each, which would have pushed the plan's cash
         -- positive by the lifetime contributions. A deposit is "already
         -- there" when the same account has, on the same day, a cash row for
-        -- the same amount whose payee is the memo or whose note is §90's
+        -- the same amount whose payee is the memo or whose note is the treatment's
         -- "Contribution — <fund>"; buys are counted against such rows in
         -- groups, so two equal contributions on one day with one deposit
         -- between them get exactly one more.
@@ -1389,8 +1389,8 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
            AND EXISTS (SELECT 1 FROM ctb_todo);
 
         -- The cash row's id is the buy's id with a prefix, so running this
-        -- again writes nothing, and the buy points at it as its funding row
-        -- (§71), so deleting the buy takes the deposit with it.
+        -- again writes nothing, and the buy points at it as its funding row,
+        -- so deleting the buy takes the deposit with it.
         INSERT INTO transactions (id, account_id, date, payee, category_id, amount_cents, is_reconciled, notes, cleared_state)
         SELECT 'ctb-' || buy_id, account_id, date, memo,
                (SELECT c.id FROM categories c WHERE c.name = 'Retirement Contributions' COLLATE NOCASE AND c.parent_id IS NULL LIMIT 1),
@@ -1412,7 +1412,7 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         "0045",
         "attachments",
         r#"
-        -- §170: a receipt, a statement, a photo, attached to a transaction or
+        -- A receipt, a statement, a photo, attached to a transaction or
         -- to an account. The bytes live IN the file, so they are encrypted
         -- at rest and carried by every backup (VACUUM INTO copies them) with
         -- no new machinery; the price is that a backup grows with them.
@@ -1447,7 +1447,7 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         "0046",
         "payee_rule_conditions",
         r#"
-        -- §171: a rule can look at more than the payee text. Amazon under
+        -- A rule can look at more than the payee text. Amazon under
         -- $20 is Books and over it is Household; "TRANSFER" in checking is
         -- one thing and in the card account another; a memo can say what a
         -- payee does not. Every condition is optional; NULL means "any", so

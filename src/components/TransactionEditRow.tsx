@@ -1,4 +1,4 @@
-// TransactionEditRow — Money's in-place transaction form (§6.1b).
+// TransactionEditRow — Money's in-place transaction form.
 //
 // Modeled on reference/ms-money-03-transaction-form.png. Three stacked bands,
 // all on the cream ground (--tm-ms-row-active):
@@ -47,14 +47,14 @@ export interface TransactionDraft {
   /** Set when the user picked "Transfer : <Account>" — the save becomes a
    *  create_transfer instead of an ordinary transaction. */
   transfer_to_account_id: string | null;
-  /** §164 — an EXISTING row whose transfer-ness the edit changes: a plain
+  /** An EXISTING row whose transfer-ness the edit changes: a plain
    *  row given "Transfer : <Account>" becomes one (the partner row is
    *  written), or a transfer given a category stops being one (the partner
    *  goes). Undefined when nothing about that changed. */
   convert?: "to_transfer" | "from_transfer";
-  /** The savings goal this row counts toward (§46); undefined = leave as is. */
+  /** The savings goal this row counts toward; undefined = leave as is. */
   goal_id?: string | null;
-  /** §112: the row's classification values, one per axis. undefined = leave
+  /** The row's classification values, one per axis. undefined = leave
    *  as they are; an entry with an empty `value_id` clears that axis. */
   classes?: ClassPick[];
 }
@@ -70,12 +70,12 @@ interface Props {
   initialSplits?: readonly NewSplit[];
   /** Other accounts, offered as "Transfer : <Account>" categories. */
   transferTargets?: readonly Account[];
-  /** Known payees, for name completion and category recall (§6.1b). */
+  /** Known payees, for name completion and category recall. */
   payees?: readonly Payee[];
   /** Create a category mid-entry. Resolves to the id to select. Omit to hide
    *  the "+ Add …" option in the category field. */
   onCreateCategory?: (draft: NewCategoryDraft) => Promise<string>;
-  /** Saved entry templates, most-used first (§31). */
+  /** Saved entry templates, most-used first. */
   commonTransactions?: readonly CommonTransaction[];
   /** Save the current form as a named template. */
   onSaveCommon?: (name: string, draft: TransactionDraft) => Promise<void>;
@@ -83,44 +83,44 @@ interface Props {
   onUseCommon?: (id: string) => void;
   /** Remove a saved template. Omit to hide the remove buttons. */
   onDeleteCommon?: (id: string) => Promise<void>;
-  /** The investment register has one more column (§41); a cash entry in
+  /** The investment register has one more column; a cash entry in
    *  that register pads to fit. */
   columns?: number;
-  /** §120: what the two amount boxes are called here. A loan says Increase /
+  /** What the two amount boxes are called here. A loan says Increase /
    *  Decrease, because nobody deposits money into a mortgage. */
   columnLabels?: { payment: string; deposit: string };
-  /** Goals that watch THIS account, or that a transfer from here can reach
-   *  (§46). Empty hides the field. */
+  /** Goals that watch THIS account, or that a transfer from here can reach.
+   *  Empty hides the field. */
   goals?: readonly Goal[];
-  /** §61: a Num to start a NEW transaction with (the check after the last
+  /** A Num to start a NEW transaction with (the check after the last
    *  one, offered only while checks are being written). */
   suggestedCheckNumber?: string | null;
-  /** §61: what "+" in the Num field fills in — the next check number. */
+  /** What "+" in the Num field fills in — the next check number. */
   nextCheckNumber?: string | null;
-  /** §69: the C cell of an open row toggles its cleared mark, so a
+  /** The C cell of an open row toggles its cleared mark, so a
    *  transaction can be cleared while it is being looked at. */
   onToggleCleared?: () => void;
-  /** §71: a new transaction starts on this date (the last one entered),
+  /** A new transaction starts on this date (the last one entered),
    *  not today — a stack of receipts is entered in date order. */
   defaultDate?: string | null;
-  /** §73: the register calls this before moving to another row. It saves
+  /** The register calls this before moving to another row. It saves
    *  the form when something changed ("saved"), does nothing when nothing
    *  did ("clean"), or refuses to leave a form that cannot be saved
    *  ("failed" — the error is shown on the form). */
   leaveRef?: React.MutableRefObject<(() => Promise<LeaveResult>) | null>;
-  /** §112: the file's classification axes. Empty hides the pickers, so a
+  /** The file's classification axes. Empty hides the pickers, so a
    *  file that never made one sees no new field. */
   classifications?: readonly Classification[];
-  /** §91: a new row started from the investment register's Activity list —
+  /** A new row started from the investment register's Activity list —
    *  Contribution, Fee, Withdrawal — arrives with its payee and category
    *  already filled in, so the only thing left to type is the amount. */
   preset?: { payee: string; categoryId: string | null; side?: "deposit" | "payment" } | null;
-  /** §161: called after Enter — the key or the button — has saved the row.
+  /** Called after Enter — the key or the button — has saved the row.
    *  The register uses it on a NEW transaction to open the next one, the way
    *  Money's register moves to the next entry line; a save that happened
-   *  because the user clicked elsewhere (§73) does not call it. */
+   *  because the user clicked elsewhere does not call it. */
   onEntered?: () => void;
-  /** §170: an attachment was added or removed on this row, so the register
+  /** An attachment was added or removed on this row, so the register
    *  can refresh its 📎 count. */
   onAttachmentsChanged?: () => void;
 }
@@ -131,7 +131,7 @@ const COLUMNS = 9;
 
 /** Seed the form from an existing row, or blank for a new transaction. */
 /** Every field the form owns. Declared explicitly, not inferred: the category
- *  was once missing from this shape and nothing complained (§15).
+ *  was once missing from this shape and nothing complained.
  *  Add a field to the form, and this type makes you seed it. */
 interface FormSeed {
   checkNumber: string;
@@ -173,7 +173,7 @@ function seed(
     // edit wrote NULL back over the real category.
     // A transfer has no category; its "category" IS the other account, and
     // that is how Money presents it, so seed the combo with the transfer
-    // entry (§20). Without this the field opened blank and an edit would
+    // entry. Without this the field opened blank and an edit would
     // have re-pointed the transfer at nothing.
     categoryId: row.transfer_account_id
       ? `transfer:${row.transfer_account_id}`
@@ -210,7 +210,7 @@ export default function TransactionEditRow({
 }: Props) {
   const initial = seed(row, suggestedCheckNumber, defaultDate, preset);
 
-  // §123 — where the caret starts.
+  // Where the caret starts.
   //
   // A NEW entry starts in the Date, as Money's register does: the date is the
   // one field on a new row that is a guess (today, or the last one entered),
@@ -224,11 +224,11 @@ export default function TransactionEditRow({
   const startIn: "payment" | "deposit" | "date" | "payee" =
     preset?.side === "payment" ? "payment" : preset?.side === "deposit" ? "deposit" : row ? "payee" : "date";
   const [goalId, setGoalId] = useState<string>(row?.goal_id ?? "");
-  // §112: what this row is FOR, one value per axis. A new row starts unset.
+  // What this row is FOR, one value per axis. A new row starts unset.
   const [classes, setClasses] = useState<ClassPick[]>(row?.classes ? [...row.classes] : []);
   // Money's picker is grouped Income / Expense and shows the full
-  // "Parent : Child" name (§6.1e, migration 0014). Transfers share the field,
-  // because that is how Money enters one (§10.2 item 5).
+  // "Parent : Child" name (migration 0014). Transfers share the field,
+  // because that is how Money enters one.
   const categoryItems: ComboItem[] = [
     ...categories
       .filter((c) => c.kind === "income")
@@ -245,14 +245,14 @@ export default function TransactionEditRow({
   // The Common Transactions menu: null = closed, "" = open, "save" = naming.
   const [commonMenu, setCommonMenu] = useState<null | "list" | "save">(null);
   const [commonName, setCommonName] = useState("");
-  // §183 — a template that failed to save or remove says so inside the menu,
+  // A template that failed to save or remove says so inside the menu,
   // which is where the user is looking. It was `void`ed and vanished.
   const [commonError, setCommonError] = useState<string | null>(null);
   const commonBtnRef = useRef<HTMLButtonElement>(null);
   const [commonRect, setCommonRect] = useState<DOMRect | null>(null);
 
   // The menu is portaled to <body> and positioned from the button's viewport
-  // rect, for the same reason the category list is (§19.1): this button strip
+  // rect, for the same reason the category list is: this button strip
   // is a row of the register table, which lives inside an `overflow-auto`
   // wrapper with a 52vh cap. An absolutely positioned menu here is CLIPPED by
   // that wrapper — and clipped in the way that hides the bug, since a short
@@ -286,11 +286,11 @@ export default function TransactionEditRow({
   const [notes, setNotes] = useState(initial.notes);
   const [error, setError] = useState<string | null>(null);
   const [showSplit, setShowSplit] = useState(false);
-  // §170 — the files attached to this row. Only a SAVED row has an id to
+  // The files attached to this row. Only a SAVED row has an id to
   // attach to; a new entry's button says so and stays disabled.
   const [showAttachments, setShowAttachments] = useState(false);
   const [attachmentCount, setAttachmentCount] = useState<number | null>(row?.attachment_count ?? null);
-  // §160 — where the caret goes when the split dialog closes. The dialog
+  // Where the caret goes when the split dialog closes. The dialog
   // unmounts with the button that had focus, and a keydown on <body> never
   // reaches this row's handlers, which is why Enter did nothing after Done.
   // The Memo is the field after Category, which a split has just replaced.
@@ -309,10 +309,10 @@ export default function TransactionEditRow({
     initialSplits.length ? [...initialSplits] : null
   );
   const isSplit = (splits?.length ?? 0) > 0;
-  // §181 — the far row of a split payment's transfer line (§94): the
+  // The far row of a split payment's transfer line: the
   // principal row in the loan register. Its amount, date and category are
   // the payment's line, and `update_transaction` refuses a change to any of
-  // them (§178). The refusal used to be the first the user heard of it, after
+  // them. The refusal used to be the first the user heard of it, after
   // typing a new amount into a form that then would not close; now the form
   // says so up front and does not offer those fields. Payee, Num and memo
   // stay editable — the backend allows them. The refusal stays as the net.
@@ -327,7 +327,7 @@ export default function TransactionEditRow({
     ? categoryId.slice(TRANSFER_PREFIX.length)
     : null;
 
-  /** Money offers a known payee's last category when you re-enter it (§6.1b).
+  /** Money offers a known payee's last category when you re-enter it.
    *  Only ever fills a category the user has not chosen, and only on a NEW
    *  transaction — silently re-filing something they are editing would be a
    *  surprise, and this is a suggestion, not a rule. */
@@ -348,7 +348,7 @@ export default function TransactionEditRow({
     }
 
     // Money offers the last AMOUNT too, and it is half of why entry there
-    // feels fast — most payees are the same figure every month (§17.4).
+    // feels fast — most payees are the same figure every month.
     // The sign decides the column: a payment goes in Payment, a deposit in
     // Deposit, which is how the user reads it back.
     if (payment === "" && deposit === "" && match.last_amount_cents != null) {
@@ -368,9 +368,9 @@ export default function TransactionEditRow({
     return null;
   }
 
-  // §183 — the save in progress, if one is. Enter by key was never
+  // The save in progress, if one is. Enter by key was never
   // disabled the way the button is, so two quick presses (or a press and a
-  // click elsewhere, §73) wrote the same new transaction twice. A second
+  // click elsewhere) wrote the same new transaction twice. A second
   // request while one is out waits for that one instead of sending another.
   const inFlight = useRef<Promise<boolean> | null>(null);
 
@@ -384,7 +384,7 @@ export default function TransactionEditRow({
   }
 
   async function save(): Promise<boolean> {
-    // §183 — DateField sends "" for a date it cannot read, rather than the
+    // DateField sends "" for a date it cannot read, rather than the
     // last one that parsed on the way.
     if (!date) {
       setError("Type a date the form can read, such as 8/3/2026.");
@@ -413,9 +413,9 @@ export default function TransactionEditRow({
         return false;
       }
     }
-    // Editing a transfer is allowed (§20) — both halves move together. §164:
-    // so is turning an ordinary transaction INTO a transfer, or a transfer
-    // back into one. §20.2 refused that as "a different pair of rows", and
+    // Editing a transfer is allowed — both halves move together.
+    // So is turning an ordinary transaction INTO a transfer, or a transfer
+    // back into one. An earlier version refused that as "a different pair of rows", and
     // it is — but an imported row that the bank called a transfer arrives as
     // an ordinary one, and delete-and-re-enter threw away its cleared mark
     // and everything typed on it. The register writes (or removes) the
@@ -456,7 +456,7 @@ export default function TransactionEditRow({
     }
   }
 
-  // §73: what the form looked like when it opened, to know whether leaving
+  // What the form looked like when it opened, to know whether leaving
   // it should save. A new form with nothing typed is not worth saving.
   const snapshot = () => JSON.stringify([checkNumber, date, payee, payment, deposit, categoryId, notes, goalId, splits, [...classes].sort((a, b) => a.classification_id.localeCompare(b.classification_id)).map((c) => `${c.classification_id}:${c.value_id}`)]);
   const opened = useRef<string | null>(null);
@@ -495,7 +495,7 @@ export default function TransactionEditRow({
     onUseCommon?.(t.id);
   }
 
-  // §183 — a template has a category or split lines, and no account to send
+  // A template has a category or split lines, and no account to send
   // money to (`NewCommonTransaction` has no transfer field). A transfer saved
   // as one came back with a blank category — an ordinary payment to nobody.
   const TRANSFER_TEMPLATE_REFUSAL =
@@ -543,10 +543,10 @@ export default function TransactionEditRow({
     }
   }
 
-  /** §161 — Enter, by key or by button: save, and if it saved, tell the
+  /** Enter, by key or by button: save, and if it saved, tell the
    *  register so a new entry can open the next line. */
   function enter() {
-    // §183 — a press while the save is still out is the same Enter; it must
+    // A press while the save is still out is the same Enter; it must
     // not open the next line twice either.
     if (inFlight.current) return;
     void commit().then((ok) => {
@@ -669,7 +669,7 @@ export default function TransactionEditRow({
       {/* 2 — the fields the grid does not show */}
       <tr className="active" onKeyDown={onKeyDown}>
         <td colSpan={columns}>
-          {/* §181 — a refused save says so here, above the fields, in red,
+          {/* A refused save says so here, above the fields, in red,
               and the form stays open with what was typed. It was a short
               span in the button strip, easy to miss beside four buttons —
               "prevents edit but no warning or message". */}
@@ -744,7 +744,7 @@ export default function TransactionEditRow({
               onChange={setClasses}
               idPrefix="txn-class"
             />
-            {/* §117.3 — this field is the TRANSACTION's value. On a split
+            {/* This field is the TRANSACTION's value. On a split
                 whose lines carry their own, an empty field here means "the
                 lines answer for themselves", not "not classified", and the
                 difference is invisible unless it is written down. */}
@@ -1020,7 +1020,7 @@ export default function TransactionEditRow({
               categories={categories}
               classifications={classifications}
               parentClasses={classes}
-              // §102 — the same accounts the Category field offers, so a
+              // The same accounts the Category field offers, so a
               // split line can be a transfer exactly as a whole transaction
               // can. `transferTargets` already excludes this account.
               transferTargets={transferTargets}
@@ -1035,7 +1035,7 @@ export default function TransactionEditRow({
                 setSplits(lines);
                 returnFocus.current = true;
                 setShowSplit(false);
-                // The split total IS the transaction amount (§6.1e).
+                // The split total IS the transaction amount.
                 if (totalCents < 0) {
                   setPayment(formatAmountBare(totalCents));
                   setDeposit("");

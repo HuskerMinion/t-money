@@ -1,4 +1,4 @@
-// §183 — the Reports page keeps the report it is showing.
+// The Reports page keeps the report it is showing.
 //
 // The viewer is stubbed: what is under test is ReportsView's own state — which
 // spec is open, and what makes it change — not the report engine.
@@ -64,7 +64,7 @@ function view(initialOpen: ReportOpen | null) {
   return <ReportsView initialOpen={initialOpen} onOpenAccount={() => {}} onOpenTransaction={() => {}} />;
 }
 
-describe("§183 — saving a favorite does not reset the open report", () => {
+describe("Saving a favorite does not reset the open report", () => {
   it("keeps a rail report's changes and its new saved id, so the next Save updates it", async () => {
     const open: ReportOpen = { kind: "spending_by_category" };
     render(view(open));

@@ -1,4 +1,4 @@
-// §120 — the wizard has to know that a debt is owed, not held.
+// The wizard has to know that a debt is owed, not held.
 //
 // Reported: a new loan account showed its opening balance as a positive
 // number. That was wrong. The wizard stored whatever was typed, so a mortgage opened at 150,000 became a
@@ -21,7 +21,7 @@ async function toDetails(category: string, type: string) {
   return onCreate;
 }
 
-describe("New account wizard — opening balance sign (§120)", () => {
+describe("New account wizard — opening balance sign", () => {
   it("a mortgage's opening balance is stored as a debt", async () => {
     const onCreate = await toDetails("Other account type (such as loan, asset, or watch accounts)", "mortgage");
     await userEvent.type(screen.getByLabelText("Name:"), "418 Maple Street");

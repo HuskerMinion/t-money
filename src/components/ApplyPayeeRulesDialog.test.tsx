@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-// §106 — the two things that make a bulk edit safe to press.
+// The two things that make a bulk edit safe to press.
 //
-// The apply itself has worked since §84. What is under test is the gate: that
+// The apply itself has long worked. What is under test is the gate: that
 // you see every row before it happens, that unticking one really leaves it
 // alone, and that the dialog says the change is undoable — because a bulk edit
 // over ten years of history is only ever pressed by someone who believes both.
@@ -60,7 +60,7 @@ function open(onApplied = vi.fn()) {
   return { user: userEvent.setup(), onApplied };
 }
 
-describe("ApplyPayeeRulesDialog (§106)", () => {
+describe("ApplyPayeeRulesDialog", () => {
   it("shows every row with what it says now, grouped by the rule that claimed it", async () => {
     open();
     await screen.findByText(/3 transactions would change/);
@@ -131,9 +131,9 @@ describe("ApplyPayeeRulesDialog (§106)", () => {
   });
 });
 
-describe("§183 — two rules with the same text", () => {
+describe("Two rules with the same text", () => {
   it("shows each rule's rows under its own heading", async () => {
-    // §171 lets two rules share their text when their conditions differ.
+    // Two rules may share their text when their conditions differ.
     plan = [
       change(),
       change({ transaction_id: "t-9", rule_id: "r-netflix-big", new_payee: "Netflix Premium", amount_cents: -2299 }),

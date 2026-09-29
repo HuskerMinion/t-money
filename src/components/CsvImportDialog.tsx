@@ -1,4 +1,4 @@
-// CSV import (§88): look, map, confirm. The backend reads the file and
+// CSV import: look, map, confirm. The backend reads the file and
 // guesses which column is which from the header names; this dialog shows the
 // first rows under those headers, lets the user correct the guess with a
 // select per role, and shows — from the backend, re-read on every change —
@@ -18,7 +18,7 @@ interface Props {
   accountName: string;
   onImported: (summary: ImportSummary) => void;
   onCancel: () => void;
-  /** §89: when given, Import hands the confirmed mapping back instead of
+  /** When given, Import hands the confirmed mapping back instead of
    *  writing, so the match review can run on the rows it produces. */
   onConfirm?: (mapping: CsvMapping) => void;
 }
@@ -42,7 +42,7 @@ export default function CsvImportDialog({ path, accountId, accountName, onImport
   const [error, setError] = useState<string | null>(null);
   const file = path.split(/[\\/]/).pop() ?? path;
 
-  // §183 — which preview still counts. Every change of a column re-reads the
+  // Which preview still counts. Every change of a column re-reads the
   // file, and two quick changes can answer out of order: the older reply
   // landing last put its mapping back over the newer choice, so the select
   // showed one column and Import sent another.
@@ -113,17 +113,17 @@ export default function CsvImportDialog({ path, accountId, accountName, onImport
         </div>
         <div className="tm-dialog-body space-y-3 text-[12px]" style={{ maxHeight: "78vh", overflowY: "auto" }}>
           {!preview && !error && <div className="tm-text-muted">Reading…</div>}
-          {/* §132 — the wrong door. A tsp.gov export is a .csv, so this is
+          {/* The wrong door. A tsp.gov export is a .csv, so this is
               where it lands, and this importer reads one signed amount per
               row: the balance comes out right and every row is a bare payee
               with no fund, no units and no price. Said BEFORE the mapping
               table, because by the time you are choosing columns you have
               already decided this is the right screen. */}
           {preview?.looks_like_tsp && (
-            /* §152 — the wrong door is now SHUT, not signposted.
+            /* The wrong door is now SHUT, not signposted.
                > "Why bother with the warning when you can just limit it to
                >  the TSP specific import?"
-               §132 put a warning here and left the mapping table and a live
+               An earlier version put a warning here and left the mapping table and a live
                Import button underneath it, so the only thing standing between
                the user and a bad import was reading a paragraph. Nothing below
                this renders now, and the button that would have done the
@@ -141,7 +141,7 @@ export default function CsvImportDialog({ path, accountId, accountName, onImport
               </p>
             </div>
           )}
-          {/* §175 — the same shut door for a brokerage or plan history: a
+          {/* The same shut door for a brokerage or plan history: a
               Fidelity, Schwab or Vanguard export has Symbol and Quantity
               columns, and flat it would be bare cash rows. There is no CSV
               reader for those; the broker's QIF / OFX / QFX download goes
@@ -205,7 +205,7 @@ export default function CsvImportDialog({ path, accountId, accountName, onImport
                 </label>
               </div>
 
-              {/* §165 — two tables, and each says which it is. The first is
+              {/* Two tables, and each says which it is. The first is
                   the file exactly as the bank wrote it, under the bank's own
                   column names; the second is what T-Money will write into
                   the register from it. They used to sit one above the other
@@ -249,7 +249,7 @@ export default function CsvImportDialog({ path, accountId, accountName, onImport
                     payee rule can still rename a row or fill in its category on the way in. If a column is wrong,
                     change the mapping and this updates. Nothing is written until you click Import.
                   </div>
-                  {/* §159 — I1: sized to its content rather than stretched to
+                  {/* I1: sized to its content rather than stretched to
                       the dialog's width, which put the date at one edge and
                       the amounts at the other with nothing between. Short
                       columns, read left to right. */}
@@ -324,7 +324,7 @@ export default function CsvImportDialog({ path, accountId, accountName, onImport
                 type="button"
                 onClick={() => {
                   onCancel();
-                  // §155 — with the file, so it is not asked for twice.
+                  // With the file, so it is not asked for twice.
                   runCommand("import.tsp", path);
                 }}
               >

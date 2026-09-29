@@ -1,4 +1,4 @@
-// §93 — Update value: you type what it is worth, not what it changed by.
+// Update value: you type what it is worth, not what it changed by.
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -31,7 +31,7 @@ const truck = {
   account_notes: null,
 } as Account;
 
-describe("UpdateValueDialog (§93)", () => {
+describe("UpdateValueDialog", () => {
   beforeEach(() => {
     resetIpc();
     setIpcHandlers({ set_account_value: () => null });
@@ -77,7 +77,7 @@ describe("UpdateValueDialog (§93)", () => {
   });
 });
 
-describe("§183 — Update value and the Edit menu", () => {
+describe("Update value and the Edit menu", () => {
   beforeEach(() => {
     resetIpc();
     setIpcHandlers({ set_account_value: () => null, undo_status: () => ({ undo: "update a value", redo: null }) });

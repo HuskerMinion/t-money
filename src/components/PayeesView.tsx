@@ -1,4 +1,4 @@
-// Payees manager — §10.3 item 8.
+// Payees manager.
 //
 // `transactions.payee` is a denormalized copy of the name (the register reads
 // it directly), so a rename here rewrites every transaction as well; the store
@@ -28,10 +28,10 @@ export default function PayeesView() {
 
   const [filter, setFilter] = useState("");
   const newRef = useRef<HTMLInputElement>(null);
-  // §102 — File → New → Payee, when this screen is the one in front (§97
+  // File → New → Payee, when this screen is the one in front (command
   // priority). Off screen, the shell brings you here first.
   useCommand("new.payee", () => newRef.current?.focus(), true, 10);
-  // §102 — Tools → Payee rename rules. The card is on this screen; when the
+  // Tools → Payee rename rules. The card is on this screen; when the
   // screen is open the menu item scrolls to it, and the shell brings you here
   // when it is not.
   useCommand(
@@ -49,9 +49,9 @@ export default function PayeesView() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // §183 — a refused merge, shown in the merge dialog. It went to the edit
+  // A refused merge, shown in the merge dialog. It went to the edit
   // form's error line, behind the dialog's backdrop, where it could not be
-  // seen (the §181 rule for the category dialogs). Cleared when the question
+  // seen (the same rule as the category dialogs). Cleared when the question
   // changes, so it never outlives the choice it answered.
   const [dialogError, setDialogError] = useState<string | null>(null);
   useEffect(() => {
@@ -107,7 +107,7 @@ export default function PayeesView() {
   }
 
   /** Add a payee before its first transaction exists — the case the screen
-   *  had no answer for (§37.4). */
+   *  had no answer for. */
   async function add(e: React.FormEvent) {
     e.preventDefault();
     const wanted = newName.trim();
@@ -130,7 +130,7 @@ export default function PayeesView() {
     const ok = await run("Payees merged.", () => mergePayees(merging.id, mergeInto), setDialogError);
     if (ok) {
       if (selectedId === merging.id) {
-        // §183 — load the survivor into the form, not just its id. Setting
+        // Load the survivor into the form, not just its id. Setting
         // only `selectedId` left the merged-away payee's name in the Name
         // box under "Edit <survivor>", and Save then renamed the survivor —
         // and every transaction it had just been given — back to the name

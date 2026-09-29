@@ -7,7 +7,7 @@ const g = (parent: string, ...children: string[]) => ({
 });
 const GROUPS = [g("Bills", "Electricity", "Heating oil", "Water"), g("Food", "Groceries"), g("Heating oil delivery")];
 
-describe("§156 — Find on this page", () => {
+describe("Find on this page", () => {
   it("matches a child and shows it under its parent with only the matching siblings", () => {
     const out = matchGroups(GROUPS, "heat");
     expect(out.map((x) => x.parent.name)).toEqual(["Bills", "Heating oil delivery"]);

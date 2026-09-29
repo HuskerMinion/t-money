@@ -27,7 +27,7 @@ pub fn parse_amount_cents(s: &str) -> Option<i64> {
     cents.to_i64()
 }
 
-/// Parse a share count or a unit price into millionths (§41's unit), exactly.
+/// Parse a share count or a unit price into millionths (the stored unit), exactly.
 /// `"12.3456"` → 12_345_600. Signs and thousands separators are accepted.
 pub fn parse_micro(s: &str) -> Option<i64> {
     let cleaned: String = s
@@ -51,7 +51,7 @@ pub fn parse_micro(s: &str) -> Option<i64> {
 /// - `YYYY-MM-DD`, optionally with a time — the line format `qif.rs` has
 ///   always parsed, and what the demo data uses.
 /// - `M/D/YYYY`, `MM/DD/YY` and `MM/DD'YY` — what Quicken, Money and bank
-///   export buttons actually write (§37.5). The apostrophe is QIF's own
+///   export buttons actually write. The apostrophe is QIF's own
 ///   century marker: `'` introduces 2000-2099, `/` a 19xx year.
 ///
 /// Spaces inside the date (`" 8/ 3/2026"`) are QIF's column padding and are

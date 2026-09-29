@@ -60,7 +60,7 @@ describe("shaping a report", () => {
     expect(one.rows.map((r) => r.label)).toEqual(["x", "A", "B"]);
   });
 
-  // §180 — a group row carries no amounts; its money is in the rows beneath it.
+  // A group row carries no amounts; its money is in the rows beneath it.
   const group = (label: string, level = 0): ReportLine => ({ key: label, key_kind: "category", label, level, style: "group", cells: [{ text: null, cents: null }, { text: null, cents: null }] });
   const blank = (label: string, level: number): ReportLine => ({ ...group(label, level), style: "normal" });
   const withGroup = (rows: ReportLine[]): Report => ({ ...report, rows: [header("Expense Categories"), ...rows, total("Total Expenses", 0)] });
@@ -107,7 +107,7 @@ describe("shaping a report", () => {
     expect(chartFor(report, { ...DEFAULT_OPTIONS, chart: "pie" })!.kind).toBe("pie");
     const two = { ...report, chart: { kind: "line" as const, series: [{ label: "a", points: [] }, { label: "b", points: [] }] } };
     expect(chartFor(two, { ...DEFAULT_OPTIONS, chart: "pie" })!.kind).toBe("line");
-    // §59: the viewer's styles map onto the engine's kinds; a doughnut is a pie and needs one series too.
+    // The viewer's styles map onto the engine's kinds; a doughnut is a pie and needs one series too.
     expect(chartStyleFor(report, { ...DEFAULT_OPTIONS, chart: "doughnut" })).toBe("doughnut");
     expect(chartFor(report, { ...DEFAULT_OPTIONS, chart: "doughnut" })!.kind).toBe("pie");
     expect(chartStyleFor(two, { ...DEFAULT_OPTIONS, chart: "doughnut" })).toBe("line");

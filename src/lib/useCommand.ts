@@ -1,4 +1,4 @@
-// §97 — offering a command from a React component.
+// Offering a command from a React component.
 //
 // `useCommand("file.print", print)` means: while this component is mounted and
 // `enabled` holds, File → Print works and is not grayed out. When it unmounts,

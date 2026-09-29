@@ -1,4 +1,4 @@
-// Plan statement memos (§90) — what each line of a 401(k) export means.
+// Plan statement memos — what each line of a 401(k) export means.
 //
 // A plan administrator writes only the share side: a Buy for every payroll
 // contribution with no record of the money arriving, a ShrsOut for the
@@ -11,7 +11,7 @@ import Money from "./Money";
 import { api } from "../lib/ipc";
 import type { ImportMatchPreview, MemoGroup, MemoRule, Treatment } from "../lib/types";
 
-/** §91: a plan that only lets you download 90 days at a time is imported
+/** A plan that only lets you download 90 days at a time is imported
  *  four times a year, and retyping the same answers each time is the kind of
  *  friction that stops people keeping the account current. The answers are
  *  remembered per account. */
@@ -87,7 +87,7 @@ export default function PlanMemoDialog({ preview, onConfirm, onCancel }: Props) 
     };
   }, [preview.account_id]);
 
-  // §183 — Import stayed live while the answers were being remembered, and
+  // Import stayed live while the answers were being remembered, and
   // the parent starts the import only once that save has answered: a second
   // click in that gap sent a second onConfirm, and the statement in twice.
   const [busy, setBusy] = useState(false);

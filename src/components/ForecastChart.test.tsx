@@ -1,4 +1,4 @@
-// The two rules that decide whether the forecast panel is readable (§33).
+// The two rules that decide whether the forecast panel is readable.
 //
 // jsdom draws nothing, so these test the DECISIONS, not the picture: what
 // range to plot, and whether a chart is the right form at all. Both were got

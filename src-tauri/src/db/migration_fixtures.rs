@@ -56,7 +56,7 @@ fn migrate_to_latest(conn: &mut Connection) -> usize {
     assert_eq!(dangling, 0, "migration left dangling foreign keys");
     let applied: i64 = count(conn, "schema_migrations");
     assert_eq!(applied as usize, MIGRATIONS.len(), "not every migration is in the ledger");
-    // §182 — and the file agrees with itself the way the app checks it:
+    // And the file agrees with itself the way the app checks it:
     // balances, transfer pairs, splits and split transfer rows.
     crate::db::test_db::assert_consistent(conn);
     n
@@ -593,7 +593,7 @@ fn fixture_0035() -> Connection {
             ('a-chk',    'Checking', 'checking',     500000, '2026-01-01'),
             ('a-escrow', 'Escrow',   'asset',        120000, '2026-01-01'),
             ('a-mtg',    'Mortgage', 'mortgage', -15000000, '2026-01-01');
-        -- §182: by 0035 every balance is the sum of its rows (0021 made it so,
+        -- By 0035 every balance is the sum of its rows (0021 made it so,
         -- and the app has written an opening row since), so the fixture has
         -- the rows a real file of this version would.
         INSERT INTO transactions (id, account_id, date, payee, amount_cents) VALUES
@@ -748,77 +748,146 @@ const FROZEN: &[(&str, u64)] = &[
     ("0003", 0xc726ab16270d72bc),
     ("0004", 0xa6d7b1b5f02444b0),
     ("0005", 0xfef40edc3172c0ba),
-    ("0007", 0x2c106b33dedaae60),
+    // CHANGED DELIBERATELY: section references dropped from `--`
+    // comments; the statements are byte-for-byte what they were.
+    // Was 0x2c106b33dedaae60.
+    ("0007", 0x8e0bd85b12ce23b2),
     // CHANGED DELIBERATELY, as 0035 below: a file reference in a `--`
     // comment dropped, and the statements are byte-for-byte what they were.
     // Was 0xd5888ad779d41164.
-    ("0008", 0x2c7d610026bae0e2),
+    // CHANGED DELIBERATELY: section references dropped from `--`
+    // comments; the statements are byte-for-byte what they were.
+    // Was 0x2c7d610026bae0e2.
+    ("0008", 0x0825abafdc399a71),
     // CHANGED DELIBERATELY, as 0035 below: a file reference in a `--`
     // comment dropped, and the statements are byte-for-byte what they were.
     // Was 0x7af1e8716907a1ca.
-    ("0009", 0x2016eeeff7a94b2a),
+    // CHANGED DELIBERATELY: section references dropped from `--`
+    // comments; the statements are byte-for-byte what they were.
+    // Was 0x2016eeeff7a94b2a.
+    ("0009", 0xd39d1e5765d03566),
     ("0010", 0xd5c9f457ef7e17e4),
-    ("0011", 0xeb0bdcd3403f081d),
-    ("0012", 0xbe03da365415a5e0),
+    // CHANGED DELIBERATELY: section references dropped from `--`
+    // comments; the statements are byte-for-byte what they were.
+    // Was 0xeb0bdcd3403f081d.
+    ("0011", 0x28561be2999251b9),
+    // CHANGED DELIBERATELY: section references dropped from `--`
+    // comments; the statements are byte-for-byte what they were.
+    // Was 0xbe03da365415a5e0.
+    ("0012", 0x1cac4714bb371796),
     ("0013", 0x6aaef1480e3b0b23),
     // CHANGED DELIBERATELY, as 0035 below: a file reference in a `--`
     // comment dropped, and the statements are byte-for-byte what they were.
     // Was 0x432dd671e752428e.
-    ("0014", 0xebdf750444a9e13e),
+    // CHANGED DELIBERATELY: section references dropped from `--`
+    // comments; the statements are byte-for-byte what they were.
+    // Was 0xebdf750444a9e13e.
+    ("0014", 0x6e51659403a7a8b7),
     ("0015", 0x1f3d9f25fb75f45e),
     // CHANGED DELIBERATELY, as 0035 below: a file reference in a `--`
     // comment dropped, and the statements are byte-for-byte what they were.
     // Was 0x532c926017c2df62.
-    ("0016", 0x4248f4b500b351d8),
+    // CHANGED DELIBERATELY: section references dropped from `--`
+    // comments; the statements are byte-for-byte what they were.
+    // Was 0x4248f4b500b351d8.
+    ("0016", 0x9695b23525ab8a3c),
     // CHANGED DELIBERATELY, as 0035 below: a file reference in a `--`
     // comment dropped, and the statements are byte-for-byte what they were.
     // Was 0x491eedcee57bfbbb.
-    ("0017", 0x0d1ddedccb876b72),
-    ("0018", 0x80519c43944a8782),
+    // CHANGED DELIBERATELY: section references dropped from `--`
+    // comments; the statements are byte-for-byte what they were.
+    // Was 0x0d1ddedccb876b72.
+    ("0017", 0x6e0fa307e7377b4f),
+    // CHANGED DELIBERATELY: section references dropped from `--`
+    // comments; the statements are byte-for-byte what they were.
+    // Was 0x80519c43944a8782.
+    ("0018", 0xad0ffb9a236976ac),
     ("0019", 0x9f07d26611cc4fd6),
-    ("0020", 0x5385851f72f3cffa),
+    // CHANGED DELIBERATELY: section references dropped from `--`
+    // comments; the statements are byte-for-byte what they were.
+    // Was 0x5385851f72f3cffa.
+    ("0020", 0x09c21e6046caa1cf),
     // CHANGED DELIBERATELY, as 0035 below: a file reference in a `--`
     // comment dropped, and the statements are byte-for-byte what they were.
     // Was 0xa1f4a8bd5f8c6eb3.
-    ("0021", 0x7f6fdcd06d5fff3a),
+    // CHANGED DELIBERATELY: section references dropped from `--`
+    // comments; the statements are byte-for-byte what they were.
+    // Was 0x7f6fdcd06d5fff3a.
+    ("0021", 0x8300263a9171d96d),
     // CHANGED DELIBERATELY, as 0035 below: a file reference in a `--`
     // comment dropped, and the statements are byte-for-byte what they were.
     // Was 0xc0bede3eafbcb210.
-    ("0022", 0xbe2c6be49cf0284c),
+    // CHANGED DELIBERATELY: section references dropped from `--`
+    // comments; the statements are byte-for-byte what they were.
+    // Was 0xbe2c6be49cf0284c.
+    ("0022", 0x03f7888b1ef16a8d),
     // CHANGED DELIBERATELY, as 0035 below: a file reference in a `--`
     // comment dropped, and the statements are byte-for-byte what they were.
     // Was 0xfef4e8e11bb5bb97.
-    ("0023", 0x18b8b5dfe2adf9c0),
+    // CHANGED DELIBERATELY: section references dropped from `--`
+    // comments; the statements are byte-for-byte what they were.
+    // Was 0x18b8b5dfe2adf9c0.
+    ("0023", 0x625e9f140671ac88),
     // CHANGED DELIBERATELY, as 0035 below: a file reference in a `--`
     // comment dropped, and the statements are byte-for-byte what they were.
     // Was 0x4c54efc48c57be5e.
-    ("0024", 0x74d1e036c7013feb),
+    // CHANGED DELIBERATELY: section references dropped from `--`
+    // comments; the statements are byte-for-byte what they were.
+    // Was 0x74d1e036c7013feb.
+    ("0024", 0xac45bf86e43bf3eb),
     // CHANGED DELIBERATELY, as 0035 below: a file reference in a `--`
     // comment dropped, and the statements are byte-for-byte what they were.
     // Was 0x734b56bd577c8596.
-    ("0025", 0x81de1a7da1483dc1),
+    // CHANGED DELIBERATELY: section references dropped from `--`
+    // comments; the statements are byte-for-byte what they were.
+    // Was 0x81de1a7da1483dc1.
+    ("0025", 0x6b229d61deacd463),
     // CHANGED DELIBERATELY, as 0035 below: a file reference in a `--`
     // comment dropped, and the statements are byte-for-byte what they were.
     // Was 0x03a337486b4d5ed9.
-    ("0026", 0xfbe0adea87e4607c),
+    // CHANGED DELIBERATELY: section references dropped from `--`
+    // comments; the statements are byte-for-byte what they were.
+    // Was 0xfbe0adea87e4607c.
+    ("0026", 0x29c853e1ad21fe52),
     // CHANGED DELIBERATELY, as 0035 below: a file reference in a `--`
     // comment dropped, and the statements are byte-for-byte what they were.
     // Was 0xb902e82b22c81860.
-    ("0027", 0xc79abb5e5721addb),
+    // CHANGED DELIBERATELY: section references dropped from `--`
+    // comments; the statements are byte-for-byte what they were.
+    // Was 0xc79abb5e5721addb.
+    ("0027", 0xd81b788da4242bdc),
     ("0028", 0x760bc3adcdf203c8),
-    ("0029", 0xe85d34b55632a708),
-    ("0030", 0xdec772ca545837db),
-    ("0031", 0x515118adf0cfd8e5),
-    ("0032", 0xe8ca5d1939794436),
+    // CHANGED DELIBERATELY: section references dropped from `--`
+    // comments; the statements are byte-for-byte what they were.
+    // Was 0xe85d34b55632a708.
+    ("0029", 0xa8e6c835a5fe41a5),
+    // CHANGED DELIBERATELY: section references dropped from `--`
+    // comments; the statements are byte-for-byte what they were.
+    // Was 0xdec772ca545837db.
+    ("0030", 0xbc835ce7d1fbae60),
+    // CHANGED DELIBERATELY: section references dropped from `--`
+    // comments; the statements are byte-for-byte what they were.
+    // Was 0x515118adf0cfd8e5.
+    ("0031", 0xdad9771c017ca71e),
+    // CHANGED DELIBERATELY: section references dropped from `--`
+    // comments; the statements are byte-for-byte what they were.
+    // Was 0xe8ca5d1939794436.
+    ("0032", 0x338af90dc0a7412a),
     // CHANGED DELIBERATELY, as 0035 below: the example rate in a `--`
     // comment replaced, and the statement is byte-for-byte what it was.
     // Was 0xffc13bb140b9ba45.
-    ("0033", 0x7dafa6bc393ec3d7),
+    // CHANGED DELIBERATELY: section references dropped from `--`
+    // comments; the statements are byte-for-byte what they were.
+    // Was 0x7dafa6bc393ec3d7.
+    ("0033", 0x1d20cc4d6e679fd4),
     // CHANGED DELIBERATELY, as 0035 below: a British spelling in a `--`
     // comment corrected, and the statement is byte-for-byte what it was.
     // Was 0x38e061cfcec9dee8.
-    ("0034", 0x8a4bd3633ee90539),
-    // §128.1 — CHANGED DELIBERATELY, and this is the explanation the header
+    // CHANGED DELIBERATELY: section references dropped from `--`
+    // comments; the statements are byte-for-byte what they were.
+    // Was 0x8a4bd3633ee90539.
+    ("0034", 0x64752ef9c5e34759),
+    // CHANGED DELIBERATELY, and this is the explanation the header
     // asks for. 0035's SQL carried the author's street name in four `--`
     // comments, as the worked example for what a classification is. Migration
     // SQL is a `&'static str`: it is compiled into the binary verbatim,
@@ -832,26 +901,38 @@ const FROZEN: &[(&str, u64)] = &[
     // migration 0037 — there is nothing for a 0037 to do.
     //
     // Was 0x6f0ee6f974cbebf6.
-    ("0035", 0x1c8e53d79c5a39ea),
+    // CHANGED DELIBERATELY: section references dropped from `--`
+    // comments; the statements are byte-for-byte what they were.
+    // Was 0x1c8e53d79c5a39ea.
+    ("0035", 0x7d2c82088581e018),
     // CHANGED DELIBERATELY, for the same reason as 0035 above: 0036's `--`
     // comment quoted real mortgage figures. Only comment text changed; the
     // ALTER TABLE is byte-for-byte what it was. Was 0x91060de19d345907.
     // Changed again, the same way: a British spelling in a comment
     // corrected. Was 0xa4b646a97702d135.
-    ("0036", 0x10649dbe808362f9),
+    // CHANGED DELIBERATELY: section references dropped from `--`
+    // comments; the statements are byte-for-byte what they were.
+    // Was 0x10649dbe808362f9.
+    ("0036", 0x8892cc61ab035552),
     // CHANGED DELIBERATELY, as 0035 above: comment text reworded (a made-up
     // figure, US spelling), and the statement is byte-for-byte what it was.
     // Was 0xcd2f1404fc5f6f91.
-    ("0037", 0xe1eefc463dcfd335),
-    // §138 — budget_plans: the year plan's own table.
+    // CHANGED DELIBERATELY: section references dropped from `--`
+    // comments; the statements are byte-for-byte what they were.
+    // Was 0xe1eefc463dcfd335.
+    ("0037", 0xb595d4d8833d6283),
+    // budget_plans: the year plan's own table.
     // CHANGED DELIBERATELY, as 0035 above: comment text reworded, and the
     // statements are byte-for-byte what they were. Was 0x6c4f1d239b82d2a9.
     // Changed again, the same way: a British spelling in a comment
     // corrected. Was 0x7cf44517aa870357.
     // Changed again, the same way: the seasonal example and its figures
     // replaced, and story wording neutralized. Was 0x8af1f5d488297164.
-    ("0038", 0xd650ac1790424d4a),
-    // §143 — budget_plans.spread: which of the two things a months mask
+    // CHANGED DELIBERATELY: section references dropped from `--`
+    // comments; the statements are byte-for-byte what they were.
+    // Was 0xd650ac1790424d4a.
+    ("0038", 0x3e8fdd63d14c4dd5),
+    // budget_plans.spread: which of the two things a months mask
     // means. An ADD COLUMN with a default, so a file that already ran 0038
     // gains the column reading 'spent' and means exactly what it meant.
     // CHANGED DELIBERATELY, as 0035 above: a British spelling in a comment
@@ -859,8 +940,11 @@ const FROZEN: &[(&str, u64)] = &[
     // Was 0x595aefe408723761.
     // Changed again, the same way: the seasonal example and its figures
     // replaced. Was 0xbeeb6a10cbf6551c.
-    ("0039", 0x4197484cde8e5895),
-    // §147 — budgets.auto_envelope / budget_plans.auto_envelope: whether the
+    // CHANGED DELIBERATELY: section references dropped from `--`
+    // comments; the statements are byte-for-byte what they were.
+    // Was 0x4197484cde8e5895.
+    ("0039", 0xf2df63023221dbce),
+    // budgets.auto_envelope / budget_plans.auto_envelope: whether the
     // envelope rule put that figure there or a person did. Two ADD COLUMNs
     // with a default, so an existing file reads every figure as typed and
     // nothing moves under the user on upgrade.
@@ -870,25 +954,37 @@ const FROZEN: &[(&str, u64)] = &[
     // ones. Was 0x2fdf827d80fb7cbc.
     // Changed again, the same way: a quote that carried a figure replaced
     // with a paraphrase. Was 0x78f120cbf7c8138d.
-    ("0040", 0x01dd30808963fae5),
-    // §150 — asked_for_cents: the figure a person typed, kept underneath
+    // CHANGED DELIBERATELY: section references dropped from `--`
+    // comments; the statements are byte-for-byte what they were.
+    // Was 0x01dd30808963fae5.
+    ("0040", 0xa9c875cdc5f2b768),
+    // asked_for_cents: the figure a person typed, kept underneath
     // whatever the children push the envelope to. Replaces 0040's
     // auto_envelope as the thing the rule reasons about.
     // CHANGED DELIBERATELY, as 0035 above: comment text reworded, and the
     // statements are byte-for-byte what they were. Was 0x75405c52ba2d63d5.
-    ("0041", 0xfc44a453db7ec5af),
-    // §167 — a TSP reallocation already in the file becomes the exchange it
+    // CHANGED DELIBERATELY: section references dropped from `--`
+    // comments; the statements are byte-for-byte what they were.
+    // Was 0xfc44a453db7ec5af.
+    ("0041", 0x61eef8a0a1a645dd),
+    // A TSP reallocation already in the file becomes the exchange it
     // is: Sell/Buy rows carrying the importer's memos turn into Remove/Add
     // Shares, moving no cash, and the day's rows are linked to each other so
     // the lot engine carries basis across the funds.
-    ("0042", 0x73b5ae9e99303dc5),
-    // §169 — accounts.sort_order: where an account sits in every list. An
+    // CHANGED DELIBERATELY: section references dropped from `--`
+    // comments; the statements are byte-for-byte what they were.
+    // Was 0x73b5ae9e99303dc5.
+    ("0042", 0x1e56b6f83a53fc36),
+    // accounts.sort_order: where an account sits in every list. An
     // ADD COLUMN with no default, so a file that never arranged its
     // accounts reads as it did.
-    ("0043", 0x099839086c65d72b),
-    // §172 — a TSP contribution Buy already in the file gets the cash side
-    // §90 gives one, once, by the importer's own memo; the buy points at it
-    // as its funding row; the accounts' cash is recomputed. §172.1, before
+    // CHANGED DELIBERATELY: section references dropped from `--`
+    // comments; the statements are byte-for-byte what they were.
+    // Was 0x099839086c65d72b.
+    ("0043", 0x0d67490693def1e2),
+    // A TSP contribution Buy already in the file gets the cash side
+    // the treatment step gives one, once, by the importer's own memo; the buy points at it
+    // as its funding row; the accounts' cash is recomputed. Fixed before
     // it had run anywhere: only a buy that has NO deposit beside it — ones
     // imported through the dialog have one, and the first draft would have
     // paid each twice.
@@ -896,14 +992,23 @@ const FROZEN: &[(&str, u64)] = &[
     // statements are byte-for-byte what they were. Was 0x4c88c55ca8298610.
     // Changed again, the same way: story wording in a comment neutralized.
     // Was 0x8c66064686e7ffe9.
-    ("0044", 0x7ef2996cf5a3702e),
-    // §170 — attachments: the bytes in their own table, the link row keyed
+    // CHANGED DELIBERATELY: section references dropped from `--`
+    // comments; the statements are byte-for-byte what they were.
+    // Was 0x7ef2996cf5a3702e.
+    ("0044", 0x23942be1e22884a6),
+    // Attachments: the bytes in their own table, the link row keyed
     // to a transaction or an account and cascading with it.
-    ("0045", 0xb83bcc257a4bd69b),
-    // §171 — payee rules can look at the amount, the memo and the account;
+    // CHANGED DELIBERATELY: section references dropped from `--`
+    // comments; the statements are byte-for-byte what they were.
+    // Was 0xb83bcc257a4bd69b.
+    ("0045", 0x62a17897a06919a4),
+    // Payee rules can look at the amount, the memo and the account;
     // the unique index on the match text goes, since two rules on one text
     // that differ in their conditions are the point.
-    ("0046", 0xe645609482f1652a),
+    // CHANGED DELIBERATELY: section references dropped from `--`
+    // comments; the statements are byte-for-byte what they were.
+    // Was 0xe645609482f1652a.
+    ("0046", 0xc1f136cdbc9bf148),
 ];
 
 #[test]

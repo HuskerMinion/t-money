@@ -32,16 +32,16 @@ struct ParsedTxn {
     fitid: Option<String>,
     check_number: Option<String>,
     cleared_state: String,
-    /// QIF split lines (§65).
+    /// QIF split lines.
     splits: Vec<qif::QifSplit>,
-    /// QIF investment fields (§66).
+    /// QIF investment fields.
     invest: Option<qif::QifInvest>,
-    /// §84: the payee as the file had it, when a rule renamed it — the
+    /// The payee as the file had it, when a rule renamed it — the
     /// dedupe still has to recognize a row imported before the rule existed.
     raw_payee: Option<String>,
-    /// §84: the rule's category, used only when the file gave none.
+    /// The rule's category, used only when the file gave none.
     rule_category_id: Option<String>,
-    /// §90: an investment action the app has no meaning for. Such a row used
+    /// An investment action the app has no meaning for. Such a row used
     /// to become an ordinary cash row named after the action ("null" for
     /// the "Change in Market Value" some plans write); now it is left out
     /// and named.
@@ -159,10 +159,10 @@ pub fn import_file(pool: &DbPool, file_path: &str, account_id: &str) -> Result<I
     import_parsed(pool, account_id, src, &HashMap::new(), &[])
 }
 
-/// §172 — `import_file`, with §90's memo rules supplied by the caller rather
+/// `import_file`, with the treatment memo rules supplied by the caller rather
 /// than asked for. The TSP importer knows what its own memos mean — it wrote
 /// them — so it hands the contribution ones in here, and every contribution
-/// Buy gets the cash side §90 gives one: a deposit for the same amount on
+/// Buy gets the cash side a treatment gives one: a deposit for the same amount on
 /// the same day, filed under Retirement Contributions. Without it the plan's
 /// cash drifted negative by every dollar ever paid in, and the account's
 /// worth — cash plus holdings — was short by the same.
@@ -171,7 +171,7 @@ pub fn import_file_with_rules(pool: &DbPool, file_path: &str, account_id: &str, 
     import_parsed(pool, account_id, src, &HashMap::new(), memo_rules)
 }
 
-/// A file read and parsed, with nothing written. §89 splits this out of
+/// A file read and parsed, with nothing written. This is split out of
 /// `import_file` / `import_csv` so the same bytes can be looked at first
 /// (`preview_import`) and imported after (`import_with_decisions`) — the
 /// parse is deterministic, so a row's position is a stable key for the
@@ -179,13 +179,13 @@ pub fn import_file_with_rules(pool: &DbPool, file_path: &str, account_id: &str, 
 struct ParsedSource {
     txns: Vec<ParsedTxn>,
     qif_securities: Vec<qif::QifSecurity>,
-    /// §92: a `!Type:Prices` block, applied after the rows are written.
+    /// A `!Type:Prices` block, applied after the rows are written.
     qif_prices: Vec<qif::QifPrice>,
     unreadable: u32,
-    /// The file's text, kept for the OFX investment statement (§44).
+    /// The file's text, kept for the OFX investment statement.
     text: String,
     is_ofx: bool,
-    /// CSV rows the mapping could not read, named for the summary (§88).
+    /// CSV rows the mapping could not read, named for the summary.
     bad: Vec<String>,
 }
 
@@ -255,14 +255,14 @@ fn parse_source(file_path: &str, mapping: Option<&csv::CsvMapping>) -> Result<Pa
     Ok(ParsedSource { txns, qif_securities, qif_prices, unreadable, text, is_ofx, bad: Vec::new() })
 }
 
-/// §88: look at a CSV before importing it — the columns, the first rows,
+/// Look at a CSV before importing it — the columns, the first rows,
 /// a guessed mapping. Writes nothing.
 pub fn preview_csv(file_path: &str, has_header: Option<bool>, mapping: Option<&csv::CsvMapping>) -> Result<csv::CsvPreview, String> {
     let bytes = std::fs::read(file_path).map_err(|e| format!("failed to read {file_path}: {e}"))?;
     csv::preview(&decode_text(&bytes), 12, has_header, mapping)
 }
 
-/// §88: import a CSV with the mapping the user confirmed. Rows the mapping
+/// Import a CSV with the mapping the user confirmed. Rows the mapping
 /// cannot read (no date, no amount) are counted as skipped and named in the
 /// notes, up to ten; everything else goes through the same writer as a QIF.
 pub fn import_csv(pool: &DbPool, file_path: &str, account_id: &str, mapping: &csv::CsvMapping) -> Result<ImportSummary, String> {
@@ -313,10 +313,10 @@ fn parse_csv_source(file_path: &str, mapping: &csv::CsvMapping) -> Result<Parsed
     Ok(ParsedSource { txns, qif_securities: Vec::new(), qif_prices: Vec::new(), unreadable, text: String::new(), is_ofx: false, bad })
 }
 
-/// §89: read the file and say, row by row, what it would do — which rows are
+/// Read the file and say, row by row, what it would do — which rows are
 /// already in the register exactly (skipped as before), and which ones are
 /// close enough to something already there to be worth a decision. Writes
-/// nothing. `mapping` is `Some` for a CSV (§88), `None` for QIF/OFX.
+/// nothing. `mapping` is `Some` for a CSV, `None` for QIF/OFX.
 pub fn preview_import(
     pool: &DbPool,
     file_path: &str,
@@ -338,7 +338,7 @@ pub fn preview_import(
     let mut total = 0u32;
     // Register rows already claimed by an earlier row of this same file.
     let mut taken: std::collections::HashSet<String> = std::collections::HashSet::new();
-    // §90: the file's distinct memos, in the order they first appear.
+    // The file's distinct memos, in the order they first appear.
     let mut memo_groups: Vec<plan::MemoGroupSeed> = Vec::new();
     // The exact-duplicate count, counted the way the writer counts it, so
     // two identical rows in one file are not both called duplicates.
@@ -350,7 +350,7 @@ pub fn preview_import(
         }
         // Investment records and bracketed transfers have their own dedupe
         // and their own shape; they are not offered for matching. An
-        // investment row is instead grouped by its memo, for §90.
+        // investment row is instead grouped by its memo, for the treatment dialog.
         if let Some(inv) = t.invest.as_ref().filter(|i| qif_activity(&i.action).is_some()) {
             let activity = qif_activity(&inv.action).unwrap();
             let memo = t.notes.as_deref().unwrap_or("").trim().to_string();
@@ -416,7 +416,7 @@ pub fn preview_import(
         )?;
         if candidates.is_empty() {
             new_rows += 1;
-            // §159 — nothing to match and nothing to file it under: the
+            // Nothing to match and nothing to file it under: the
             // review asks, rather than the row landing as Uncategorized.
             let file_says = t.category.as_deref().map(str::trim).filter(|c| !c.is_empty() && *c != "--Split--");
             if file_says.is_none() && t.rule_category_id.is_none() && t.splits.is_empty() {
@@ -459,7 +459,7 @@ pub fn preview_import(
     })
 }
 
-/// §89: import the file with the user's answers from the review dialog.
+/// Import the file with the user's answers from the review dialog.
 /// Rows they did not answer for take the ordinary path.
 pub fn import_with_decisions(
     pool: &DbPool,
@@ -475,7 +475,7 @@ pub fn import_with_decisions(
         if d.action == "match" && d.existing_id.as_deref().unwrap_or("").is_empty() {
             return Err(format!("row {} was marked as a match with nothing to match it to", d.index + 1));
         }
-        // §159 — a category that is not there is refused up front, not
+        // A category that is not there is refused up front, not
         // discovered as a foreign-key error halfway through the write.
         if let Some(cat) = d.category_id.as_deref().filter(|c| !c.trim().is_empty()) {
             let conn = pool.get().map_err(|e| e.to_string())?;
@@ -491,7 +491,7 @@ pub fn import_with_decisions(
     import_parsed(pool, account_id, src, &by_index, &memo_rules)
 }
 
-/// §90: the category a plan's paired cash row lands in, created on the right
+/// The category a plan's paired cash row lands in, created on the right
 /// side of the tree if it is not there. `ensure_category_path` creates a new
 /// top-level category as an expense, which is wrong for a contribution.
 fn ensure_category_of_kind(tx: &Connection, path: &str, kind: &str) -> Result<String, String> {
@@ -517,7 +517,7 @@ fn ensure_category_of_kind(tx: &Connection, path: &str, kind: &str) -> Result<St
     ensure_category_path(tx, path)
 }
 
-/// §84's rename rules, applied before anything is matched or written. An
+/// The payee rename rules, applied before anything is matched or written. An
 /// investment record's payee is its security; rules leave those alone.
 fn apply_payee_rules_to(conn: &Connection, account_id: &str, txns: Vec<ParsedTxn>) -> Result<Vec<ParsedTxn>, String> {
     let rules = list_payee_rules(conn)?;
@@ -525,7 +525,7 @@ fn apply_payee_rules_to(conn: &Connection, account_id: &str, txns: Vec<ParsedTxn
         .into_iter()
         .map(|mut t| {
             if t.invest.is_none() {
-                // §171 — the row.s amount, memo and account are the rule.s to look at too.
+                // The row.s amount, memo and account are the rule.s to look at too.
                 if let Some(rule) = rule_for(&rules, &t.payee, t.amount_cents, t.notes.as_deref().unwrap_or(""), account_id) {
                     if t.payee != rule.payee_name {
                         t.raw_payee = Some(std::mem::replace(&mut t.payee, rule.payee_name.clone()));
@@ -538,10 +538,10 @@ fn apply_payee_rules_to(conn: &Connection, account_id: &str, txns: Vec<ParsedTxn
         .collect())
 }
 
-/// The writing half of an import, shared by QIF, OFX and CSV (§88): payee
+/// The writing half of an import, shared by QIF, OFX and CSV: payee
 /// rules, dedupe, categories, payees, transfers, splits, the investment
 /// side — one SQL transaction. `ofx_text` is the OFX file when there is one,
-/// for its investment statement (§44).
+/// for its investment statement.
 fn import_parsed(
     pool: &DbPool,
     account_id: &str,
@@ -575,17 +575,17 @@ fn import_parsed(
     let is_invest_account = matches!(account_kind.as_str(), "investment" | "retirement");
     let mut investments = 0u32;
     let mut securities_created = 0u32;
-    // QIF security names → ids, resolved as they are met (§66).
+    // QIF security names → ids, resolved as they are met.
     let mut qif_sec_ids: HashMap<String, String> = HashMap::new();
 
     let mut imported = 0u32;
     let mut skipped = unreadable;
     let mut duplicates = 0u32;
-    // §90: the cash rows written beside the plan's share rows.
+    // The cash rows written beside the plan's share rows.
     let (mut contributed, mut contributed_cents) = (0u32, 0i64);
     let (mut fees_booked, mut fees_cents) = (0u32, 0i64);
     let (mut withdrawn, mut withdrawn_cents) = (0u32, 0i64);
-    // §89: rows the user paired with one already in the register, and rows
+    // Rows the user paired with one already in the register, and rows
     // they told the importer to leave out.
     let mut matched = 0u32;
     let mut user_skipped = 0u32;
@@ -604,7 +604,7 @@ fn import_parsed(
     let mut seen: HashMap<(String, i64, String), (i64, i64)> = HashMap::new();
 
     for (row_index, t) in txns.iter().enumerate() {
-        // §90: an investment action with no meaning here. Named, not guessed
+        // An investment action with no meaning here. Named, not guessed
         // at, and above all not turned into a cash row.
         if let Some(action) = t.unknown_action.as_deref() {
             skipped += 1;
@@ -615,7 +615,7 @@ fn import_parsed(
             continue;
         }
 
-        // A QIF investment record that moves shares or books income (§66).
+        // A QIF investment record that moves shares or books income.
         // Cash-only actions (XIn, XOut, Cash, MiscInc…) were already turned
         // into ordinary signed rows by `qif_cash_side` and take the paths
         // below like any bank row.
@@ -627,8 +627,8 @@ fn import_parsed(
                 ));
             }
             let file_activity = qif_activity(&inv.action).unwrap();
-            // §90: what this memo means in this plan's wording. `AsIs` is
-            // every import before §90 and every file with no rules given.
+            // What this memo means in this plan's wording. `AsIs` is
+            // every import before treatments and every file with no rules given.
             let memo = t.notes.as_deref().unwrap_or("").trim().to_string();
             let rule = plan::rule_for(memo_rules, &memo, file_activity);
             let treatment = rule.map(|r| r.treatment).unwrap_or(plan::Treatment::AsIs);
@@ -722,7 +722,7 @@ fn import_parsed(
             .map_err(|e| e.to_string())?;
             investments += 1;
 
-            // §90: the cash side the plan's file never wrote. The paired row
+            // The cash side the plan's file never wrote. The paired row
             // is exactly the opposite of what the investment row did to the
             // cash, so the account nets to zero and the money is finally
             // somewhere a report can see it.
@@ -777,7 +777,7 @@ fn import_parsed(
             continue;
         }
 
-        // A QIF transfer (§65): `L[Savings]`. When an account by that name
+        // A QIF transfer: `L[Savings]`. When an account by that name
         // exists the row becomes one side of a LINKED transfer — matched to
         // the far side if the other file already put it there unlinked,
         // skipped if the far side's import already wrote the pair, else
@@ -844,7 +844,7 @@ fn import_parsed(
             }
         }
 
-        // §89: the user looked at this row in the review dialog and said what
+        // The user looked at this row in the review dialog and said what
         // it is. Their answer stands over the automatic dedupe below — the
         // whole point of asking is that the automatic test could not tell.
         match decisions.get(&row_index).map(|d| d.action.as_str()) {
@@ -957,7 +957,7 @@ fn import_parsed(
         }
 
         // Ensure the category exists. `Food:Groceries` resolves to the
-        // subcategory since §54 (it used to be flattened to `Food`). A
+        // subcategory now (it used to be flattened to `Food`). A
         // bracketed QIF transfer target is left uncategorized on purpose.
         let category_id = match &t.category {
             _ if !t.splits.is_empty() => None,
@@ -966,7 +966,7 @@ fn import_parsed(
             Some(cat) => Some(ensure_category_path(&tx, cat).map_err(|e| e.to_string())?),
             None => t.rule_category_id.clone(),
         };
-        // §159 — what the review chose for a row that had none. It never
+        // What the review chose for a row that had none. It never
         // overrides a category the file or a rule supplied, because the
         // review only offers the choice for rows that had neither; and a
         // split keeps its lines' categories, not a header one.
@@ -980,7 +980,7 @@ fn import_parsed(
         };
 
         // Import is where most payees come from in practice, so this is the
-        // most important of the five write paths to get right (§13).
+        // most important of the five write paths to get right.
         let payee_id = if t.payee.trim().is_empty() {
             None
         } else {
@@ -1014,8 +1014,8 @@ fn import_parsed(
             Ok(_) => {
                 imported += 1;
                 balance_delta += t.amount_cents;
-                // Split lines (§65), each under its own category — and
-                // §122: a bracketed account in a split line is a TRANSFER.
+                // Split lines, each under its own category — and
+                // A bracketed account in a split line is a TRANSFER.
                 //
                 // Migration 0033 gave `splits` a `transfer_account_id` for
                 // exactly this, and 0034 gave the far row
@@ -1119,7 +1119,7 @@ fn import_parsed(
     )
     .map_err(|e| e.to_string())?;
 
-    // The investment side (§44): buys, sells, income, reinvestments, share
+    // The investment side: buys, sells, income, reinvestments, share
     // moves, splits — into lots. `insert_investment_transaction` keeps the
     // account's cash in step itself, so nothing is added to `balance_delta`.
     for name in &unknown_targets {
@@ -1170,7 +1170,7 @@ fn import_parsed(
         }
     }
 
-    // §92: the file's price block, applied after the rows so a security the
+    // The file's price block, applied after the rows so a security the
     // file created is there to attach a price to. Matched by symbol first,
     // then by name — a plan's funds have no ticker, so the name is all there
     // is. A price for a security this file never mentioned is named, not
@@ -1212,7 +1212,7 @@ fn import_parsed(
 
     tx.commit().map_err(|e| e.to_string())?;
 
-    // §90: say what was booked beside the plan's share rows, in money.
+    // Say what was booked beside the plan's share rows, in money.
     if contributed > 0 {
         notes.push(format!(
             "Booked {contributed} contribution{} totaling {} beside the purchases — the plan's file records only the shares.",
@@ -1235,7 +1235,7 @@ fn import_parsed(
         ));
     }
 
-    // §88: the CSV rows the mapping could not read, named.
+    // The CSV rows the mapping could not read, named.
     if !bad.is_empty() {
         notes.push(format!(
             "{unreadable} row{} could not be read: {}",
@@ -1313,7 +1313,7 @@ fn qif_cash_side(mut t: ParsedTxn) -> ParsedTxn {
         return t;
     }
     let action = inv.action.trim().to_ascii_lowercase();
-    // §90: an action that is neither a share activity nor one of Quicken's
+    // An action that is neither a share activity nor one of Quicken's
     // cash actions is not a cash row. Some plans write "Change in Market
     // Value" with no action at all, and it used to arrive as a deposit of
     // its eight cents under the payee "null".
@@ -1418,7 +1418,7 @@ fn resolve_security(tx: &Connection, sec: &ofx::OfxSecurity) -> Result<(String, 
         return Ok((id, false));
     }
     // Money's QIF has no security records: a file whose securities are named
-    // by ticker arrives with no symbols. A name that reads as one is one (§75).
+    // by ticker arrives with no symbols. A name that reads as one is one.
     let ticker = match sec.ticker.as_deref().filter(|t| !t.is_empty()) {
         Some(t) => t.to_string(),
         None if crate::db::queries::ticker_like(&sec.name) => sec.name.trim().to_string(),
@@ -1435,14 +1435,14 @@ fn resolve_security(tx: &Connection, sec: &ofx::OfxSecurity) -> Result<(String, 
 // `qif.rs` and `ofx.rs` test their parsers. Nothing tested `import_file`
 // itself, which is where the money actually moves: the dedup guard that makes
 // a re-import idempotent, the balance delta, and the payee rows an import
-// creates (§21.5). Import is how most payees enter a real file, so the payee
+// creates. Import is how most payees enter a real file, so the payee
 // assertions here matter as much as the balance ones.
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::db::queries::{create_account, get_account, list_payees, get_register};
 
-    // §182 — the shared database, checked whole when the test ends. The
+    // The shared database, checked whole when the test ends. The
     // methods below are this module's own conveniences on it.
     use crate::db::test_db::TestDb;
 
@@ -1480,7 +1480,7 @@ mod tests {
 2026-08-15   1500.00  Paycheck
 ";
 
-    /// §89. The failure this section exists for: the user writes rows into
+    /// The failure this section exists for: the user writes rows into
     /// the register as they spend, then imports the bank's file. The bank
     /// posts a day late and writes its own description, so the exact key
     /// (date + amount + payee) misses and every row arrives a second time.
@@ -1564,7 +1564,7 @@ PGAS STATION 0001
 
         let conn = db.pool.get().expect("conn");
         let rows = get_register(&conn, &acct).expect("register");
-        // Opening balance + three typed + two imported. Without §89 this
+        // Opening balance + three typed + two imported. Without matching, this
         // would be eight, and the user would be deleting three by hand.
         assert_eq!(rows.len(), 6, "{:?}", rows.iter().map(|r| (&r.date, &r.payee)).collect::<Vec<_>>());
 
@@ -1689,7 +1689,7 @@ PGAS STATION 0001
         assert_eq!((second.imported, second.duplicates, second.matched), (0, 1, 0));
     }
 
-    /// §90. A 401(k) export as plan administrators actually write them: only
+    /// A 401(k) export as plan administrators actually write them: only
     /// the share side, with the meaning in the memo. Shaped like a typical
     /// plan administrator's QIF export, with a second fund because most plans
     /// hold several.
@@ -1804,7 +1804,7 @@ MWithdrawals
             vec![("TARGET DATE FUND (0000)".to_string(), 9_500_000), ("VANGUARD TOTAL BOND".to_string(), 1_500_000)]
         );
         // Valued at the newest price each fund has — the fee share-out's
-        // price counts now (§90), which is what it did not before.
+        // price counts now, which is what it did not before.
         assert_eq!(p.positions.iter().map(|x| x.value_cents).sum::<i64>(), 9_500_000 / 1_000_000 * 1_200 + 500_000 * 1_200 / 1_000_000 + 3_000);
 
         // The fee is in the spending reports, where it was invisible before.
@@ -1854,7 +1854,7 @@ MWithdrawals
         assert!(get_register(&conn, &acct).expect("register").iter().all(|r| r.payee != "null"));
     }
 
-    /// §92. A plan's own statements carry no unit price, so a file built from
+    /// A plan's own statements carry no unit price, so a file built from
     /// them has to bring the prices with it. Quicken's `!Type:Prices` block is
     /// how QIF says so, and the importer used to skip it.
     #[test]
@@ -1956,7 +1956,7 @@ MOpening balance
     }
 
     /// Byte-for-byte what `samples/sample-standard.qif` holds, so the file the
-    /// user is told to try is the file this test covers (§37.5).
+    /// user is told to try is the file this test covers.
     const STANDARD_QIF: &str = "\
 !Type:Bank
 D08/03/2026
@@ -1984,7 +1984,7 @@ LBills:Rent
 
     #[test]
     fn a_real_bank_qif_file_imports_end_to_end() {
-        // Before §37.5 this file imported *successfully* with zero rows: the
+        // Before the field-code fix this file imported *successfully* with zero rows: the
         // field-code lines were skipped, and an empty import looks like a
         // working one.
         let db = TestDb::new("qif-real");
@@ -2015,7 +2015,7 @@ LBills:Rent
         assert_eq!(s.duplicates, 4);
     }
 
-    /// §159 — a row the file did not categorize and no rule caught is
+    /// A row the file did not categorize and no rule caught is
     /// listed by the preview, and a category chosen for it in the review is
     /// what the row is written with. A row a rule DID catch, or the file
     /// categorized, is not listed and is not overridden.
@@ -2092,7 +2092,7 @@ PGAS STATION 0001
         reg.iter().find(|r| r.payee == payee).and_then(|r| r.category_name.clone())
     }
 
-    /// §106 — the preview, and applying only what was left ticked.
+    /// The preview, and applying only what was left ticked.
     ///
     /// The apply has always rewritten existing rows; what it did not do was
     /// say WHICH rows first. "412 rows changed" after the fact is not
@@ -2193,7 +2193,7 @@ PGAS STATION 0001
         crate::db::queries::apply_payee_rules_to(conn, Some(ids)).map(|v| v.len())
     }
 
-    // §84: a rule renames on import, files a category when the file gave
+    // A rule renames on import, files a category when the file gave
     // none, and a re-import of a file imported BEFORE the rule existed is
     // still all duplicates. Then the rules tidy what was already there.
     #[test]
@@ -2244,7 +2244,7 @@ PGAS STATION 0001
         assert_eq!(groups[0].rows[1].date, "2026-09-04");
     }
 
-    // §88: a bank CSV with Withdrawal / Deposit columns, a quoted payee with
+    // A bank CSV with Withdrawal / Deposit columns, a quoted payee with
     // a comma, a check number, a card-style file with positive charges, a
     // row the mapping cannot read, and the same file twice.
     #[test]
@@ -2311,7 +2311,7 @@ PGAS STATION 0001
 
     #[test]
     fn an_import_creates_the_payees_and_files_them_under_the_imported_category() {
-        // §16: import is the biggest of the five payee write paths. If it
+        // Import is the biggest of the five payee write paths. If it
         // leaves payee_id NULL the Payees manager is empty on a real file.
         let db = TestDb::new("qif-payees");
         let acct = db.account("Checking", 100_000);
@@ -2355,7 +2355,7 @@ PGAS STATION 0001
 
     #[test]
     fn a_category_path_becomes_the_subcategory() {
-        // `Food:Groceries` is Groceries under Food (§54). It used to be
+        // `Food:Groceries` is Groceries under Food. It used to be
         // flattened to `Food`, which threw away the half Money files by.
         let db = TestDb::new("qif-cat");
         let acct = db.account("Checking", 100_000);
@@ -2413,7 +2413,7 @@ PGAS STATION 0001
     }
 
     // -----------------------------------------------------------------------
-    // §38
+    // 
     // -----------------------------------------------------------------------
 
     #[test]
@@ -2437,7 +2437,7 @@ PGAS STATION 0001
 
     #[test]
     fn the_shipped_sgml_sample_imports_and_reimports_cleanly() {
-        // This file imported ZERO rows before §38 — successfully.
+        // This file imported ZERO rows before the SGML fix — successfully.
         let db = TestDb::new("sample-ofx");
         let acct = db.account("Checking", 0);
         let text = include_str!("../../../samples/sample-statement.ofx");
@@ -2516,7 +2516,7 @@ PGAS STATION 0001
         assert!(row.category_id.is_none());
     }
 
-    // §65 — QIF transfers link up across the two accounts' files.
+    // QIF transfers link up across the two accounts' files.
     #[test]
     fn qif_transfers_link_whichever_file_comes_first_and_never_double() {
         let db = TestDb::new("qif-transfers");
@@ -2567,7 +2567,7 @@ PGAS STATION 0001
         assert_eq!(unlinked, 0);
     }
 
-    // §65 — split lines come in under their own categories.
+    // Split lines come in under their own categories.
     #[test]
     fn qif_splits_are_written_as_split_lines() {
         let db = TestDb::new("qif-splits");
@@ -2591,7 +2591,7 @@ PGAS STATION 0001
         assert_eq!(made, 0);
     }
 
-    /// §122 — one bank row, split across accounts, imported.
+    /// One bank row, split across accounts, imported.
     ///
     /// A HELOC payment: one $1,000.00 debit the bank shows as one line, of
     /// which $680.00 is interest (spending) and $320.00 is principal (a
@@ -2682,7 +2682,7 @@ PGAS STATION 0001
         assert!(s.notes.iter().any(|n| n.contains("No Such Account")), "{:?}", s.notes);
     }
 
-    // §66 — Money's investment QIF: shares, income, a split, cash in and out.
+    // Money's investment QIF: shares, income, a split, cash in and out.
     #[test]
     fn an_investment_qif_builds_lots_and_links_its_cash_transfers() {
         let db = TestDb::new("qif-invst");
@@ -2795,7 +2795,7 @@ PGAS STATION 0001
         assert_eq!(s.skipped, 1);
     }
 
-    // ── investment statements (§44) ──────────────────────────────────────
+    // ── investment statements ──────────────────────────────────────
 
     fn brokerage_ofx() -> String {
         std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/../samples/sample-brokerage.ofx")).expect("sample")
@@ -2943,7 +2943,7 @@ PGAS STATION 0001
         assert_eq!(q.records, 3);
     }
 
-    /// §180 — a cash row with a check number in an investment account. The
+    /// A cash row with a check number in an investment account. The
     /// number went out as a second `N`, the reader took it as the action,
     /// and the row was left out of the re-import as "1043 … not an action
     /// this reads".

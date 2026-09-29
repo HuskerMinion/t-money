@@ -44,7 +44,7 @@ beforeEach(() => {
   });
 });
 
-describe("Merge accounts (§49)", () => {
+describe("Merge accounts", () => {
   it("offers the same-type account first, previews with a dry run, then merges", async () => {
     const onMerged = vi.fn();
     render(<MergeAccountsDialog from={accounts[2]} accounts={accounts} onCancel={() => {}} onMerged={onMerged} />);

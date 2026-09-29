@@ -7,7 +7,7 @@
 /* per-instance retint without touching the SVG */
 .tm-icon--mono{--tm-icon-secondary:currentColor;--tm-icon-primary:currentColor;--tm-icon-accent:currentColor}
 /* Inverse tones for icons on a dark surface. In Money the ONLY dark surface
-   is the navy subnav band (#315599) — the left rail is light (§11.1), so do
+   is the navy subnav band (#315599) — the left rail is light, so do
    not use this there. Values come from tm-tokens.css. */
 .tm-icon--inverse{--tm-icon-primary:var(--tm-pure-white);--tm-icon-secondary:var(--tm-ms-toolbar-top);--tm-icon-accent:var(--tm-sky-tint);--tm-icon-knockout:var(--tm-ms-subnav)}
 .tm-icon--muted{--tm-icon-primary:#7C8B9C;--tm-icon-secondary:#C3CDD8;--tm-icon-accent:#D7DEE6}

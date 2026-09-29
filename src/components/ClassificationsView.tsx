@@ -1,4 +1,4 @@
-// Classifications manager (§112) — the axis Money called a classification.
+// Classifications manager — the axis Money called a classification.
 //
 // A category says what KIND of money a line is; a classification says what it
 // was FOR. "Repairs" is the category, "Maple Street house" is the classification
@@ -78,7 +78,7 @@ export default function ClassificationsView() {
 
   const axis = axes.find((a) => a.id === selectedAxis) ?? null;
 
-  // §183 — "Under" names a parent by id, and the id has to be one of THIS
+  // "Under" names a parent by id, and the id has to be one of THIS
   // axis's top-level values. It was kept across a switch to another axis and
   // across deleting the parent itself, so the next Add sent a parent the
   // backend could only refuse — with the picker showing "(top level)", since
@@ -138,7 +138,7 @@ export default function ClassificationsView() {
       d.kind === "axis" ? null : axis?.id ?? null
     );
     if (ok) {
-      // §185 — the backend clears the undo stack on a delete; the Edit menu
+      // The backend clears the undo stack on a delete; the Edit menu
       // has to hear it.
       noteChanged();
       setDeleting(null);
@@ -227,7 +227,7 @@ export default function ClassificationsView() {
             <em>for</em> — which house, which vehicle, which person — so a report can answer “what
             did that house cost me last year” without a category for every combination.
           </p>
-          {/* §117.1 — the thing that has to be said BEFORE the box, because
+          {/* The thing that has to be said BEFORE the box, because
               the first go at this made four classifications named after two
               houses and two people, each with nothing in it, and the register
               then showed four empty fields. */}
@@ -256,7 +256,7 @@ export default function ClassificationsView() {
           </button>
           {msg && <span className="text-slate-600">{msg}</span>}
         </form>
-        {/* §183 — the shared refusal box; while the delete dialog is open the
+        {/* The shared refusal box; while the delete dialog is open the
             refusal is shown there instead, next to the button that failed. */}
         {error && !deleting && (
           <div className="px-3 pb-3">

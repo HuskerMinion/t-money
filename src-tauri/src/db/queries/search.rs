@@ -1,4 +1,4 @@
-//! Search, the import helpers, and the duplicate finder (§84).
+//! Search, the import helpers, and the duplicate finder.
 
 use crate::models::{DuplicateGroup, DuplicateRow, ImportSummary, SearchHit};
 use rusqlite::{params, Connection, OptionalExtension};
@@ -183,7 +183,7 @@ pub fn summary(
 }
 
 // ---------------------------------------------------------------------------
-// Duplicate finder (§84)
+// Duplicate finder
 // ---------------------------------------------------------------------------
 
 /// Rows in one account that share a date, an amount and a payee
@@ -191,7 +191,7 @@ pub fn summary(
 /// user can look at each set and delete the copy. Rows whose FITIDs differ
 /// are still listed: a bank has been known to re-issue ids. Transfer halves
 /// are listed and flagged; deleting one removes both halves, as always.
-/// §178: the far rows of split transfer lines are not listed. Two months of
+/// The far rows of split transfer lines are not listed. Two months of
 /// the same mortgage principal in the loan register match by this key, and
 /// they are the other side of two payments, not a copy; deleting one on its
 /// own is refused anyway.

@@ -1,4 +1,4 @@
-// The Help tab's content (§62). Plain text in a small markdown subset,
+// The Help tab's content. Plain text in a small markdown subset,
 // rendered by HelpView: `# ` heading, `## ` sub-heading, `- ` bullet,
 // `> ` tip, **bold**, `code`, and [[topic-id|Link text]] to another topic.
 // Every topic is searchable by title and body. Keep what is written here

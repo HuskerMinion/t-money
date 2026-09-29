@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// §103 — the dialog's one job is to stop the gross reaching the bank.
+// The dialog's one job is to stop the gross reaching the bank.
 //
 // The Rust tests cover the arithmetic. These cover the gate: that the Import
 // button will not light up while the answers are impossible, and that what it
@@ -93,7 +93,7 @@ async function openFile() {
   return user;
 }
 
-describe("TspImportDialog (§103)", () => {
+describe("TspImportDialog", () => {
   it("shows the collapse and the opening position it worked out", async () => {
     await openFile();
     // The collapse is the thing that makes the file comprehensible.
@@ -181,7 +181,7 @@ describe("TspImportDialog (§103)", () => {
   });
 });
 
-describe("§154 — a file that paid nothing out", () => {
+describe("A file that paid nothing out", () => {
   // > *"If there's no money moving from TSP to an account I shouldn't have
   // >  to select where 'Money went to'."*
   it("does not ask where the money went, and imports without a bank account", async () => {
@@ -213,7 +213,7 @@ describe("§154 — a file that paid nothing out", () => {
   });
 });
 
-describe("§155 — the file handed over, and the shares already there", () => {
+describe("The file handed over, and the shares already there", () => {
   it("opens on a file the CSV door handed it, without asking again", async () => {
     render(
       <TspImportDialog
@@ -265,7 +265,7 @@ describe("§155 — the file handed over, and the shares already there", () => {
   });
 });
 
-describe("§183 — previews that cross, and errors where the buttons are", () => {
+describe("Previews that cross, and errors where the buttons are", () => {
   it("a preview for an account no longer chosen does not land over the newer one", async () => {
     const held = { ...PLAN.opening[0], already_held: "100.000000", to_add: "1900.000000" };
     const release: Record<string, () => void> = {};

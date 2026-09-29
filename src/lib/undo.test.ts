@@ -1,4 +1,4 @@
-// §101 — the front end's half of undo.
+// The front end's half of undo.
 //
 // The Rust tests prove that the rows come back. These prove the part the user
 // sees: that the menu says what it is about to undo, that it grays itself out
@@ -104,7 +104,7 @@ describe("the undo status cache", () => {
     expect(undoStatus()).toEqual({ undo: null, redo: null });
   });
 
-  // §180 — an answer that arrives after a newer question must not win.
+  // An answer that arrives after a newer question must not win.
   const deferred = <T,>() => {
     let resolve!: (v: T) => void;
     const promise = new Promise<T>((r) => (resolve = r));
@@ -150,8 +150,8 @@ describe("the undo status cache", () => {
   });
 });
 
-// §183 — a refusal has words, and the shell needs them: it showed nothing.
-describe("§183 — a refused undo says why", () => {
+// A refusal has words, and the shell needs them: it showed nothing.
+describe("A refused undo says why", () => {
   it("hands the backend's message to onError, for a string rejection and an Error alike", async () => {
     undoStatusCall.mockResolvedValue({ undo: "delete a transaction", redo: "add a transaction" });
     await refreshUndo();

@@ -1,4 +1,4 @@
-// §117 — the screen when no file is open; §134 — which of those files this
+// The screen when no file is open, and which of those files this
 // computer can actually open.
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -20,7 +20,7 @@ const props = {
 };
 
 describe("StartScreen", () => {
-  // §134 — before the click, not after. The whole reason the flag rides along
+  // Before the click, not after. The whole reason the flag rides along
   // on the recents list is that clicking a file only to be told it cannot be
   // opened is the experience this section set out to remove.
   it("marks a file this computer has no key for", () => {

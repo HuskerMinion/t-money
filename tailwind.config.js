@@ -1,6 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 // Color values here are POINTERS into src/branding/tm-tokens.css, which is the
-// single source of truth (measured from Money screenshots, §11). Do not put
+// single source of truth (measured from Money screenshots). Do not put
 // literal hex in this file.
 export default {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],

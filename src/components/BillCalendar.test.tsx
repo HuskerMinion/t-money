@@ -22,7 +22,7 @@ function occ(over: Partial<Occurrence> = {}): Occurrence {
   };
 }
 
-describe("the bill calendar (§52)", () => {
+describe("the bill calendar", () => {
   it("walks months and lays the grid out from the right weekday", () => {
     expect(shiftMonth("2026-01", -1)).toBe("2025-12");
     expect(shiftMonth("2026-12", 1)).toBe("2027-01");

@@ -1,4 +1,4 @@
-//! Reports — Money's "View a report" gallery, as one engine (§39).
+//! Reports — Money's "View a report" gallery, as one engine.
 //!
 //! Money's Reports tab is a gallery of ~forty named reports in six groups,
 //! and every one of them is the same three things: a **date range**, a
@@ -55,7 +55,7 @@ pub const GALLERY: &[(&str, &str, &str)] = &[
     ("Income and expenses", "annual_budget", "Annual budget"),
     ("Income and expenses", "subscriptions", "Subscriptions and recurring charges"),
     ("Assets and liabilities", "net_worth", "Net worth"),
-    // §96: the same figures at the other two levels of detail the engine
+    // The same figures at the other two levels of detail the engine
     // already computed but the gallery never offered, plus the split a user
     // actually asks of a net worth number — what could I get at this month.
     ("Assets and liabilities", "net_worth_by_account", "Net worth by account"),
@@ -73,15 +73,15 @@ pub const GALLERY: &[(&str, &str, &str)] = &[
     ("Investment", "capital_gains", "Capital gains"),
     ("Investment", "investment_transactions", "Investment transactions"),
     ("Investment", "investment_income", "Investment income"),
-    // §116 — every holding's price movement over the range beside one
+    // Every holding's price movement over the range beside one
     // security's, so "did I beat the index" has an answer in the file.
     ("Investment", "benchmark_comparison", "Performance against a benchmark"),
-    // §172 — what kind of thing the money is in, by account: stocks, funds,
+    // What kind of thing the money is in, by account: stocks, funds,
     // bonds, cash. The pie Empower and Quicken lead with.
     ("Investment", "asset_allocation", "Asset allocation"),
     ("Taxes", "tax_related_transactions", "Tax-related transactions"),
     ("Taxes", "tax_summary", "Tax summary by line"),
-    // §114 — classifications (§112): what the money was FOR, rather than
+    // Classifications: what the money was FOR, rather than
     // what kind of money it was. Hidden from the gallery when the file has
     // no classifications, since none of them can say anything yet.
     ("Classifications", "spending_by_classification", "Spending by classification"),
@@ -95,7 +95,7 @@ pub const GALLERY: &[(&str, &str, &str)] = &[
 ];
 
 /// Answer one report request.
-/// §166 — reports whose chart runs along TIME. Their order is the calendar's
+/// Reports whose chart runs along TIME. Their order is the calendar's
 /// and is left alone; every other chart is a comparison of named things —
 /// categories, payees, accounts, holdings — and reads largest to smallest.
 const TIME_ORDERED: &[&str] = &[
@@ -108,7 +108,7 @@ const TIME_ORDERED: &[&str] = &[
     "classification_by_month",
 ];
 
-/// §166 — a categorical chart's labels, largest first.
+/// A categorical chart's labels, largest first.
 ///
 /// > *"Reports for Charts should sort largest to smallest"* — most charts
 /// came out in the order their rows were built, which for a category
@@ -188,9 +188,9 @@ pub fn run_report(conn: &Conn, req: &ReportRequest) -> Result<Report, String> {
         "spending_by_payee_comparison" => comparison(conn, &scope, req, from, to, GroupBy::Payee)?,
         "income_spending_comparison" => income_spending_comparison(conn, &scope, req, from, to)?,
         "subscriptions" => subscriptions(conn, &scope, from, to)?,
-        // §114 — the same engine, grouped on a classification instead of a
-        // category. Cheap to add now that §112 stores the axis and §113
-        // scopes every report the same way.
+        // The same engine, grouped on a classification instead of a
+        // category. Cheap to add now that classifications are
+        // stored and every report is scoped the same way.
         "spending_by_classification" => spending_by_classification(conn, &scope, from, to)?,
         "transactions_by_classification" => transactions_by_classification(conn, &scope, from, to)?,
         "classification_by_month" => classification_by_month(conn, &scope, from, to)?,
@@ -207,7 +207,7 @@ pub fn run_report(conn: &Conn, req: &ReportRequest) -> Result<Report, String> {
     if report.subtitle.is_empty() {
         report.subtitle = range_label(from, to);
     }
-    // §113: a report that was filtered says so under its title, so a number
+    // A report that was filtered says so under its title, so a number
     // that looks wrong is explained rather than doubted.
     let note = scope.filter_note();
     if !note.is_empty() {
@@ -225,18 +225,18 @@ struct Scope {
     accounts: Option<Vec<String>>,
     /// `None` = every category. A parent id selects its children too.
     categories: Option<Vec<String>>,
-    /// §113: `categories` is a leave-out list.
+    /// `categories` is a leave-out list.
     exclude_categories: bool,
-    /// `None` = every security (investment reports, §47).
+    /// `None` = every security (investment reports).
     securities: Option<Vec<String>>,
-    /// Only accounts with `tax_included` (§48).
+    /// Only accounts with `tax_included`.
     tax_only: bool,
     /// Those accounts, when `tax_only`.
     tax_accounts: Vec<String>,
     /// Spending reports leave income out unless categories were chosen
-    /// (§64): expense categories, plus uncategorized money going out.
+    ///: expense categories, plus uncategorized money going out.
     expense_only: bool,
-    // --- §113: the line filters, honored by every report built on lines ---
+    // --- The line filters, honored by every report built on lines ---
     payees: Option<Vec<String>>,
     exclude_payees: bool,
     min_cents: Option<i64>,
@@ -245,10 +245,10 @@ struct Scope {
     cleared: Option<Vec<String>>,
     /// Lower-cased, for a LIKE on payee and memo.
     text: Option<String>,
-    /// §112: per axis, the value ids a line must carry one of (children
+    /// Per axis, the value ids a line must carry one of (children
     /// already expanded), and whether "no value on this axis" also passes.
     classes: Vec<ClassFilter>,
-    /// §114: the axis a by-classification report groups on.
+    /// The axis a by-classification report groups on.
     axis: Option<AxisInfo>,
 }
 
@@ -335,7 +335,7 @@ impl Scope {
         let text = req.text.as_deref().map(str::trim).filter(|t| !t.is_empty()).map(str::to_lowercase);
         let (min_cents, max_cents) = (req.min_cents.map(i64::abs), req.max_cents.map(i64::abs));
 
-        // §112: group the picked values by axis; expand a parent to its
+        // Group the picked values by axis; expand a parent to its
         // sub-values; `none:<axis>` = lines with nothing on that axis.
         let mut classes: Vec<ClassFilter> = Vec::new();
         if let Some(ids) = req.class_value_ids.as_ref().filter(|v| !v.is_empty()) {
@@ -376,7 +376,7 @@ impl Scope {
             }
         }
 
-        // §114: the axis a by-classification report groups on — the one
+        // The axis a by-classification report groups on — the one
         // asked for, else the first. Only those reports need one.
         let axis = if req.kind.contains("classification") {
             let row: Option<(String, String)> = match req.classification_id.as_deref().filter(|s| !s.is_empty()) {
@@ -511,7 +511,7 @@ impl Scope {
         }
     }
 
-    /// §113: every line-level filter as one fragment — payees, amount,
+    /// Every line-level filter as one fragment — payees, amount,
     /// cleared state, text, classification values. Append it wherever
     /// `account_sql` / `category_sql` go, in that order.
     fn line_sql(&self, cols: &LineCols, binds: &mut Vec<String>) -> String {
@@ -646,19 +646,19 @@ const LINES: &str = r#"
           FROM transactions t
           LEFT JOIN splits s ON s.transaction_id = t.id
          WHERE t.is_void = 0 AND t.transfer_id IS NULL
-           -- §93: a house is worth $20,000 more than last year. That moves
+           -- A house is worth $20,000 more than last year. That moves
            -- the balance and belongs in net worth, but it is not income and
            -- not spending, and counting it would swamp every category report
            -- with money nobody can spend. Excluded here, once, for every
            -- report built on `lines`.
            AND t.is_revaluation = 0
-           -- §94: a split line that moves money to another account is a
+           -- A split line that moves money to another account is a
            -- transfer, and so is the row it wrote over there. Neither is
            -- spending — the mortgage payment's interest line is. Two clauses
            -- because a split has many far rows and `transfer_id` names one.
            AND t.is_split_transfer = 0
            AND (s.id IS NULL OR s.transfer_account_id IS NULL)
-           -- Investment rows (§41): only the income activities are lines; a
+           -- Investment rows: only the income activities are lines; a
            -- buy or sell exchanges cash for shares and is not spending, and a
            -- reinvested dividend counts for the amount reinvested.
            AND (t.activity IS NULL OR t.activity IN
@@ -890,7 +890,7 @@ fn sum_values(a: &[i64], b: &[i64]) -> Vec<i64> {
 }
 
 /// Money's report tree, as its Monthly Income and Expenses report lays it
-/// out (§39):
+/// out:
 ///
 /// ```text
 /// Income                              ← section header, rule beneath
@@ -1275,7 +1275,7 @@ fn annual_budget(conn: &Conn, scope: &Scope, from: NaiveDate, to: NaiveDate) -> 
     let mut cat_ids: Vec<String> = budgets.keys().map(|k| k.0.clone()).collect();
     cat_ids.sort();
     cat_ids.dedup();
-    // §113: the include list, or the exclude list — the budget rows are
+    // The include list, or the exclude list — the budget rows are
     // filtered in Rust here because they come from `budgets`, not `lines`.
     if scope.categories.is_some() {
         cat_ids.retain(|c| scope.wants_category(c));
@@ -1449,7 +1449,7 @@ fn transactions_grouped(conn: &Conn, scope: &Scope, from: NaiveDate, to: NaiveDa
     let (sql, title) = match by {
         GroupBy::Account => {
             // Everything, transfers included: this is the register, by account.
-            // §113: the same line filters as everywhere else, over raw
+            // The same line filters as everywhere else, over raw
             // transaction rows rather than the `lines` CTE.
             let scoped = format!(
                 "{}{}{}",
@@ -1604,7 +1604,7 @@ fn balances_asof(conn: &Conn, scope: &Scope, asof: NaiveDate) -> Result<Vec<Acct
         Ok(AcctBal { id: r.get(0)?, name: r.get(1)?, kind: r.get(2)?, is_closed: r.get::<_, i64>(3)? != 0, cents: r.get(4)? })
     })?;
     // An investment account is worth its cash plus what it holds, at the
-    // prices of the day (§41). Lots are replayed to the date, so a share
+    // prices of the day. Lots are replayed to the date, so a share
     // bought later is not counted earlier.
     if bals.iter().any(|b| matches!(b.kind.as_str(), "investment" | "retirement")) {
         let held = lots::holdings_by_account(conn, &iso(asof))?;
@@ -1796,7 +1796,7 @@ fn account_balance_history(conn: &Conn, scope: &Scope, from: NaiveDate, to: Naiv
     })
 }
 
-/// §96: net worth split by how quickly it can be reached, not by account
+/// Net worth split by how quickly it can be reached, not by account
 /// type. A net worth number hides the question people actually ask of it —
 /// how much of that could I spend this month? Cash and bank balances can be
 /// spent today. A taxable brokerage can be sold in a week. A 401(k) or an IRA
@@ -1806,7 +1806,7 @@ fn account_balance_history(conn: &Conn, scope: &Scope, from: NaiveDate, to: Naiv
 /// Debts are subtracted whole, at the bottom, rather than netted against a
 /// tier: a mortgage is not "less house", it is money owed, and pretending
 /// otherwise is how people talk themselves into thinking they are liquid.
-/// §172 — "Asset allocation": what kind of thing the money is in, on a date.
+/// "Asset allocation": what kind of thing the money is in, on a date.
 /// One section per account (cash included as its own line), a pie of the
 /// whole by kind. The kind is the security's type under Securities…; an
 /// imported security starts as Other, and the report says so rather than
@@ -1866,7 +1866,7 @@ fn asset_allocation(conn: &Conn, scope: &Scope, asof: NaiveDate) -> Result<Repor
         if sum == 0 {
             continue;
         }
-        // §180: a header has a cell per column too — `header(name, 0)` gave
+        // A header has a cell per column too — `header(name, 0)` gave
         // the CSV a one-field line under a three-field heading.
         rows.push(if id.is_empty() { header(name, 2) } else { keyed(name, "account", id, 0, vec![money(sum), pct(sum, total)]) });
         for k in ORDER {
@@ -2103,7 +2103,7 @@ fn shares_cell(micro: i64) -> ReportCell {
 fn price_cell(micro: Option<i64>) -> ReportCell {
     match micro {
         // Prices print to two places, or as many as they have up to six
-        // (§72) — the same rule as the register's `formatPrice`.
+        // — the same rule as the register's `formatPrice`.
         Some(p) => {
             let dollars = p / 1_000_000;
             let frac = format!("{:06}", p.abs() % 1_000_000);
@@ -2117,10 +2117,10 @@ fn price_cell(micro: Option<i64>) -> ReportCell {
     }
 }
 
-/// Every holding as of the date, grouped by account (§41). Value at the
+/// Every holding as of the date, grouped by account. Value at the
 /// latest price on or before the date; cost from the lots.
 fn portfolio_value(conn: &Conn, scope: &Scope, asof: NaiveDate) -> Result<Report, String> {
-    // §180: the number of CELLS a row carries — eight columns less the label.
+    // The number of CELLS a row carries — eight columns less the label.
     // Headers and problem lines took `ncol - 1`, as though it counted the
     // label, and came out one short of every holding row.
     let ncol = 7;
@@ -2248,7 +2248,7 @@ fn investment_performance(conn: &Conn, scope: &Scope, asof: NaiveDate) -> Result
 }
 
 /// Realized gains in the range, short-term then long-term, one line per lot
-/// sold — the shape of Schedule D (§41).
+/// sold — the shape of Schedule D.
 fn capital_gains(conn: &Conn, scope: &Scope, from: NaiveDate, to: NaiveDate) -> Result<Report, String> {
     let accounts: Vec<Option<String>> = match &scope.accounts {
         None => vec![None],
@@ -2263,7 +2263,7 @@ fn capital_gains(conn: &Conn, scope: &Scope, from: NaiveDate, to: NaiveDate) -> 
         conn.query_row("SELECT name, symbol FROM securities WHERE id = ?1", [id], |r| Ok((r.get(0)?, r.get(1)?)))
             .unwrap_or_else(|_| (id.to_string(), String::new()))
     };
-    // Cells per row, as in `portfolio_value` (§180: the header was one short).
+    // Cells per row, as in `portfolio_value` (the header was once one short).
     let ncol = 7;
     let mut rows = Vec::new();
     let (mut ts, mut tl) = ((0i64, 0i64, 0i64), (0i64, 0i64, 0i64));
@@ -2335,7 +2335,7 @@ fn investment_transactions(conn: &Conn, scope: &Scope, from: NaiveDate, to: Naiv
     let mut current: Option<String> = None;
     let mut sub = 0i64;
     let mut total = 0i64;
-    // §180: the subtotal is CASH, like "Net cash effect" below it, and is
+    // The subtotal is CASH, like "Net cash effect" below it, and is
     // named for it. A reinvestment shows its gross in the Total column (the
     // income it was) but moves no cash, so a subtotal labeled "Total Brokerage"
     // did not add up to the column above it. Summing the displayed values
@@ -2427,7 +2427,7 @@ fn investment_income(conn: &Conn, scope: &Scope, from: NaiveDate, to: NaiveDate)
     })
 }
 
-/// §116 — each holding's price movement over the range, beside a chosen
+/// Each holding's price movement over the range, beside a chosen
 /// security's, and the difference.
 ///
 /// **This is a PRICE return, and says so.** It compares the price on the
@@ -2444,7 +2444,7 @@ fn benchmark_comparison(conn: &Conn, scope: &Scope, req: &ReportRequest, from: N
     let columns = |a: &str, b: &str| {
         vec![col("Holding", "text"), col("Symbol", "text"), col(a, "text"), col(b, "text"), col("Return", "percent"), col("vs benchmark", "percent")]
     };
-    // §102 — nothing may fail by showing nothing. With no benchmark chosen
+    // Nothing may fail by showing nothing. With no benchmark chosen
     // yet the report opens and says where to choose one, rather than
     // refusing to draw; Customize is one click away on the rail.
     let Some(bench_id) = req.benchmark_security_id.as_deref().map(str::trim).filter(|s| !s.is_empty()) else {
@@ -2732,7 +2732,7 @@ fn tax_summary(conn: &Conn, scope: &Scope, from: NaiveDate, to: NaiveDate) -> Re
 }
 
 /// The tax line a line of the LINES CTE lands on: the transaction's own
-/// override when it has one (§53; '' means none), else the category's, else
+/// override when it has one ('' means none), else the category's, else
 /// its parent's.
 const TAX_LINE: &str = "CASE WHEN l.tax_override IS NULL THEN COALESCE(c.tax_line, p.tax_line)
                              WHEN l.tax_override = '' THEN NULL
@@ -2869,7 +2869,7 @@ fn income_spending_comparison(conn: &Conn, scope: &Scope, req: &ReportRequest, f
 
 
 // ---------------------------------------------------------------------------
-// Classifications (§114) — the same lines, grouped on the other axis
+// Classifications — the same lines, grouped on the other axis
 // ---------------------------------------------------------------------------
 
 /// One classification value's numbers over the range. `values` has one entry
@@ -3221,7 +3221,7 @@ fn classification_comparison(conn: &Conn, scope: &Scope, req: &ReportRequest, fr
 }
 
 // ---------------------------------------------------------------------------
-// Subscriptions: the charges that come back on a schedule (§60)
+// Subscriptions: the charges that come back on a schedule
 // ---------------------------------------------------------------------------
 
 /// How often a charge repeats. `days` is the nominal gap, `tol` how far a
@@ -3261,7 +3261,7 @@ pub struct Subscription {
     /// Still being charged as of the date asked: the last charge is no
     /// older than one cadence and a half.
     pub active: bool,
-    /// §173.1 — on the schedule but not at a steady amount (a utility, the
+    /// On the schedule but not at a steady amount (a utility, the
     /// weekly grocery run). Only `detect_recurring` with `allow_varying`
     /// returns one of these; `amount_cents` is then the median of the last
     /// three charges.
@@ -3278,12 +3278,12 @@ pub fn detect_subscription(charges: &[(NaiveDate, i64)], asof: NaiveDate) -> Opt
 }
 
 /// The same detector, with the amount test optional: for the cash forecast
-/// (§173) a charge that comes on a schedule at a different amount each
+/// a charge that comes on a schedule at a different amount each
 /// time — the power bill, the weekly groceries — is still money that is
 /// going to leave, and the median of the last three is a better guess than
 /// nothing. The Subscriptions card keeps the strict form.
 ///
-/// §173.1 — two charges on one day (a retry, two purchases at one merchant)
+/// Two charges on one day (a retry, two purchases at one merchant)
 /// are that day's charge, not a reason to give up on the payee. The first
 /// version returned None on any such pair, and one such day in two years
 /// hid the whole payee from the Subscriptions card and from the forecast,
@@ -3311,7 +3311,7 @@ pub fn detect_recurring(charges: &[(NaiveDate, i64)], asof: NaiveDate, allow_var
     if charges.len() < cadence.min_charges {
         return None;
     }
-    // §173.2 — a skipped bill is still on the cadence: a gap of two or
+    // A skipped bill is still on the cadence: a gap of two or
     // three cadences (within the tolerance, scaled) counts as regular. A
     // water bill that comes every two months once went four.
     let regular = gaps
@@ -3343,7 +3343,7 @@ pub fn detect_recurring(charges: &[(NaiveDate, i64)], asof: NaiveDate, allow_var
     // steady ones (a price rise), else the median — and for a varying one,
     // the median of the last three, which follows the season.
     let latest = charges[charges.len() - 1].1;
-    // §173.2 — a monthly payee billed more than once in a month (a power
+    // A monthly payee billed more than once in a month (a power
     // bill for two properties, two bills since June) is one bill a month to the
     // forecast: the amount is then the median of the last three calendar
     // months' TOTALS. When each of those months had one charge the older
@@ -3493,7 +3493,7 @@ mod tests {
     use super::*;
     use crate::db::queries;
 
-    // §182 — checked whole when the test ends.
+    // Checked whole when the test ends.
     use crate::db::test_db::TestDb;
 
     fn req(kind: &str, from: &str, to: &str) -> ReportRequest {
@@ -3540,7 +3540,7 @@ mod tests {
         (chk, sav, visa, loan)
     }
 
-    /// §112/§114: a Property axis with two houses, one whole transaction
+    /// A Property axis with two houses, one whole transaction
     /// tagged and one SPLIT with a different house per line — the case that
     /// makes the axis worth having and the one clones get wrong.
     fn classify(c: &Conn) -> (String, String, String) {
@@ -3583,7 +3583,7 @@ mod tests {
             if *group == "Classifications" {
                 // A file with no classifications cannot answer these, and
                 // says so rather than drawing an empty table; `list_reports`
-                // leaves the whole group out until there is one (§114).
+                // leaves the whole group out until there is one.
                 assert!(r.unwrap_err().contains("no classifications"), "{kind} should say why it cannot run");
             } else {
                 r.unwrap_or_else(|e| panic!("{kind} on empty: {e}"));
@@ -3601,7 +3601,7 @@ mod tests {
         }
     }
 
-    /// §180 — the same width check with an investment account in the file.
+    /// The same width check with an investment account in the file.
     /// `world` has none, so every investment report above ran with no rows
     /// but its total, and the short header and problem lines never appeared.
     #[test]
@@ -3677,7 +3677,7 @@ mod tests {
         assert_eq!(find(&r, "Fuel").level, 1);
         assert_eq!(cell_money(find(&r, "Total Automobile"), 0), 7_000);
         assert_eq!(find(&r, "Total Automobile").style, "subtotal");
-        // §64: a spending report leaves income out unless categories are chosen.
+        // A spending report leaves income out unless categories are chosen.
         assert!(r.rows.iter().all(|x| x.label != "Total Income" && x.label != "Income"), "income rows on a spending report");
         assert_eq!(cell_money(find(&r, "Total Expenses"), 0), 16_000 + 7_000 + 12_000);
         assert_eq!(cell_money(find(&r, "Total spending"), 0), 35_000);
@@ -3712,7 +3712,7 @@ mod tests {
 
     #[test]
     fn the_line_filters_apply_to_every_report_that_reads_lines() {
-        // §113: Money's customizer could filter one report and not the next.
+        // Money's customizer could filter one report and not the next.
         // Here the same scope goes through `lines_where`, so a filter means
         // the same thing everywhere it is applied.
         let db = TestDb::new("filters");
@@ -3788,7 +3788,7 @@ mod tests {
 
     #[test]
     fn a_classification_report_reads_the_split_line_before_the_transaction() {
-        // §112/§114: the whole point of the axis is the split case — one
+        // The whole point of the axis is the split case — one
         // Walmart trip, six thousand of it Maple's and three Birch Lane's.
         let db = TestDb::new("class");
         let c = db.conn();
@@ -3801,7 +3801,7 @@ mod tests {
         assert_eq!(r.title, "Spending by property");
         assert_eq!(cell_money(find(&r, "Maple"), 0), 12_000 + 6_000, "the dentist bill and one split line");
         assert_eq!(cell_money(find(&r, "Birch Lane"), 0), 3_000);
-        // A spending report leaves income out (§64), so the untagged bucket
+        // A spending report leaves income out, so the untagged bucket
         // is the groceries and the fuel, not the paycheck.
         assert_eq!(cell_money(find(&r, "(no property)"), 0), 10_000 + 4_000);
 
@@ -3944,7 +3944,7 @@ mod tests {
 
     #[test]
     fn a_benchmark_compares_price_movement_and_says_when_it_cannot() {
-        // §116: two holdings and an index fund. One beat it, one did not,
+        // Two holdings and an index fund. One beat it, one did not,
         // and the arithmetic is prices only — a contribution part-way
         // through must not show up as performance.
         use crate::models::NewInvestmentTransaction;
@@ -3974,7 +3974,7 @@ mod tests {
 
         let mut q = req("benchmark_comparison", "2026-01-01", "2026-12-31");
         // Without a benchmark it opens and says what to do, rather than
-        // refusing to draw (§102).
+        // refusing to draw.
         let empty = run_report(&c, &q).unwrap();
         assert!(empty.rows[0].label.contains("Choose a benchmark"), "{:?}", empty.rows[0].label);
         q.benchmark_security_id = Some(index.id.clone());
@@ -4141,7 +4141,7 @@ mod tests {
         assert_eq!(r.columns[1].label, "8/2/2026 - 8/31/2026");
         let g = find(&r, "Groceries");
         assert_eq!((cell_money(g, 0), cell_money(g, 1), cell_money(g, 2)), (16_000, 8_000, -8_000));
-        // §64: a spending comparison leaves income out too.
+        // A spending comparison leaves income out too.
         assert!(r.rows.iter().all(|x| x.label != "Total Income"));
     }
 
@@ -4166,11 +4166,11 @@ mod tests {
         assert!(run_report(&TestDb::new("unk").conn(), &req("nope", "2026-01-01", "2026-01-31")).is_err());
     }
 
-    /// Not a test: a fixture dump for the rendering harness (§39). Seeds a
+    /// Not a test: a fixture dump for the rendering harness. Seeds a
     /// demo file and writes every gallery report as JSON to
     /// `$TM_REPORT_DUMP/<kind>.json`, so the viewer can be rendered in
     /// Chromium against real numbers and looked at.
-    // §60 — subscriptions: the detector on its own, then the report.
+    // Subscriptions: the detector on its own, then the report.
     fn d(s: &str) -> NaiveDate {
         parse_date(s).unwrap()
     }
@@ -4205,7 +4205,7 @@ mod tests {
         assert!(!g.active);
         // Same day twice is a retry: one day's charge, and two days are not a cadence.
         assert!(detect_subscription(&[(d("2026-01-01"), 100), (d("2026-01-01"), 100), (d("2026-02-01"), 100)], asof).is_none());
-        // §173.1 — a retry on one day inside a run is that day's charge, not the end of the payee.
+        // A retry on one day inside a run is that day's charge, not the end of the payee.
         let mut retried = netflix.clone();
         retried.insert(3, (d("2026-06-15"), 1_549));
         let r = detect_subscription(&retried, asof).expect("still monthly");
@@ -4222,13 +4222,13 @@ mod tests {
         assert_eq!((k.cadence, k.varies), ("week", true));
         // The steady ones read the same through either door.
         assert_eq!(detect_recurring(&netflix, asof, true), detect_subscription(&netflix, asof));
-        // §173.2 — a water bill: every two months, one bill
+        // A water bill: every two months, one bill
         // skipped (a four-month gap), two gaps a little off. On the cadence.
         let asof2 = d("2026-09-14");
         let water: Vec<(NaiveDate, i64)> = [("2025-04-17", 10_000), ("2025-06-20", 11_000), ("2025-08-20", 30_000), ("2025-12-19", 10_500), ("2026-03-01", 11_500), ("2026-04-20", 12_000), ("2026-06-19", 20_000)].iter().map(|(x, a)| (d(x), *a)).collect();
         let w = detect_recurring(&water, asof2, true).expect("every two months, one skipped");
         assert_eq!((w.cadence, w.charges, w.active), ("2 months", 7, true));
-        // §173.2 — a power bill: one bill a month on the 5th, then from
+        // A power bill: one bill a month on the 5th, then from
         // September a second on the 1st. To the forecast that is one monthly
         // charge at a typical recent MONTH'S total, not the latest bill.
         let mut electric: Vec<(NaiveDate, i64)> = (1..=11).map(|m| (NaiveDate::from_ymd_opt(2026, m, 5).unwrap(), 50_000)).collect();
@@ -4292,7 +4292,7 @@ mod tests {
     // `debug_assertions` is off — so this one test, and only this one, has to
     // be gated the same way or `cargo check --release --all-targets` fails on
     // a test nobody runs. (`cargo check --release --lib`, which run-tests.bat
-    // uses to catch §112.2's class of break, does not compile tests at all.)
+    // uses to catch that class of break, does not compile tests at all.)
     #[cfg(debug_assertions)]
     #[test]
     #[ignore]
@@ -4316,7 +4316,7 @@ mod tests {
         all.insert("__accounts".into(), serde_json::to_value(&accounts).unwrap());
         let cats = queries::list_categories(&c).unwrap();
         all.insert("__categories".into(), serde_json::to_value(&cats).unwrap());
-        // §41: the investment screens too — the 401(k) register, the portfolio, the securities.
+        // The investment screens too — the 401(k) register, the portfolio, the securities.
         let mut registers = serde_json::Map::new();
         for a in &accounts {
             registers.insert(a.id.clone(), serde_json::to_value(queries::get_register(&c, &a.id).unwrap()).unwrap());
@@ -4334,7 +4334,7 @@ mod asset_tests {
     use super::*;
     use crate::db::queries;
 
-    // §182 — checked whole when the test ends.
+    // Checked whole when the test ends.
     use crate::db::test_db::TestDb;
 
     fn report(c: &Conn, kind: &str, from: &str, to: &str) -> Report {
@@ -4366,7 +4366,7 @@ mod asset_tests {
             .expect("money")
     }
 
-    /// §93. A house going up in value is not income and a car losing value is
+    /// A house going up in value is not income and a car losing value is
     /// not spending — but both move net worth. That is the whole point of a
     /// revaluation being its own kind of row.
     #[test]
@@ -4395,7 +4395,7 @@ mod asset_tests {
         }
     }
 
-    /// §96. Three net worth reports over one file: the same total, told three
+    /// Three net worth reports over one file: the same total, told three
     /// ways. The tiered one is the point — a net worth of $600k made of a
     /// house is a different life from one made of cash, and the number alone
     /// cannot tell them apart.
@@ -4508,7 +4508,7 @@ mod asset_tests {
         assert_eq!(net, Some(35_000_000 + 900_000 - 17_500_000));
     }
 
-    // §166 — a categorical chart reads largest to smallest; a time chart
+    // A categorical chart reads largest to smallest; a time chart
     // keeps the calendar's order.
     #[test]
     fn categorical_charts_are_largest_first_and_time_charts_are_not() {

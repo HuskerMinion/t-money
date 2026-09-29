@@ -1,4 +1,4 @@
-// ClassPicker (§112) — one dropdown per classification, side by side.
+// ClassPicker — one dropdown per classification, side by side.
 //
 // It appears in two places, and the second one is the one that matters: the
 // transaction form AND the split dialog. An axis that only reaches whole
@@ -73,7 +73,7 @@ export default function ClassPicker({
               {c.name}:
             </label>
           )}
-          {/* §117.1 — a classification with no values is a question with no
+          {/* A classification with no values is a question with no
               answers, and it used to draw a field offering "(none)" and
               nothing else. One classification per value, rather than one
               classification with the values in it, gave the register dead

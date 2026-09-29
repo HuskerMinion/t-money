@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// §102 — opening a file must not leave the window blank.
+// Opening a file must not leave the window blank.
 //
 // The reported failure: File → New created the file correctly and left a white
 // window with no menu, recoverable only by closing it. There was no error
@@ -87,12 +87,12 @@ const registerRow = {
 /** The new file is empty; the old one has an account, a report and spending. */
 let swapped = false;
 let openFails = false;
-/** §104 — whether the app is on its own database, which is what decides
+/** Whether the app is on its own database, which is what decides
  *  File → Close. */
 let onOwnFile = true;
-/** §117 — whether File → Close has left the app with no file open. */
+/** Whether File → Close has left the app with no file open. */
 let closed = false;
-/** §158 — what the price timer sees. Off by default, as in the app. */
+/** What the price timer sees. Off by default, as in the app. */
 let priceStatus: Record<string, unknown> = {
   with_symbol: 0,
   newest_date: null,
@@ -115,7 +115,7 @@ function stub() {
         if (cmd === "current_file")
           return { path: "E:\\x.tmny", name: swapped ? "New" : "Sam", isDefault: onOwnFile, scratch: false, isOpen: !closed };
         if (cmd === "close_file") {
-          // §117 — the file is CLOSED. `path`/`name` are what was open, so
+          // The file is CLOSED. `path`/`name` are what was open, so
           // the start screen can offer it back.
           closed = true;
           return { path: "E:\\x.tmny", name: "Sam", isDefault: onOwnFile, scratch: false, isOpen: false };
@@ -165,7 +165,7 @@ beforeEach(() => {
   window.localStorage.clear();
 });
 
-describe("opening a file from inside the app (§102)", () => {
+describe("opening a file from inside the app", () => {
   async function newFileFromTheRegister() {
     savePicked.mockResolvedValue("E:\\New.tmny");
     render(<App />);
@@ -224,7 +224,7 @@ describe("opening a file from inside the app (§102)", () => {
   });
 });
 
-describe("closing and remounting (§104, §117)", () => {
+describe("closing and remounting", () => {
   it("remounts what is on screen, so no widget keeps the old file's data", async () => {
     // Reported: a new, empty file opened still showing the previous file's
     // Subscriptions, which vanished the moment you clicked another tab and
@@ -246,8 +246,8 @@ describe("closing and remounting (§104, §117)", () => {
     );
   });
 
-  it("File → Close is available on the app's own file too (§117)", async () => {
-    // §104 grayed this out on T-Money's own database, because Close meant
+  it("File → Close is available on the app's own file too", async () => {
+    // An earlier version grayed this out on T-Money's own database, because Close meant
     // "go back to it". Now Close means closed, and closing the app's own
     // file is exactly as meaningful as closing any other.
     onOwnFile = true;
@@ -260,7 +260,7 @@ describe("closing and remounting (§104, §117)", () => {
 
   it("closing leaves NO file open, and the start screen instead of the shell", async () => {
     // The bug this replaces: a user had the same accounts in their own file and
-    // in the app's, so §104's Close swapped one for the other and the screen
+    // in the app's, so the old Close swapped one for the other and the screen
     // looked identical. Close has to be visible.
     onOwnFile = false;
     render(<App />);
@@ -301,7 +301,7 @@ describe("closing and remounting (§104, §117)", () => {
   });
 });
 
-describe("the window title (§105)", () => {
+describe("the window title", () => {
   it("names the file you are in, so the taskbar and Alt-Tab say which", async () => {
     onOwnFile = false;
     render(<App />);
@@ -317,7 +317,7 @@ describe("the window title (§105)", () => {
   });
 });
 
-describe("a second copy handing us its file (§108)", () => {
+describe("a second copy handing us its file", () => {
   it("resets to the file the other copy opened, without opening it twice", async () => {
     render(<App />);
     await screen.findByRole("menubar", { name: "Main menu" });
@@ -352,7 +352,7 @@ describe("a second copy handing us its file (§108)", () => {
   });
 });
 
-describe("the error boundary (§102)", () => {
+describe("the error boundary", () => {
   function Bang(): JSX.Element {
     throw new Error("holdings_value_cents of undefined");
   }
@@ -385,7 +385,7 @@ describe("the error boundary (§102)", () => {
   });
 });
 
-describe("§158 — prices are fetched when a file opens, not only when the app does", () => {
+describe("Prices are fetched when a file opens, not only when the app does", () => {
   const stale = () => ({
     with_symbol: 2,
     newest_date: "2026-08-01",
@@ -397,7 +397,7 @@ describe("§158 — prices are fetched when a file opens, not only when the app 
   const fetches = () => invokeCalls.filter((c) => c.cmd === "refresh_investment_prices").length;
 
   it("does nothing on the start screen, and fetches the moment a file is opened", async () => {
-    // Launch on the start screen (§118): there is no file to price.
+    // Launch on the start screen: there is no file to price.
     closed = true;
     onOwnFile = false;
     priceStatus = stale();
@@ -420,7 +420,7 @@ describe("§158 — prices are fetched when a file opens, not only when the app 
     priceStatus = stale();
     render(<App />);
     await screen.findByRole("menubar", { name: "Main menu" });
-    // Launched with a file open: the check at mount, as §115 built it.
+    // Launched with a file open: the check at mount, as first built.
     await waitFor(() => expect(fetches()).toBe(1));
 
     // Close, then open another file whose prices were fetched today.

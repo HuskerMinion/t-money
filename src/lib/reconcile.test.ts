@@ -1,4 +1,4 @@
-// Reconcile arithmetic (§6.1f). The double-count bug this guards against —
+// Reconcile arithmetic. The double-count bug this guards against —
 // counting already-reconciled rows a second time — is invisible until a real
 // statement fails to balance.
 import { describe, expect, it } from "vitest";
@@ -104,7 +104,7 @@ describe("adjustmentForDifference", () => {
   });
 });
 
-describe("voided rows (§6.1h)", () => {
+describe("voided rows", () => {
   it("never count toward the difference, even if somehow still marked", () => {
     const rows = [
       row("a", -5000, "C"),

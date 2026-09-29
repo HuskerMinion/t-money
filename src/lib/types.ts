@@ -1,7 +1,7 @@
 // TypeScript mirrors of the Rust models (src-tauri/src/models.rs).
 // Money is always integer cents (number) — never floats.
 
-/** Money's account taxonomy (§6.1g). Kept in sync with the CHECK constraint in
+/** Money's account taxonomy. Kept in sync with the CHECK constraint in
  *  migration 0009. "Bill payment service provider" is deliberately excluded. */
 export type ClearedState = "" | "C" | "R";
 
@@ -32,16 +32,16 @@ export interface Account {
   /** The register balance — for an investment account, its cash. */
   balance_cents: number;
   /** Market value of holdings at the latest prices; zero unless investment
-   *  or retirement (§41). Worth = balance + holdings. */
+   *  or retirement. Worth = balance + holdings. */
   holdings_value_cents: number;
-  /** Counted in tax reports and the Taxes tab (§48). Off by default for
+  /** Counted in tax reports and the Taxes tab. Off by default for
    *  retirement accounts, whose dividends and sales are not taxable events. */
   tax_included: boolean;
-  /** §81: "nearest" | "down", or null to follow the file's setting. */
+  /** "nearest" | "down", or null to follow the file's setting. */
   value_rounding?: HoldingRounding | null;
-  /** §93 — for a debt, the asset it is borrowed against. */
+  /** For a debt, the asset it is borrowed against. */
   secured_by_account_id?: string | null;
-  /** §169 — where this account sits in every list of accounts; null = never placed. */
+  /** Where this account sits in every list of accounts; null = never placed. */
   sort_order?: number | null;
   is_favorite: boolean;
   is_closed: boolean;
@@ -62,13 +62,13 @@ export interface Account {
   account_notes: string | null;
 }
 
-/** §93 — asset id to what is owed against it, positive. Named rather than
+/** Asset id to what is owed against it, positive. Named rather than
  *  written inline as Record<string, number>: ipc.test's coverage check reads
  *  the wrappers with a regex that cannot see through a nested generic, so a
  *  command declared that way reads as an unwrapped one. */
 export type AssetDebts = Record<string, number>;
 
-/** §94 — a loan's terms. Everything is a starting point for the arithmetic;
+/** A loan's terms. Everything is a starting point for the arithmetic;
  *  the bank's numbers win when a payment is recorded. */
 export interface LoanTerms {
   account_id: string;
@@ -77,7 +77,7 @@ export interface LoanTerms {
   /** The regular payment, principal and interest only. */
   payment_cents: number;
   escrow_cents: number;
-  /** §121: principal paid ahead on top of the scheduled payment, every month,
+  /** Principal paid ahead on top of the scheduled payment, every month,
    *  by choice. Proposed on every payment and applied by the schedule. */
   extra_principal_cents: number;
   escrow_account_id: string | null;
@@ -90,7 +90,7 @@ export interface LoanTerms {
   notes: string | null;
 }
 
-/** §94 — one row of an amortization schedule. Balances are what is owed,
+/** One row of an amortization schedule. Balances are what is owed,
  *  positive. */
 export interface LoanPeriod {
   date: string;
@@ -98,7 +98,7 @@ export interface LoanPeriod {
   interest_cents: number;
   principal_cents: number;
   escrow_cents: number;
-  /** §121: principal ahead of schedule, on top of `principal_cents`. */
+  /** Principal ahead of schedule, on top of `principal_cents`. */
   extra_principal_cents: number;
   opening_cents: number;
   closing_cents: number;
@@ -123,7 +123,7 @@ export interface AccountDetails {
 }
 
 /** Money's category tree is two levels deep: a category and its
- *  subcategories (migration 0014). `kind` filters every picker (§6.1e);
+ *  subcategories (migration 0014). `kind` filters every picker;
  *  `full_name` is Money's display idiom, "Auto : Fuel". */
 export type CategoryKind = "income" | "expense";
 
@@ -132,7 +132,7 @@ export interface Category {
   name: string;
   parent_id: string | null;
   kind: CategoryKind;
-  /** Tax form line this category rolls up to — the seed for Taxes (§10.4). */
+  /** Tax form line this category rolls up to — the seed for Taxes. */
   tax_line: string | null;
   /** "Parent : Child" for a subcategory, the bare name for a top-level one. */
   full_name: string;
@@ -161,7 +161,7 @@ export interface NewTransaction {
   /** Money's Num column — a check number, or a marker like ATM / EFT / DEP.
    *  Free text. Blank is stored as NULL, not "". */
   check_number: string | null;
-  /** §168 — the split lines, written in the same undo step as the row. */
+  /** The split lines, written in the same undo step as the row. */
   splits?: NewSplit[];
 }
 
@@ -173,7 +173,7 @@ export interface UpdateTransaction {
   amount_cents: number;
   notes: string | null;
   check_number: string | null;
-  /** §168 — the split lines, replaced in the same undo step as the edit:
+  /** The split lines, replaced in the same undo step as the edit:
    *  absent = leave them alone, [] = clear them, rows = these. */
   splits?: NewSplit[];
 }
@@ -181,7 +181,7 @@ export interface UpdateTransaction {
 /** A register row: a transaction plus the account balance *after* it
  *  (running_balance_cents), computed in SQL. This is what the MS Money-style
  *  register displays in its Balance column. */
-// ── Reports (§39) ────────────────────────────────────────────────────────
+// ── Reports ────────────────────────────────────────────────────────
 export interface ReportRequest {
   kind: string;
   /** Inclusive, YYYY-MM-DD. */
@@ -193,12 +193,12 @@ export interface ReportRequest {
   compare_to?: string | null;
   /** Net worth: "accounts" | "types" | "sides" (Money's Level of detail). */
   detail?: string | null;
-  /** Investment reports: which securities. null = all (§47). */
+  /** Investment reports: which securities. null = all. */
   security_ids?: string[] | null;
-  /** Leave out accounts with tax_included = 0, as the Taxes tab does (§48).
+  /** Leave out accounts with tax_included = 0, as the Taxes tab does.
    *  Tax-related transactions and Tax summary always do. */
   tax_scope?: boolean;
-  // --- §113: the scope every report honors. All optional; absent = no
+  // --- The scope every report honors. All optional; absent = no
   // filter, which is what every existing caller sends. ---
   payee_ids?: string[] | null;
   /** Turn `category_ids` / `payee_ids` into leave-OUT lists. */
@@ -211,12 +211,12 @@ export interface ReportRequest {
   cleared?: string[] | null;
   /** Payee or memo contains this, case-insensitively. */
   text?: string | null;
-  /** §112: values a line must carry. `none:<axis id>` = nothing on that axis.
+  /** Values a line must carry. `none:<axis id>` = nothing on that axis.
    *  Values on different axes AND; values on one axis OR. */
   class_value_ids?: string[] | null;
-  /** §114: the axis a by-classification report groups on. */
+  /** The axis a by-classification report groups on. */
   classification_id?: string | null;
-  /** §116: the security a benchmark report measures against. */
+  /** The security a benchmark report measures against. */
   benchmark_security_id?: string | null;
 }
 export type ReportColumnKind = "text" | "money" | "percent" | "count" | "date" | "number";
@@ -258,8 +258,8 @@ export interface Report {
   rows: ReportLine[];
   chart: ReportChart | null;
 }
-/** A saved, named report — the kind plus the scope it was customized with
- *  (§39). Lives in the encrypted file. */
+/** A saved, named report — the kind plus the scope it was customized with.
+ * Lives in the encrypted file. */
 export interface SavedReport {
   id: string;
   name: string;
@@ -272,9 +272,9 @@ export interface SavedReport {
   compare_from: string | null;
   compare_to: string | null;
   detail?: string | null;
-  /** Customize's Rows / Chart / Securities choices (§47); shape in reportShape.ts. */
+  /** Customize's Rows / Chart / Securities choices; shape in reportShape.ts. */
   options?: Record<string, unknown> | null;
-  // §113/§114/§116 — the rest of the scope travels with a favorite report.
+  // The rest of the scope travels with a favorite report.
   // Every field defaults in Rust, so a report saved before this still loads.
   payee_ids?: string[];
   exclude_categories?: boolean;
@@ -293,7 +293,7 @@ export interface ReportGalleryEntry {
   label: string;
 }
 
-/** One hit from the header's Search box (§38). */
+/** One hit from the header's Search box. */
 export interface SearchHit {
   id: string;
   account_id: string;
@@ -307,7 +307,7 @@ export interface SearchHit {
   is_void: boolean;
 }
 
-/** §170 — a file attached to a transaction or an account: what it is, not
+/** A file attached to a transaction or an account: what it is, not
  *  its bytes. */
 export interface Attachment {
   id: string;
@@ -332,16 +332,16 @@ export interface RegisterRow {
   running_balance_cents: number;
   /** Derived from `cleared_state === "R"`. */
   is_reconciled: boolean;
-  /** "" | "C" | "R" — Money's three-state C column (§6.1a). */
+  /** "" | "C" | "R" — Money's three-state C column. */
   cleared_state: ClearedState;
   check_number: string | null;
-  /** Voided: still in the register, excluded from every balance (§6.1h). */
+  /** Voided: still in the register, excluded from every balance. */
   is_void: boolean;
   notes: string | null;
   /** For a transfer, the OTHER account's name — rendered as
    *  "Transfer : <Account>", the way Money shows it. */
   transfer_account_name: string | null;
-  // --- investment rows (§41); all null for a cash row ---
+  // --- investment rows; all null for a cash row ---
   activity: InvestmentActivity | null;
   security_id: string | null;
   security_name: string | null;
@@ -351,34 +351,34 @@ export interface RegisterRow {
   commission_cents: number;
   /** A sale that named its lots rather than taking the oldest first. */
   lot_specified: boolean;
-  /** The savings goal this row counts toward (§46). */
+  /** The savings goal this row counts toward. */
   goal_id: string | null;
   goal_name: string | null;
-  /** Per-transaction tax line (§53): null = the category's; "" = not
+  /** Per-transaction tax line: null = the category's; "" = not
    *  tax-related; a line = on that line whatever the category says. */
   tax_line?: string | null;
-  /** The account a buy was paid from / a sell deposited to (§71). */
+  /** The account a buy was paid from / a sell deposited to. */
   funding_account_id?: string | null;
-  /** §118: a revaluation (§93) — what the thing was appraised at on its date,
+  /** A revaluation — what the thing was appraised at on its date,
    *  not money that moved. */
   is_revaluation?: boolean;
-  /** §167: half of an exchange within this account — a TSP reallocation's
+  /** Half of an exchange within this account — a TSP reallocation's
    *  Shares Out or Shares In, linked to a row in the same account. Shown as
    *  "Exchange", not "Transfer Shares": nothing left the plan. */
   is_exchange?: boolean;
-  /** §170: how many files are attached, for the 📎. */
+  /** How many files are attached, for the 📎. */
   attachment_count?: number;
-  /** §181: this row was written by a split line in another account (§94) —
+  /** This row was written by a split line in another account —
    *  a loan's principal row. Its amount, date and category are the line's,
    *  so the edit form shows them read-only. */
   is_split_transfer?: boolean;
-  /** §181: the account holding the payment whose line wrote this row, for
+  /** The account holding the payment whose line wrote this row, for
    *  the form to name ("belong to the payment in Demo Checking"). Null when
    *  no line points at it any more. */
   split_payment_account_name?: string | null;
-  /** §112: the transaction's own classification values, one per axis. */
+  /** The transaction's own classification values, one per axis. */
   classes?: ClassPick[];
-  /** §117.3: what the SPLIT LINES say, on the axes the transaction itself is
+  /** What the SPLIT LINES say, on the axes the transaction itself is
    *  silent about — the value they agree on, or "N values" with an empty
    *  `value_id` when they differ. */
   line_classes?: ClassPick[];
@@ -394,7 +394,7 @@ export interface Budget {
   month_year: string;
 }
 
-/** Money's Autobudget (§51): one proposal per expense category. */
+/** Money's Autobudget: one proposal per expense category. */
 export interface AutobudgetLine {
   category_id: string;
   category_name: string;
@@ -405,7 +405,7 @@ export interface AutobudgetLine {
   current_cents: number | null;
 }
 
-/** §129 — one row of the Budget screen. Every expense category is a row,
+/** One row of the Budget screen. Every expense category is a row,
  *  budgeted or not, so setting a budget is typing into a row you can see. */
 export interface BudgetLine {
   category_id: string;
@@ -416,9 +416,9 @@ export interface BudgetLine {
   parent_id: string | null;
   /** The amount AS TYPED, in the line's own period. */
   target_cents: number;
-  /** §131 — how to read `target_cents`. */
+  /** How to read `target_cents`. */
   period: "monthly" | "yearly";
-  /** §131 — `target_cents` as a monthly figure: itself, or a twelfth. What
+  /** `target_cents` as a monthly figure: itself, or a twelfth. What
    *  the envelope arithmetic and the screen's totals use. */
   monthly_cents: number;
   /** A budget of zero is a decision; no budget is not. Kept apart from the
@@ -426,16 +426,16 @@ export interface BudgetLine {
   has_budget: boolean;
   /** Spending booked directly to this category. */
   own_cents: number;
-  /** §130 — spending from EVERY child, budgeted or not. A parent is the
+  /** Spending from EVERY child, budgeted or not. A parent is the
    *  envelope for the whole category. */
   rolled_cents: number;
-  /** §130 — what this line's children have allocated between them. */
+  /** What this line's children have allocated between them. */
   children_budgeted_cents: number;
-  /** §130 — whether this line's target belongs in the screen's totals. A
+  /** Whether this line's target belongs in the screen's totals. A
    *  budgeted child under a budgeted parent does not: it is already inside
    *  that envelope. Each branch counts once, at its top. */
   counts_in_total: boolean;
-  /** §131 — measured over the line's OWN period: this month for a monthly
+  /** Measured over the line's OWN period: this month for a monthly
    *  line, this calendar year for a yearly one. */
   spent_cents: number;
   /** Always this month's spending, whatever the period — the totals strip is
@@ -445,7 +445,7 @@ export interface BudgetLine {
   remaining_cents: number;
 }
 
-/** §129 — the Budget screen in one answer. Totals come from Rust: the
+/** The Budget screen in one answer. Totals come from Rust: the
  *  parent/child carve-out makes summing them here wrong in a way that looks
  *  right. */
 export interface BudgetGrid {
@@ -458,9 +458,9 @@ export interface BudgetGrid {
   total_lines: number;
 }
 
-/** §138 — one row of the year plan. `annual_cents` and `months` are the only
+/** One row of the year plan. `annual_cents` and `months` are the only
  *  authored values; everything else is derived from them and the register. */
-/** §143 — the two readings of a plan's months mask. */
+/** The two readings of a plan's months mask. */
 export type PlanSpread = "spent" | "aside";
 
 export interface PlanLine {
@@ -478,11 +478,11 @@ export interface PlanLine {
   /** Twelve characters, January first, '1' where the line applies. */
   months: string;
   months_label: string;
-  /** §143 — how to read `months`. "spent": the months it runs in, and what
+  /** How to read `months`. "spent": the months it runs in, and what
    *  divides the annual figure. "aside": the months it is DUE, with the
    *  annual figure divided by twelve because you save for it all year. */
   spread: PlanSpread;
-  /** §143 — what ONE payment of an "aside" line is. Zero when "spent",
+  /** What ONE payment of an "aside" line is. Zero when "spent",
    *  where `monthly_cents` already is the payment. */
   payment_cents: number;
   /** Twelve figures, index 0 is January. */
@@ -504,7 +504,7 @@ export interface PlanTotals {
   variance_cents: number;
 }
 
-/** §138 — the year: both blocks, their totals, and the net between them. */
+/** The year: both blocks, their totals, and the net between them. */
 export interface YearPlan {
   year: number;
   /** How many of the twelve columns mean anything yet. */
@@ -517,7 +517,7 @@ export interface YearPlan {
   planned_lines: number;
 }
 
-/** §141 — one line of "build next year from what this year did". A reading
+/** One line of "build next year from what this year did". A reading
  *  of a year, not a decision: nothing is written until it comes back ticked. */
 export interface PlanProposal {
   category_id: string;
@@ -538,14 +538,14 @@ export interface PlanProposal {
   suggested_annual_cents: number;
   months: string;
   months_label: string;
-  /** §179 — how `months` reads, carried from the source year's plan with the
+  /** How `months` reads, carried from the source year's plan with the
    *  mask; "spent" when there was none. */
   spread: PlanSpread;
   include: boolean;
   existing_annual_cents: number | null;
 }
 
-/** §141 — one accepted proposal on its way back. */
+/** One accepted proposal on its way back. */
 export interface PlanPick {
   category_id: string;
   annual_cents: number;
@@ -554,22 +554,22 @@ export interface PlanPick {
   spread?: PlanSpread;
 }
 
-/** §138 — what one plan write did. */
+/** What one plan write did. */
 export interface PlanWrite {
   line: PlanLine;
   raised: RaisedParent | null;
 }
 
-/** §130 — a parent pushed up to cover its children, so the screen can say so. */
+/** A parent pushed up to cover its children, so the screen can say so. */
 export interface RaisedParent {
   category_id: string;
   category_name: string;
   target_cents: number;
-  /** §137 — the parent had no budget and this write gave it one. */
+  /** The parent had no budget and this write gave it one. */
   created: boolean;
 }
 
-/** §130 — what one budget write did. */
+/** What one budget write did. */
 export interface BudgetWrite {
   budget: Budget;
   raised: RaisedParent | null;
@@ -584,8 +584,8 @@ export interface CategoryBudget {
   month_year: string;
 }
 
-/** Money's dated return on investment (§56). */
-/** §172 — one period of the performance table. Money in cents, returns in
+/** Money's dated return on investment. */
+/** One period of the performance table. Money in cents, returns in
  *  basis points (10000 = 100%). */
 export interface Performance {
   label: string;
@@ -617,7 +617,7 @@ export interface RoiPeriod {
   return_bps: number | null;
 }
 
-/** One line of a statement for `updateHoldings` (§50): shares, or a value
+/** One line of a statement for `updateHoldings`: shares, or a value
  *  (with a price, or at the price already known). */
 export interface StatementHolding {
   security_id: string;
@@ -639,7 +639,7 @@ export interface HoldingChange {
   problem: string | null;
 }
 
-/** What merging one account into another did, or would do (§49). */
+/** What merging one account into another did, or would do. */
 export interface MergeSummary {
   moved: number;
   duplicates: number;
@@ -649,7 +649,7 @@ export interface MergeSummary {
   recurrences: number;
   goals: number;
   balance_cents: number;
-  /** §179 — what the merge decided that the counts cannot say (loan terms
+  /** What the merge decided that the counts cannot say (loan terms
    *  kept from the survivor, scheduled transfers between the two removed). */
   notes?: string[];
 }
@@ -661,21 +661,21 @@ export interface ImportSummary {
   skipped: number;
   duplicates: number;
   balance_delta_cents: number;
-  /** Investment rows written from a brokerage statement (§44). */
+  /** Investment rows written from a brokerage statement. */
   investments: number;
   securities_created: number;
-  /** QIF [Account] rows written or matched as linked transfers (§65). */
+  /** QIF [Account] rows written or matched as linked transfers. */
   transfers_linked?: number;
-  /** §89 — rows paired with a transaction already in the register: marked
+  /** Rows paired with a transaction already in the register: marked
    *  cleared rather than written again, so they move no balance. */
   matched?: number;
-  /** §89 — rows the user left out in the review dialog. */
+  /** Rows the user left out in the review dialog. */
   user_skipped?: number;
   /** What was left out and why. */
   notes: string[];
 }
 
-/** §89 — a transaction already in the register, offered as a match. */
+/** A transaction already in the register, offered as a match. */
 export interface MatchExistingRow {
   id: string;
   date: string;
@@ -706,7 +706,7 @@ export interface IncomingRow {
   candidates: MatchCandidate[];
   likely: boolean;
 }
-/** §159 — a new row the file did not categorize and no payee rule caught. */
+/** A new row the file did not categorize and no payee rule caught. */
 export interface UncategorizedRow {
   index: number;
   date: string;
@@ -721,14 +721,14 @@ export interface ImportMatchPreview {
   unreadable: number;
   new_rows: number;
   rows: IncomingRow[];
-  /** §159 — a subset of `new_rows`: the ones with nothing to file them under. */
+  /** A subset of `new_rows`: the ones with nothing to file them under. */
   uncategorized: UncategorizedRow[];
   window_days: number;
-  /** §90 — the distinct memos on a plan statement's investment rows. */
+  /** The distinct memos on a plan statement's investment rows. */
   memo_groups: MemoGroup[];
 }
 
-/** §90 — what a plan statement's memo means. */
+/** What a plan statement's memo means. */
 export type Treatment = "as_is" | "contribution" | "reinvest" | "fee" | "withdrawal";
 export interface MemoGroup {
   memo: string;
@@ -754,7 +754,7 @@ export interface RowDecision {
   index: number;
   action: "new" | "skip" | "match";
   existingId?: string | null;
-  /** §159 — a category chosen in the review for a row that had none. */
+  /** A category chosen in the review for a row that had none. */
   categoryId?: string | null;
 }
 
@@ -768,7 +768,7 @@ export interface Goal {
   name: string;
   target_cents: number;
   /** Progress: starting amount plus every row tagged for the goal in its
-   *  linked account (§46). For an unlinked goal, just the typed amount. */
+   *  linked account. For an unlinked goal, just the typed amount. */
   saved_cents: number;
   deadline: string | null;
   notes: string | null;
@@ -803,7 +803,7 @@ export interface PriceRefreshSummary {
   failures: PriceFailure[];
 }
 
-/** §115 — how old the stored prices are, and what the timer is set to. */
+/** How old the stored prices are, and what the timer is set to. */
 export interface PriceStatus {
   with_symbol: number;
   newest_date: string | null;
@@ -816,7 +816,7 @@ export interface PriceStatus {
 
 export type PriceInterval = "off" | "daily" | "weekly";
 
-/** Something you can hold (§41). Prices are dollars x 1,000,000. */
+/** Something you can hold. Prices are dollars x 1,000,000. */
 export interface Security {
   id: string;
   name: string;
@@ -907,7 +907,7 @@ export interface Disposal {
 export interface Position {
   account_id: string;
   account_name: string;
-  /** How this position was rounded to the cent (§81). */
+  /** How this position was rounded to the cent. */
   rounding?: HoldingRounding;
   security_id: string;
   security_name: string;
@@ -929,13 +929,13 @@ export interface Portfolio {
   total_value_cents: number;
   cash_cents: number;
   problems: string[];
-  /** How values were rounded to the cent: "nearest" | "down" (§79). */
+  /** How values were rounded to the cent: "nearest" | "down". */
   rounding: HoldingRounding;
 }
 
 export type HoldingRounding = "nearest" | "down";
 
-/** §88 — CSV import: which column holds what. */
+/** CSV import: which column holds what. */
 export interface CsvMapping {
   date: number | null;
   payee: number | null;
@@ -954,7 +954,7 @@ export interface CsvPreviewRow {
   payee: string | null;
   amount_cents: number | null;
   error: string | null;
-  /** §165 — the rest of what the mapping writes. */
+  /** The rest of what the mapping writes. */
   memo?: string | null;
   check_number?: string | null;
   category?: string | null;
@@ -966,16 +966,16 @@ export interface CsvPreview {
   total_rows: number;
   mapping: CsvMapping;
   parsed: CsvPreviewRow[];
-  /** §132 — a tsp.gov activity detail, which this importer cannot read
+  /** A tsp.gov activity detail, which this importer cannot read
    *  properly. The dialog says so instead of importing it flat. */
   looks_like_tsp: boolean;
-  /** §175 — a brokerage or plan history (Symbol and Quantity columns); the
+  /** A brokerage or plan history (Symbol and Quantity columns); the
    *  dialog shuts the door the way it does for a TSP file. */
   looks_like_brokerage: boolean;
 }
 
-/** §84 — a payee rename rule. */
-/** §171 — what a rule looks at besides the payee text. */
+/** A payee rename rule. */
+/** What a rule looks at besides the payee text. */
 export interface RuleConditions {
   min_cents?: number | null;
   max_cents?: number | null;
@@ -990,7 +990,7 @@ export interface PayeeRule {
   category_id: string | null;
   category_name: string | null;
   created_at: string;
-  /** §171 — conditions beyond the text; null is "any". */
+  /** Conditions beyond the text; null is "any". */
   min_cents?: number | null;
   max_cents?: number | null;
   memo_contains?: string | null;
@@ -1014,7 +1014,7 @@ export interface DuplicateGroup {
   rows: DuplicateRow[];
 }
 
-/** §83 — what Verify this file found. */
+/** What Verify this file found. */
 export interface BalanceDrift {
   account_id: string;
   account_name: string;
@@ -1027,7 +1027,7 @@ export interface FileCheck {
   drift: BalanceDrift[];
   half_transfers: string[];
   split_mismatch: string[];
-  /** §177 — split transfer lines whose row in the other account is missing,
+  /** Split transfer lines whose row in the other account is missing,
    *  orphaned, or disagrees with the line. */
   split_transfers: string[];
   accounts: number;
@@ -1040,11 +1040,11 @@ export interface DbInfo {
   size_bytes: number;
   has_key: boolean;
   /** The scratch data directory the app was started against, or null for
-   *  the real database (§38). */
+   *  the real database. */
   scratch_dir: string | null;
 }
 
-/** One line of a split transaction (§6.1e). `description` is per-line and is
+/** One line of a split transaction. `description` is per-line and is
  *  distinct from the parent transaction's `notes` (Money's Memo). */
 export interface Split {
   id: string;
@@ -1055,13 +1055,13 @@ export interface Split {
   sort_order: number;
   transfer_account_id?: string | null;
   transfer_account_name?: string | null;
-  /** §112: this line's own classification values, one per axis. Empty means
+  /** This line's own classification values, one per axis. Empty means
    *  the line inherits the transaction's. */
   classes?: ClassPick[];
 }
 
 // ---------------------------------------------------------------------------
-// Classifications (§112) — the axis that says what money was FOR
+// Classifications — the axis that says what money was FOR
 // ---------------------------------------------------------------------------
 
 /** One tagging axis ("Property", "Person"), with its values. */
@@ -1097,19 +1097,19 @@ export interface NewSplit {
   category_id: string | null;
   description: string | null;
   amount_cents: number;
-  /** §94 in Rust, §102 here: set INSTEAD of `category_id` to make this line a
+  /** In Rust, and now here too: set INSTEAD of `category_id` to make this line a
    *  transfer, and the backend writes the far row in that account. The field
    *  existed on the Rust `NewSplit` from the start and was missing from this
    *  one, which is why no UI could ever produce a split transfer. Optional so
    *  every existing caller still compiles; the backend defaults it to null. */
   transfer_account_id?: string | null;
-  /** §112: this line's own classification values. Omit to leave the line
+  /** This line's own classification values. Omit to leave the line
    *  inheriting the transaction's. */
   classes?: ClassPick[];
 }
 
 /** A payee (migration 0011). Money offers the last category on re-entry. */
-/** §160 — a piece of text and how often it has been used. */
+/** A piece of text and how often it has been used. */
 export interface UsedText {
   name: string;
   usage_count: number;
@@ -1125,11 +1125,11 @@ export interface Payee {
   usage_count: number;
   updated_at: string;
   /** The amount of this payee's most recent non-void transaction. Money offers
-   *  it on re-entry alongside the category (§17.4). Derived in SQL. */
+   *  it on re-entry alongside the category. Derived in SQL. */
   last_amount_cents: number | null;
 }
 
-/** One bank statement's reconcile record (§6.1c / §6.1f). */
+/** One bank statement's reconcile record. */
 export interface Statement {
   id: string;
   account_id: string;
@@ -1187,7 +1187,7 @@ export interface NewCommonTransaction {
   splits: NewSplit[];
 }
 
-/** A scheduled bill or income rule (§32). Occurrences are computed from it. */
+/** A scheduled bill or income rule. Occurrences are computed from it. */
 export interface Recurrence {
   id: string;
   payee: string;
@@ -1206,7 +1206,7 @@ export interface Recurrence {
   notes: string | null;
   is_active: boolean;
   updated_at: string;
-  /** A scheduled transfer (§57): where the money lands; the goal its receiving half is tagged for. */
+  /** A scheduled transfer: where the money lands; the goal its receiving half is tagged for. */
   transfer_account_id?: string | null;
   transfer_account_name?: string | null;
   goal_id?: string | null;
@@ -1232,7 +1232,7 @@ export interface Occurrence {
   /** What actually left the account, when known — variable bills rarely match
    *  their rule's amount. */
   actual_amount_cents: number | null;
-  /** §57: a scheduled transfer's receiving account. */
+  /** A scheduled transfer's receiving account. */
   transfer_account_id?: string | null;
   transfer_account_name?: string | null;
 }
@@ -1253,14 +1253,14 @@ export interface CashForecast {
   low_date: string;
   ending_balance_cents: number;
   upcoming: Occurrence[];
-  /** §173 — recurring charges the detector found in this account and the
+  /** Recurring charges the detector found in this account and the
    *  forecast projected; empty when scheduled items only were asked for. */
   detected: DetectedCharge[];
-  /** §173.2 — on a schedule, but projected by their scheduled bills instead. */
+  /** On a schedule, but projected by their scheduled bills instead. */
   covered_by_bills: string[];
 }
 
-/** §173 — one detected recurring charge, as the forecast projects it. */
+/** One detected recurring charge, as the forecast projects it. */
 export interface DetectedCharge {
   payee: string;
   /** Negative: money leaving each time. */
@@ -1271,9 +1271,9 @@ export interface DetectedCharge {
   charges: number;
   /** The days in the window it is projected on. */
   dates: string[];
-  /** §173.1 — the amount differs each time; the median of the last three is projected. */
+  /** The amount differs each time; the median of the last three is projected. */
   varies: boolean;
-  /** §173.3 — on the Home page's Subscriptions ignore list; projected all the same. */
+  /** On the Home page's Subscriptions ignore list; projected all the same. */
   ignored_on_home: boolean;
 }
 
@@ -1289,15 +1289,15 @@ export interface NewRecurrence {
   second_day: number | null;
   weekend_rule: Recurrence["weekend_rule"];
   notes: string | null;
-  /** §57: a scheduled transfer's receiving account (amount must be money out) and the goal to tag. */
+  /** A scheduled transfer's receiving account (amount must be money out) and the goal to tag. */
   transfer_account_id?: string | null;
   goal_id?: string | null;
 }
 
-/** How automatic backups are configured (§34). */
+/** How automatic backups are configured. */
 export interface BackupConfig {
   enabled: boolean;
-  /** §135 — also take one when the app closes, or a file is closed. Its own
+  /** Also take one when the app closes, or a file is closed. Its own
    *  switch: "once a day when I start" and "whenever I leave" are different
    *  habits, and the second should not require the first. */
   on_exit: boolean;
@@ -1309,7 +1309,7 @@ export interface BackupConfig {
   existing: string[];
 }
 
-/** §106 — one row a payee rule would change.
+/** One row a payee rule would change.
  *
  *  Both halves of every change are carried — what it says now and what it
  *  would say — because a preview that shows only the destination asks you to
@@ -1330,7 +1330,7 @@ export interface PayeeRuleChange {
   match_text: string;
 }
 
-// ── TSP import (§103) ────────────────────────────────────────────────────
+// ── TSP import ────────────────────────────────────────────────────
 
 /** One fund's position on the day before the export begins — worked out from
  *  the file, never estimated. */
@@ -1342,7 +1342,7 @@ export interface TspOpeningPosition {
   value_cents: number;
   /** Millionths added to cover the plan's own per-source rounding, if any. */
   rounding_sliver: string | null;
-  /** §155 — of `units`, what the chosen account already holds on the open
+  /** Of `units`, what the chosen account already holds on the open
    *  date, and what will actually be written. "0.000000" until an account
    *  is chosen. */
   already_held: string;
@@ -1389,7 +1389,7 @@ export interface TspPaymentSplit {
   lines: TspKeptLine[];
 }
 
-/** §101 — what undo would do next, in the words the menu uses.
+/** What undo would do next, in the words the menu uses.
  *
  *  `null` means there is nothing on that side of the stack, which is how the
  *  menu decides to gray the item out. The label is the operation's own
@@ -1400,20 +1400,20 @@ export interface UndoStatus {
   redo: string | null;
 }
 
-/** §98 — the T-Money file that is open. */
+/** The T-Money file that is open. */
 export interface OpenFile {
   path: string;
   name: string;
   /** The app's own database rather than one the user chose. */
   isDefault: boolean;
   scratch: boolean;
-  /** §117 — false after File → Close: no file is open at all, and the app
+  /** False after File → Close: no file is open at all, and the app
    *  shows its start screen. `path`/`name` are then the file that WAS open,
    *  so the start screen can offer it back. */
   isOpen: boolean;
 }
 
-/** §98 — one of the last few files opened. `exists` false means the path is
+/** One of the last few files opened. `exists` false means the path is
  *  no longer there; the entry is kept and marked, because a database that has
  *  gone missing is the most useful thing this list can say. */
 export interface RecentFile {
@@ -1421,12 +1421,12 @@ export interface RecentFile {
   name: string;
   last_opened: string;
   exists: boolean;
-  /** §134 — true when this computer holds no key that opens this file, so the
+  /** True when this computer holds no key that opens this file, so the
    *  start screen can say so before you click rather than after. */
   needs_key: boolean;
 }
 
-/** §133 — what merging one category into another would do, counted first.
+/** What merging one category into another would do, counted first.
  *
  *  The dialog asks for this each time the destination changes, so the
  *  sentence it shows names both sides and real numbers, and a merge the

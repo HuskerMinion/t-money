@@ -1,4 +1,4 @@
-// The investment register's entry form (§41) — Money's "Buy / Sell / Dividend
+// The investment register's entry form — Money's "Buy / Sell / Dividend
 // / Reinvest…" form, in place in the grid like TransactionEditRow.
 //
 // The form owns what the user knows: the activity, the security, how many
@@ -14,7 +14,7 @@
 // the total and "quantity, total" fills the price, as before; but a row can
 // also carry BOTH a typed price and a typed total that do not multiply out
 // exactly, which is what a broker's confirmation looks like: the NAV to
-// four or six places, the total to the cent (§78). An existing row opens
+// four or six places, the total to the cent. An existing row opens
 // with both as stored. Clearing a field hands it back to derivation. What
 // was typed is what is sent; the backend derives whatever was not.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -66,20 +66,20 @@ interface Props {
   accountId: string;
   /** Editing this row; omit for a new entry. */
   row?: RegisterRow | null;
-  /** §69: the C cell toggles the open row's cleared mark. */
+  /** The C cell toggles the open row's cleared mark. */
   onToggleCleared?: () => void;
-  /** §71: a new entry starts on the last date entered, not today. */
+  /** A new entry starts on the last date entered, not today. */
   defaultDate?: string | null;
-  /** §73: save-on-leave, as TransactionEditRow. */
+  /** Save-on-leave, as TransactionEditRow. */
   leaveRef?: React.MutableRefObject<(() => Promise<LeaveResult>) | null>;
   securities: readonly Security[];
   categories: readonly Category[];
   /** Bank accounts a buy can be paid from / a sale swept to. */
   fundingAccounts: readonly Account[];
   onCommit: (id: string | null, t: NewInvestmentTransaction) => Promise<void>;
-  /** Transfer Shares (§45): both halves in one call. */
+  /** Transfer Shares: both halves in one call. */
   onTransferShares: (t: ShareTransferDraft) => Promise<void>;
-  /** §91: the user picked one of the cash entries from the Activity list —
+  /** The user picked one of the cash entries from the Activity list —
    *  a contribution, a fee, a withdrawal. The register swaps this form for
    *  the ordinary transaction form, seeded for that kind. */
   onCashActivity?: (key: string) => void;
@@ -127,12 +127,12 @@ export default function InvestmentEditRow({
   const [commission, setCommission] = useState(row?.commission_cents ? formatAmountBare(row.commission_cents) : "");
   const [categoryId, setCategoryId] = useState(row?.category_id ?? "");
   const [notes, setNotes] = useState(row?.notes ?? "");
-  // §71: an existing buy/sell opens with the account its cash came from or
+  // An existing buy/sell opens with the account its cash came from or
   // went to, and can change it.
   const [funding, setFunding] = useState(row?.funding_account_id ?? "");
-  // Transfer Shares (§45): the account the shares go to.
+  // Transfer Shares: the account the shares go to.
   const [toAccount, setToAccount] = useState("");
-  // Money's distribution methods (§48): FIFO is the backend's own; LIFO,
+  // Money's distribution methods: FIFO is the backend's own; LIFO,
   // Max gain and Min gain are computed here from the open lots and sent as
   // specified lots; Specify is the user's own picks.
   const [lotMode, setLotMode] = useState<LotMethod>(row?.lot_specified ? "specify" : "fifo");
@@ -140,7 +140,7 @@ export default function InvestmentEditRow({
   const [picked, setPicked] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
 
-  // §183 — hand-picked shares belong to the lots of ONE security on ONE
+  // Hand-picked shares belong to the lots of ONE security on ONE
   // date. They were kept when either changed: the old picks no longer had a
   // row in the lot table, still counted toward "Picked", and the sale was
   // refused with a total nobody could see to fix.
@@ -158,7 +158,7 @@ export default function InvestmentEditRow({
   const isIncome = INCOME_ACTIVITIES.has(activity);
   const isClosing = CLOSING_ACTIVITIES.has(activity) || isTransfer;
   const isSplit = activity === "split";
-  // §74: income paid in cash can be swept to another account too — a
+  // Income paid in cash can be swept to another account too — a
   // dividend that lands in checking is one entry, not a dividend plus a
   // transfer. Reinvested forms move no cash, so they cannot.
   const isFundable = activity === "buy" || activity === "sell" || activity === "dividend" || activity === "interest" || activity === "ltcg_dist" || activity === "stcg_dist" || activity === "return_of_capital";
@@ -218,9 +218,9 @@ export default function InvestmentEditRow({
         if (!live) return;
         const p: Record<string, string> = {};
         for (const x of d) p[x.lot_id] = formatShares(x.shares_micro);
-        // §183 — these arrive after the form's "as opened" snapshot was
+        // These arrive after the form's "as opened" snapshot was
         // taken, so they are what it opened with too; otherwise an untouched
-        // sale counted as changed and saved again on leaving (§73).
+        // sale counted as changed and saved again on leaving.
         openedPicked.current = JSON.stringify(p);
         setPicked(p);
       })
@@ -245,7 +245,7 @@ export default function InvestmentEditRow({
     [isClosing, lotMode, lots, sharesMicro]
   );
 
-  // §183 — the save in progress, as TransactionEditRow: Enter by key was not
+  // The save in progress, as TransactionEditRow: Enter by key was not
   // disabled with the button, so two quick presses recorded a buy twice.
   const inFlight = useRef<Promise<boolean> | null>(null);
 
@@ -261,7 +261,7 @@ export default function InvestmentEditRow({
   async function save(): Promise<boolean> {
     setError(null);
     if (!securityId) { setError("Pick a security."); return false; }
-    // §183 — "" is also what DateField sends for a date it cannot read.
+    // "" is also what DateField sends for a date it cannot read.
     if (!date) { setError("The date is missing or unreadable — type it as 8/3/2026."); return false; }
     if ((needsShares || isSplit) && (sharesMicro === null || sharesMicro <= 0)) {
       { setError(isSplit ? "A split needs a ratio: 2 for a 2-for-1." : "How many shares?"); return false; }
@@ -327,7 +327,7 @@ export default function InvestmentEditRow({
     }
   }
 
-  // §73: save when the register moves on, if anything changed.
+  // Save when the register moves on, if anything changed.
   // The picks are compared on their own: a sale's picks load after this
   // first render (see the disposals effect), which sets `openedPicked`.
   const snapshot = () => JSON.stringify([date, activity, securityId, shares, price, total, commission, categoryId, notes, funding, toAccount, lotMode]);
@@ -375,7 +375,7 @@ export default function InvestmentEditRow({
             value={activity}
             onChange={(e) => {
               const v = e.target.value;
-              // §91: the cash entries are not activities on this form — they
+              // The cash entries are not activities on this form — they
               // hand the row over to the ordinary transaction form.
               if (onCashActivity && cashActivity(v)) {
                 onCashActivity(v);

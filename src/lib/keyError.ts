@@ -1,4 +1,4 @@
-// §134 — telling a locked file from a broken one.
+// Telling a locked file from a broken one.
 //
 // `open_file` fails for three different reasons and they want three different
 // responses: the path is wrong (say so), the file is damaged (say so), or this

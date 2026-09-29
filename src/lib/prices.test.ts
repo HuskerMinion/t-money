@@ -1,4 +1,4 @@
-// §115 — the price timer's rule, and what the screen says about staleness.
+// The price timer's rule, and what the screen says about staleness.
 //
 // The rule matters more than it looks: this app's one outbound request has
 // always been manual, and "automatically" must not quietly become "on every
@@ -49,12 +49,12 @@ describe("when an automatic refresh is due", () => {
   it("counts days, not hours", () => {
     expect(daysBetween("2026-09-01", "2026-09-08")).toBe(7);
     expect(daysBetween("2026-09-08T23:00:00", "2026-09-09T01:00:00")).toBe(1);
-    // §180: unknown is null, not 0 — zero days reads as fresh.
+    // Unknown is null, not 0 — zero days reads as fresh.
     expect(daysBetween("nonsense", "2026-09-09")).toBeNull();
     expect(daysBetween("2026-09-09", "")).toBeNull();
   });
 
-  it("rejects dates that are not on the calendar rather than rolling them over (§180)", () => {
+  it("rejects dates that are not on the calendar rather than rolling them over", () => {
     expect(daysBetween("2026-02-30", "2026-03-02")).toBeNull();
     expect(daysBetween("2026-13-01", "2026-12-01")).toBeNull();
     expect(daysBetween("2026-09-31T09:00:00", "2026-10-01")).toBeNull();
@@ -63,12 +63,12 @@ describe("when an automatic refresh is due", () => {
     expect(daysBetween("2026-03-07", "2026-03-09")).toBe(2);
   });
 
-  it("treats a stamp it cannot read as due, not as fresh (§180)", () => {
+  it("treats a stamp it cannot read as due, not as fresh", () => {
     expect(refreshIsDue({ ...base, interval: "daily", last_auto: "garbage" }, "2026-09-08T09:00:00")).toBe(true);
     expect(refreshIsDue({ ...base, interval: "weekly", last_auto: "2026-02-30T09:00:00" }, "2026-03-02T09:00:00")).toBe(true);
   });
 
-  it("compares local stamps with local time, so an evening check is not a day late (§180)", () => {
+  it("compares local stamps with local time, so an evening check is not a day late", () => {
     // 9:30 p.m. local on the 15th: UTC in U.S. Central is already the 16th.
     const evening = new Date(2026, 8, 15, 21, 30, 5);
     expect(localNow(evening)).toBe("2026-09-15T21:30:05");
@@ -108,7 +108,7 @@ describe("what the screen says about how old the prices are", () => {
     expect(isStale({ ...base, never_priced: 1 }, "2026-09-08")).toBe(true);
   });
 
-  it("never calls a date it cannot read today's (§180)", () => {
+  it("never calls a date it cannot read today's", () => {
     const bad: PriceStatus = { ...base, oldest_date: "2026-02-30" };
     expect(stalenessNote(bad, "2026-03-02")).toBe("Price dates could not be read");
     expect(isStale(bad, "2026-03-02")).toBe(true);

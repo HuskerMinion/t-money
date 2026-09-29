@@ -7,7 +7,7 @@
 //! Deliberately simple, and deliberately conservative about deleting:
 //!
 //! - It runs **at startup**, at most once a day, and never blocks the UI.
-//! - §135: and **on the way out** — app exit and File → Close — when that is
+//! - And **on the way out** — app exit and File → Close — when that is
 //!   switched on. Same folder, same retention, same `VACUUM INTO`.
 //! - It writes `t-money-YYYY-MM-DD-HHMM.db` — a `VACUUM INTO` copy, so it is
 //!   a real database and **still encrypted with the same key**.
@@ -15,7 +15,7 @@
 //!   folder the user also keeps other things in is not ours to tidy.
 //!
 //! The backups are encrypted with the master key, which means a backup without
-//! the key is unreadable. That is why §34 also made the key exportable — the
+//! the key is unreadable. That is why the same change also made the key exportable — the
 //! two features are one feature.
 
 use crate::db::pool::DbPool;
@@ -27,10 +27,10 @@ pub const FOLDER: &str = "backup.folder";
 pub const ENABLED: &str = "backup.enabled";
 pub const KEEP: &str = "backup.keep";
 pub const LAST_AT: &str = "backup.last_at";
-/// §135 — take one when the app closes, or when a file is closed.
+/// Take one when the app closes, or when a file is closed.
 pub const ON_EXIT: &str = "backup.on_exit";
 
-/// §135 — how long after the last backup an exit backup is worth taking.
+/// How long after the last backup an exit backup is worth taking.
 ///
 /// NOT a change test, and the difference is worth stating. There is no cheap,
 /// honest way to ask this file "has anything happened since 09:14" — WAL means
@@ -56,7 +56,7 @@ const DEFAULT_KEEP: usize = 10;
 /// failed, and the file the user had just been asked about, and agreed to
 /// replace, still held whatever it held before. That is not a cosmetic error
 /// message: it is how a restore hands back last week's data from a backup you
-/// watched yourself take. It cost the user a morning's work (§37).
+/// watched yourself take. It cost the user a morning's work.
 ///
 /// The old file is moved aside rather than deleted, and put back if the vacuum
 /// fails. A backup step must never be the reason a good backup stops existing.
@@ -86,7 +86,7 @@ pub fn vacuum_into(conn: &rusqlite::Connection, target: &Path) -> Result<(), Str
 /// Put the user's previous backup back exactly as it was after a failed
 /// vacuum, and return the error to report.
 ///
-/// §180: both steps used to be `let _`. When the rename back failed — the
+/// Both steps used to be `let _`. When the rename back failed — the
 /// partial file still locked by a virus scanner, say — the user was told
 /// "backup failed" and their previous backup was sitting under a name they
 /// had never seen. Now the error says where it is. A partial target that
@@ -123,7 +123,7 @@ pub fn backup_name(now: chrono::DateTime<Local>) -> String {
 /// Is this one of ours? Retention must never touch anything else in the
 /// folder — a user's backup directory is not the app's to prune.
 ///
-/// §180: the stamp itself is checked, digit by digit, not only its length.
+/// The stamp itself is checked, digit by digit, not only its length.
 /// Any 26-byte name with the prefix and suffix used to match — a user's own
 /// `t-money-my-old-file-001.db` among them — and sorted in among the backups
 /// for retention to delete.
@@ -227,8 +227,8 @@ fn take(
     let target = dir.join(backup_name(now));
 
     // `VACUUM INTO` produces a real, still-encrypted database — the same
-    // mechanism the manual button uses (§22.5). Two "Back up now" presses in
-    // the same minute land on the same name, so this has to replace (§37).
+    // mechanism the manual button uses. Two "Back up now" presses in
+    // the same minute land on the same name, so this has to replace.
     vacuum_into(conn, &target)?;
 
     queries::set_setting(conn, LAST_AT, &now.to_rfc3339())?;
@@ -239,7 +239,7 @@ fn take(
     Ok(target)
 }
 
-/// §135 — is an exit backup worth taking?
+/// Is an exit backup worth taking?
 ///
 /// Never backed up at all: yes. A timestamp we cannot read: yes — an
 /// unparseable setting is not a reason to skip a backup. A timestamp in the
@@ -257,7 +257,7 @@ pub fn exit_is_due(
     gap < chrono::Duration::zero() || gap.num_minutes() >= min_gap_minutes
 }
 
-/// §135 — a backup on the way out.
+/// A backup on the way out.
 ///
 /// > *"How about a backup on exit?"*
 ///
@@ -297,7 +297,7 @@ pub fn run_on_exit(pool: &DbPool, now: chrono::DateTime<Local>) -> Result<Option
 mod tests {
     use super::*;
 
-    // --- vacuum_into: replacing an existing backup (§37) -------------------
+    // --- vacuum_into: replacing an existing backup -------------------
 
     fn scratch(tag: &str) -> PathBuf {
         let mut p = std::env::temp_dir();
@@ -416,7 +416,7 @@ mod tests {
         assert!(!is_ours("t-money-2026-09-04-0805.db.bak"));
         assert!(!is_ours("photos.db"));
         assert!(!is_ours("t-money-.db"));
-        // §180: the right length is not enough.
+        // The right length is not enough.
         assert_eq!("t-money-my-old-file-001.db".len(), "t-money-2026-09-04-0805.db".len());
         assert!(!is_ours("t-money-my-old-file-001.db"));
         assert!(!is_ours("t-money-2026_09_04_0805.db"));
@@ -424,7 +424,7 @@ mod tests {
         assert!(!is_ours("t-money-20260904-080500.db"));
     }
 
-    /// §180 — a lookalike next to real backups survives retention.
+    /// A lookalike next to real backups survives retention.
     #[test]
     fn retention_does_not_prune_a_lookalike_name() {
         let dir = scratch("lookalike");
@@ -439,7 +439,7 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
-    /// §180 — when the previous backup cannot be put back, the error says
+    /// When the previous backup cannot be put back, the error says
     /// where it is rather than leaving it under a name the user never saw.
     #[test]
     fn a_previous_backup_that_cannot_be_put_back_is_named_in_the_error() {
@@ -471,7 +471,7 @@ mod tests {
         assert!(!is_due(Some("2026-09-04T23:59:00+01:00"), "2026-09-04"));
     }
 
-    // --- §135: the exit backup's frequency floor -------------------------
+    // --- The exit backup's frequency floor -------------------------
 
     fn at(s: &str) -> chrono::DateTime<Local> {
         chrono::DateTime::parse_from_rfc3339(s).expect("timestamp").with_timezone(&Local)

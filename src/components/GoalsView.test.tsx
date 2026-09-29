@@ -1,4 +1,4 @@
-// Goals that watch an account (§46): the breakdown, linking, contributing.
+// Goals that watch an account: the breakdown, linking, contributing.
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -78,7 +78,7 @@ describe("a goal that watches an account", () => {
   });
 });
 
-describe("§183 — Contribute… for one goal, then another", () => {
+describe("Contribute… for one goal, then another", () => {
   it("does not carry the From account into another goal's form", async () => {
     const car: Goal = { ...roof, id: "g-car", name: "New car", account_id: "a-chk", account_name: "Checking" };
     setIpcHandlers({

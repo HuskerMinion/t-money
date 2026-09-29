@@ -1,7 +1,7 @@
-//! §89 — matching an incoming statement row against one already in the
+//! Matching an incoming statement row against one already in the
 //! register.
 //!
-//! The dedupe that came before this (§13, §84) is exact: same account, same
+//! The dedupe that came before this is exact: same account, same
 //! date, same amount, same payee string. A bank that posts a day later than
 //! you wrote the check, or writes `SAFEWAY #1234 ANYTOWN US` where you wrote
 //! `Safeway`, defeats it and the row comes in twice. This module scores the
@@ -149,7 +149,7 @@ pub struct IncomingRow {
     pub likely: bool,
 }
 
-/// §159 — a row that would be written with NO category: the file gave none
+/// A row that would be written with NO category: the file gave none
 /// and no payee rule caught it. Listed so the review can ask, instead of the
 /// row landing as "Uncategorized" and being found weeks later in a report.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -175,12 +175,12 @@ pub struct ImportMatchPreview {
     pub new_rows: u32,
     /// Only the rows worth a decision.
     pub rows: Vec<IncomingRow>,
-    /// §159 — new rows (no candidate, not a duplicate) that would be written
+    /// New rows (no candidate, not a duplicate) that would be written
     /// with no category. A subset of `new_rows`, by count.
     #[serde(default)]
     pub uncategorized: Vec<UncategorizedRow>,
     pub window_days: u32,
-    /// §90: the distinct memos on the file's investment rows, empty for an
+    /// The distinct memos on the file's investment rows, empty for an
     /// ordinary bank file. What a plan statement's wording means.
     #[serde(default)]
     pub memo_groups: Vec<super::plan::MemoGroup>,
@@ -195,7 +195,7 @@ pub struct RowDecision {
     pub action: String,
     #[serde(default)]
     pub existing_id: Option<String>,
-    /// §159 — a category chosen in the review for a row the file and the
+    /// A category chosen in the review for a row the file and the
     /// payee rules left without one. Only read for a row written as new.
     #[serde(default)]
     pub category_id: Option<String>,

@@ -1,4 +1,4 @@
-// §169 — Organize favorites is also where the accounts are put in order: ▲
+// Organize favorites is also where the accounts are put in order: ▲
 // and ▼ move a row and hand back the whole arrangement, which every list of
 // accounts then follows. `placedFirst` is what those lists sort with.
 import { act, render, screen } from "@testing-library/react";
@@ -57,7 +57,7 @@ describe("placedFirst", () => {
   });
 });
 
-describe("OrganizeFavoritesDialog (§169)", () => {
+describe("OrganizeFavoritesDialog", () => {
   it("moves a row down and hands back the whole order, closed accounts last", async () => {
     const onReorder = vi.fn();
     render(<OrganizeFavoritesDialog accounts={accounts} onToggle={vi.fn()} onReorder={onReorder} onClose={vi.fn()} />);
@@ -79,8 +79,8 @@ describe("OrganizeFavoritesDialog (§169)", () => {
   });
 });
 
-// §183 — no catch, and ▼ could double-send while the first order was written.
-describe("§183 — a refused write is shown, and the arrows wait for the first one", () => {
+// No catch, and ▼ could double-send while the first order was written.
+describe("A refused write is shown, and the arrows wait for the first one", () => {
   it("disables the arrows while the order is being saved, and shows a refusal in the dialog", async () => {
     let fail!: (e: unknown) => void;
     const onReorder = vi.fn(() => new Promise<void>((_ok, bad) => (fail = bad)));

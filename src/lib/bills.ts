@@ -1,5 +1,5 @@
 // How a scheduled occurrence reads and is colored — shared by the bills
-// list and the bill calendar (§52).
+// list and the bill calendar.
 import type { Occurrence } from "./types";
 import { groupFor } from "./accountTypes";
 

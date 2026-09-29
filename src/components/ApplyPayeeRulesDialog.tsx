@@ -1,4 +1,4 @@
-// §106 — Tools → Rename payees in existing transactions.
+// Tools → Rename payees in existing transactions.
 //
 // This is what T-Money has instead of Money's Find and Replace, and it is
 // narrower on purpose. Money's version was a bulk editor over any field; this
@@ -7,7 +7,7 @@
 // hundred rows already in the file, not just the next import.
 //
 // THE APPLY IS NOT NEW. The button on the payee rules card has rewritten
-// existing rows since §84. What was missing is the two things that make a bulk
+// existing rows all along. What was missing is the two things that make a bulk
 // edit safe to press:
 //
 //   1. **Seeing it first.** "412 rows changed" told after the fact is not
@@ -135,8 +135,8 @@ export default function ApplyPayeeRulesDialog({ onClose, onApplied }: Props) {
             {groups.map((g) => {
               const allOn = g.rows.every((r) => !skipped.has(r.transaction_id));
               return (
-                // §183 — keyed by the rule, as the groups are built. Two rules
-                // can share match text (§171's amount, memo and account conditions),
+                // Keyed by the rule, as the groups are built. Two rules
+                // can share match text (the amount, memo and account conditions),
                 // and two sections under one key had React mixing up their rows.
                 <section className="aero-card" key={g.id} style={{ marginBottom: 10 }}>
                   <div className="aero-card-title flex items-center justify-between gap-2">

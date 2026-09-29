@@ -2,8 +2,7 @@
  *
  * Everything here that is prefixed --tm-ms- was MEASURED, pixel by pixel, from
  * real Microsoft Money Plus screenshots. Do not "improve" these values by
- * eye — re-sample the screenshots instead (§11; the structures they belong
- * to are §6.1a–f).
+ * eye — re-sample the screenshots instead.
  *
  * tailwind.config.js (aero.*) and index.css both read from this file. If you
  * find a hardcoded hex anywhere else in src/, it is a bug — move it here.
@@ -35,7 +34,7 @@
   --tm-ms-tab-inactive-bot: #5c74a3;
   --tm-ms-tab-active-top: #5482c1; /* darkens DOWN into the subnav band */
   --tm-ms-tab-active-bot: #315599;
-  /* §102 — the selected/hovered CHROME pair: menu titles, menu rows, the
+  /* The selected/hovered CHROME pair: menu titles, menu rows, the
      Settings tab strip. It defaults to the active tab's color, which is what
      these have always used, but it is its own token because the text on top
      of it was hard-coded white — and a theme is free to make the active tab
@@ -58,7 +57,7 @@
 
   /* Content */
   --tm-ms-page-bg: #ffffff; /* flat — Money does not gradient the page */
-  --tm-ms-content-bg: #eef4fb; /* the main area behind the cards (§63) */
+  --tm-ms-content-bg: #eef4fb; /* the main area behind the cards */
   --tm-ms-card-border: #9cbde9;
   --tm-ms-card-body: #e3f1fe; /* flat */
   --tm-ms-card-hdr-top: #99bae7; /* NOTE: gets LIGHTER downward */
@@ -102,11 +101,11 @@
   --tm-ms-dialog-rule: #d3d5d6;
   --tm-ms-dialog-field-border: #7a9cc1;
 
-  /* The permanent master-key / scratch-database warning box (§34, §63). */
+  /* The permanent master-key / scratch-database warning box. */
   --tm-ms-warn-bg: #fff6e0;
   --tm-ms-warn-border: #d9b45f;
 
-  /* §142 — the ERROR box, as distinct from the amber warning above. Was
+  /* The ERROR box, as distinct from the amber warning above. Was
    * three literals inline in SettingsView, which is how it stayed light pink
    * on the dark themes. */
   --tm-ms-error-bg: #fdecea;
@@ -121,7 +120,7 @@
   --tm-bar-amber: #ffcc66; /* spending tracker, under budget */
   --tm-bar-red: #cc0000; /* spending tracker, over budget */
 
-  /* §142 — progress and spending bars. Each bar is a two-stop vertical
+  /* Progress and spending bars. Each bar is a two-stop vertical
    * gradient; these were written inline in SpendingTrackerWidget and
    * GoalsView, in two slightly different blues that were meant to be one.
    *
@@ -129,7 +128,7 @@
    * (#0f1620), the shipped --tm-positive scored 3.41 against text and
    * --tm-negative 3.64, both under the 4.5 that makes a figure readable —
    * so every positive amount in the register on all three dark themes was
-   * the §19.2 bug again, a color that passed because nothing looked. */
+   * the old bug again, a color that passed because nothing looked. */
   --tm-bar-neutral-top: #9fb3c8;
   --tm-bar-neutral-bot: #7c93ac;
   --tm-bar-over-top: #e74c3c;
@@ -140,7 +139,7 @@
   --tm-bar-done-bot: #3f9b3f;
 
   /* Report chart series — Money's categorical palette, read off
-   * Money's Spending by Category report (§39): muted, mid-value,
+   * Money's Spending by Category report: muted, mid-value,
    * one hue per category, in the order Money assigns them. */
   --tm-series-1: #a2497a; /* plum */
   --tm-series-2: #6b8a5a; /* olive green */
@@ -188,7 +187,7 @@
   --tm-icon-knockout: var(--tm-pure-white);
 }
 
-/* Themes (§63) are token OVERRIDES set as inline custom properties on <html>
+/* Themes are token OVERRIDES set as inline custom properties on <html>
  * by src/lib/theme.ts — nothing here changes; "Money Plus" is these values.
  * The one dark theme ("Evening") sets data-theme="dark", which the rules
  * below use to retint the few Tailwind text utilities the components use. */
@@ -218,5 +217,5 @@
  * rendered light chrome with dark icons. MS Money Plus had no dark mode.
  * index.html pins color-scheme: light. If dark mode is ever wanted, it is a
  * deliberate project that must redefine every --tm-ms-* value above, not a
- * four-variable patch (§11.3 step 6).
+ * four-variable patch.
  */

@@ -1,4 +1,4 @@
-// Categories manager — Money's category tree (§10.3 item 9).
+// Categories manager — Money's category tree.
 //
 // The tree is exactly two levels: a category, and its subcategories. Each side
 // of the tree is either Income or Expense, and a subcategory always shares its
@@ -30,7 +30,7 @@ export function treeOf(
     }));
 }
 
-/** §133 — the plain-English list of what a merge moves.
+/** The plain-English list of what a merge moves.
  *
  *  Exported and pure so it can be tested without a dialog. Zero counts are
  *  left out entirely: "0 payee rules" is noise in a sentence whose job is to
@@ -61,10 +61,10 @@ export default function CategoriesView() {
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const nameRef = useRef<HTMLInputElement>(null);
-  // §102 — File → New → Category. Registered at priority 10 so that when this
+  // File → New → Category. Registered at priority 10 so that when this
   // screen is already open the menu item does the thing here rather than the
   // shell's "go to the categories screen". Same command, two owners, the
-  // nearer one wins (§97).
+  // nearer one wins.
   useCommand(
     "new.category",
     () => {
@@ -91,9 +91,9 @@ export default function CategoriesView() {
   const [reassignTo, setReassignTo] = useState("");
   const [merging, setMerging] = useState<Category | null>(null);
   const [mergeInto, setMergeInto] = useState("");
-  // §133 — what the merge would do, re-asked whenever either side changes.
+  // What the merge would do, re-asked whenever either side changes.
   const [mergePreview, setMergePreview] = useState<MergePreview | null>(null);
-  // §181 — a refused delete or merge, shown INSIDE the dialog that was
+  // A refused delete or merge, shown INSIDE the dialog that was
   // refused. It went to the form's error line, which sits behind the dialog's
   // backdrop, so the press looked like nothing at all: "Delete refused but
   // there was no message, it just acted like I didn't press the button".
@@ -130,7 +130,7 @@ export default function CategoriesView() {
   const selected = categories.find((c) => c.id === selectedId) ?? null;
   const topLevel = categories.filter((c) => c.parent_id === null);
 
-  /** Back to "new category". `keepMessage` — §183: after a create or a
+  /** Back to "new category". `keepMessage`: after a create or a
    *  delete the form is emptied, but the line saying it worked has to stay;
    *  clearing it here wiped "Category created." the moment it was set. */
   function clearForm(keepMessage = false) {
@@ -208,7 +208,7 @@ export default function CategoriesView() {
   /** The category being merged INTO — the one that survives. */
   const mergeTarget = categories.find((c) => c.id === mergeInto) ?? null;
 
-  /** §133 — keep the other one instead. Picking the wrong survivor is the
+  /** Keep the other one instead. Picking the wrong survivor is the
    *  mistake this dialog exists to prevent, and making it recoverable inside
    *  the dialog is better than making it recoverable afterwards. */
   function swapMergeDirection() {
@@ -226,7 +226,7 @@ export default function CategoriesView() {
       setMergeInto("");
       setMergePreview(null);
       if (selectedId === merging.id) clearForm(true);
-      // §149 — stay where the user was working.
+      // Stay where the user was working.
       // > "once I made the change it pops back to the top of the categories
       // >  and when I undid it it brought the category back as it should but
       // >  was at the top and I had to scroll to see it again."
@@ -239,17 +239,17 @@ export default function CategoriesView() {
     }
   }
 
-  /** §149 — select a category and scroll it into view once the list that
+  /** Select a category and scroll it into view once the list that
    *  holds it has been drawn again. Used after a merge, and after an undo
    *  puts a category back.
    *
    *  `requestAnimationFrame` rather than a bare call: the row does not exist
    *  until the reload has rendered, and scrolling to a row that is not there
-   *  yet is a silent no-op — the §36 class of bug, where a control moves the
+   *  yet is a silent no-op — an old class of bug, where a control moves the
    *  selection and leaves the user where they were. */
   function revealCategory(id: string) {
     if (!id) return;
-    // §183 — select it properly: the form as well as the highlight. Setting
+    // Select it properly: the form as well as the highlight. Setting
     // only `selectedId` left the form holding whatever it held before — the
     // merged-away category, or another one entirely — under the survivor's
     // highlight, and Save then renamed the survivor to that old name. The
@@ -554,7 +554,7 @@ export default function CategoriesView() {
                 </select>
               </label>
 
-              {/* §133 — the direction, drawn rather than described.
+              {/* The direction, drawn rather than described.
                   > "Its not intuitive on which way the merge goes"
                   One side is kept and one side is deleted; saying so in a
                   sentence did not land, so each side says its own fate under
@@ -595,7 +595,7 @@ export default function CategoriesView() {
               )}
 
               {mergePreview?.blocked ? (
-                /* §151 — a refusal should look like one.
+                /* A refusal should look like one.
                    > "While the button to merge an expense and income category
                    >  doesn't work, I'd like something more substantial like
                    >  this merge can't be done and the reason with only cancel
@@ -649,7 +649,7 @@ export default function CategoriesView() {
               )}
 
               <div className="flex justify-end gap-2 pt-3">
-                {/* §151 — the Merge button is not shown at all when the merge
+                {/* The Merge button is not shown at all when the merge
                     is refused. A disabled button invites a press; its absence
                     says the same thing without the dead click. */}
                 {!mergePreview?.blocked && (

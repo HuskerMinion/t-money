@@ -1,4 +1,4 @@
-// §126 — the watched register. §183: it has to follow the main pane's writes.
+// The watched register: it has to follow the main pane's writes.
 import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -61,7 +61,7 @@ function row(id: string, amount_cents: number, running_balance_cents: number): R
   } as RegisterRow;
 }
 
-describe("WatchPane (§126, §183)", () => {
+describe("WatchPane", () => {
   beforeEach(() => {
     resetIpc();
     localStorage.setItem("tm.twoup.account", "acc-sav");

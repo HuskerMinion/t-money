@@ -1,4 +1,4 @@
-// Update value (§93) — what a house or a car is worth now.
+// Update value — what a house or a car is worth now.
 //
 // Not "adjust by": you know the truck is worth $9,000, not that it fell $1,850
 // since you last looked. The difference is worked out in the backend and
@@ -36,7 +36,7 @@ export default function UpdateValueDialog({ account, onDone, onCancel }: Props) 
   const delta = cents === null ? null : cents - current;
 
   async function save() {
-    // §183 — DateField sends "" for text it cannot read.
+    // DateField sends "" for text it cannot read.
     if (!date) {
       setError("Type a date the form can read, such as 8/3/2026.");
       return;
@@ -49,7 +49,7 @@ export default function UpdateValueDialog({ account, onDone, onCancel }: Props) 
     setError(null);
     try {
       await api.setAccountValue(account.id, date, cents, notes.trim() || null);
-      // §183 — "update a value" is an undo step; without this the Edit menu
+      // "update a value" is an undo step; without this the Edit menu
       // kept offering whatever it offered before the revaluation.
       noteChanged();
       onDone();

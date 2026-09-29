@@ -1,4 +1,4 @@
-// §101 — the front end's view of the undo stack.
+// The front end's view of the undo stack.
 //
 // The stack itself lives in Rust, in `AppState`. This module is the small
 // amount of state the UI needs to ask two questions: is there anything to
@@ -41,7 +41,7 @@ function apply(next: UndoStatus | null | undefined) {
   // Coerced, not trusted. `undefined` and `null` mean the same thing here —
   // nothing to undo — but only one of them is falsy in the way the menu's
   // enabled test reads, and an item that grays itself out on one answer and
-  // lights up on the other is exactly the kind of dead menu item §97 exists
+  // lights up on the other is exactly the kind of dead menu item the command registry exists
   // to make impossible.
   const undo = next?.undo ?? null;
   const redo = next?.redo ?? null;
@@ -50,7 +50,7 @@ function apply(next: UndoStatus | null | undefined) {
   for (const l of listeners) l();
 }
 
-/** §180 — which request's answer still counts. Every call that will hand a
+/** Which request's answer still counts. Every call that will hand a
  *  status to `apply` takes the next number before it awaits, and applies its
  *  answer only if nothing has taken a newer one since. Without it a slow
  *  `undoStatus` sent before an undo — or before `forgetUndo` on a file switch
@@ -76,13 +76,13 @@ export function noteChanged(): void {
   void refreshUndo();
 }
 
-/** Run an undo or redo. §180: never throws — it runs from Ctrl+Z, where a
+/** Run an undo or redo. Never throws — it runs from Ctrl+Z, where a
  *  rejection has nobody to catch it — and a failure reads as "nothing
  *  happened" (false), so the caller does not reload for a step that did not
  *  run. The label is asked for again, since the stack may not be what the
  *  menu last said.
  *
- *  §183 — but "nothing happened" is not the same as "nothing to say". A
+ *  But "nothing happened" is not the same as "nothing to say". A
  *  refused step (the row it would put back is gone, the file is locked) was
  *  swallowed here and the shell showed nothing, so Ctrl+Z read as a dead key.
  *  The backend's words go to `onError`, for the shell to put in a Notice. */
@@ -114,7 +114,7 @@ export async function redoLast(onError?: (message: string) => void): Promise<boo
 
 /** A different file is a different history — the backend clears its stack on
  *  open, and this drops the label that went with the old one. It also retires
- *  any answer still on its way about the old file (§180). */
+ *  any answer still on its way about the old file. */
 export function forgetUndo(): void {
   latest++;
   apply(NOTHING);

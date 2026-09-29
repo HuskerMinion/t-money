@@ -1,4 +1,4 @@
-// §71 — the typed date field. §183 — what it tells the form while the text
+// The typed date field: what it tells the form while the text
 // does not read as a date.
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -39,7 +39,7 @@ describe("parseTypedDate", () => {
 });
 
 describe("DateField", () => {
-  it("a date that stops parsing sends \"\", not the last partial date (§183)", async () => {
+  it("a date that stops parsing sends \"\", not the last partial date", async () => {
     // 2/29/2027 passes through 2/29/20 on the way, which IS a date
     // (2020-02-29). That partial used to be what the form saved.
     const s = setup();
@@ -96,7 +96,7 @@ describe("DateField", () => {
     expect(s.field).toHaveValue("8/4/2026");
   });
 
-  it("read-only takes no typing (§181)", async () => {
+  it("read-only takes no typing", async () => {
     const onChange = vi.fn();
     render(<DateField value="2026-08-03" onChange={onChange} readOnly />);
     const field = screen.getByLabelText("Date");

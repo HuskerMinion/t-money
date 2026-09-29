@@ -1,4 +1,4 @@
-// Text size (§58). Money's type was small and this app inherited it (11px
+// Text size. Money's type was small and this app inherited it (11px
 // body). Rather than touch every hard-coded size, the whole webview is
 // zoomed — the register, dialogs, the portaled combo lists and the charts
 // all scale together and nothing has to be re-laid-out. WebView2 keeps the

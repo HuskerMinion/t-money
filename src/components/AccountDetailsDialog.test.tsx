@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@tauri-apps/api/core", () => import("../test/tauriMock"));
-// §170 — the attachments section uses the system file dialog.
+// The attachments section uses the system file dialog.
 const dialog = vi.hoisted(() => ({ open: vi.fn(), save: vi.fn() }));
 vi.mock("@tauri-apps/plugin-dialog", () => ({ open: dialog.open, save: dialog.save }));
 
@@ -96,7 +96,7 @@ describe("<AccountDetailsDialog />", () => {
     );
   });
 
-  // §81: an investment account can round its holding values its own way.
+  // An investment account can round its holding values its own way.
   it("offers Holding values only for investment/retirement accounts and writes a change through its own command", async () => {
     resetIpc();
     setIpcHandlers({ set_account_value_rounding: async () => undefined });
@@ -138,11 +138,11 @@ describe("<AccountDetailsDialog />", () => {
   });
 });
 
-// §170, walk step A4 (2026-09-13): "it didn't show the attachments until I
+// Walk step A4 (2026-09-13): "it didn't show the attachments until I
 // clicked OK … and when I click remove they don't go away until the pop-up
 // is closed and reopened." The panel reloads its list after every add and
 // remove, so the open dialog must show the change at once.
-describe("attachments on the account (§170, A4)", () => {
+describe("attachments on the account (A4)", () => {
   it("lists a file the moment it is attached, and drops it the moment it is removed", async () => {
     resetIpc();
     let list: Attachment[] = [];
@@ -170,9 +170,9 @@ describe("attachments on the account (§170, A4)", () => {
   });
 });
 
-// §183 — rounding and "Secured by" were written after `onSave` had already
+// Rounding and "Secured by" were written after `onSave` had already
 // reloaded and closed the dialog, so a refusal landed on nothing.
-describe("§183 — every write happens before the dialog closes", () => {
+describe("Every write happens before the dialog closes", () => {
   const loan: Account = { ...account, id: "loan-1", name: "Car loan", type: "loan", balance_cents: -1_200_000 };
   const house: Account = { ...account, id: "house-1", name: "House", type: "home", balance_cents: 30_000_000 };
 

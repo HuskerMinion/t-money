@@ -12,7 +12,7 @@
 //! <STMTTRN><TRNTYPE>DEBIT<DTPOSTED>20260803<TRNAMT>-58.42<FITID>2026080301<NAME>KROGER</STMTTRN>
 //! ```
 //!
-//! Until §38 `tag_value` required a closing tag, so every leaf in a 1.x file
+//! Until this was fixed, `tag_value` required a closing tag, so every leaf in a 1.x file
 //! came back `None`, every block was skipped, and a real bank statement
 //! imported "successfully" with zero rows — including `samples/sample-statement.ofx`,
 //! the file the user was told to try. A leaf value now ends at the next `<`
@@ -88,7 +88,7 @@ pub fn parse_ofx(text: &str) -> Vec<OfxTransaction> {
 }
 
 // ---------------------------------------------------------------------------
-// Investment statements (§44): INVSTMTMSGSRSV1 + SECLIST
+// Investment statements: INVSTMTMSGSRSV1 + SECLIST
 // ---------------------------------------------------------------------------
 
 /// A security as the broker describes it in `<SECLIST>`.

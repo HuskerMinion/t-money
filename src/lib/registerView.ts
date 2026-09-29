@@ -1,4 +1,4 @@
-// The register's View (§40). Money drives the register
+// The register's View. Money drives the register
 // from a saved view that sets three things at once: which rows (Show), which
 // dates, and the sort — and prints them as one sentence above the grid:
 // "Unreconciled transactions covering this month, Sorted by Date (increasing)".
@@ -6,7 +6,7 @@
 // Pure functions over the rows the backend already returns; nothing here
 // asks the database for anything.
 //
-// The one rule that matters (§10.2 item 4): the Balance column is a RUNNING
+// The one rule that matters: the Balance column is a RUNNING
 // balance, which only means something in date order. Any other sort blanks
 // it rather than showing a number that is a lie.
 import { resolveRange } from "./reportRanges";
@@ -43,7 +43,7 @@ export type RegisterSort =
   | "num_desc"
   | "entry";
 
-/** The register's columns that can be sorted by clicking their header (§96).
+/** The register's columns that can be sorted by clicking their header.
  *  "date" covers both grids; "payee" is the Investment column in an
  *  investment register and "amount" its Total. */
 export type SortColumn = "num" | "date" | "payee" | "amount";
@@ -149,7 +149,7 @@ function matchesShow(r: RegisterRow, show: RegisterShow): boolean {
     case "uncleared":
       return r.cleared_state === "";
     case "uncategorized":
-      // A buy or a sell has no category by design (§41); only cash rows count.
+      // A buy or a sell has no category by design; only cash rows count.
       return r.category_id === null && r.transfer_account_id === null && !r.is_void && r.activity === null;
     case "transfers":
       return r.transfer_account_id !== null;
@@ -170,7 +170,7 @@ export function applyRegisterView(rows: readonly RegisterRow[], v: RegisterViewO
   const indexed = out.map((r, i) => ({ r, i }));
   const by = (f: (a: RegisterRow, b: RegisterRow) => number) =>
     indexed.sort((x, y) => f(x.r, y.r) || x.i - y.i).map((x) => x.r);
-  // §96: every column can now be clicked twice, so each sort has a reverse.
+  // Every column can now be clicked twice, so each sort has a reverse.
   // Reversing the SORTED array rather than negating the comparator would undo
   // the tie-break too, reshuffling same-day rows; negating keeps ties in the
   // backend's order in both directions.
@@ -207,7 +207,7 @@ export function applyRegisterView(rows: readonly RegisterRow[], v: RegisterViewO
   }
 }
 
-/** The running balance only reads in date order (§10.2 item 4). */
+/** The running balance only reads in date order. */
 export function balanceIsMeaningful(v: RegisterViewOptions): boolean {
   return v.sort === "date_asc" || v.sort === "entry";
 }

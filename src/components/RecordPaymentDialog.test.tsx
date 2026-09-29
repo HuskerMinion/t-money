@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// §94 — recording a payment: the terms propose the split, the statement wins.
+// Recording a payment: the terms propose the split, the statement wins.
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -73,7 +73,7 @@ beforeEach(() => {
   });
 });
 
-describe("Record payment (§94)", () => {
+describe("Record payment", () => {
   it("fills the three parts from the terms and sends exactly what was proposed", async () => {
     const onDone = vi.fn();
     render(<RecordPaymentDialog account={mortgage} onDone={onDone} onCancel={vi.fn()} />);
@@ -134,9 +134,9 @@ describe("Record payment (§94)", () => {
     expect(invokeCalls.some((c) => c.cmd === "record_loan_payment")).toBe(false);
   });
 
-  it("§121: an extra principal payment is part of the one transaction, not a second one", async () => {
+  it("An extra principal payment is part of the one transaction, not a second one", async () => {
     // A Maple Street payment: the bank shows one $1,800.00 debit, of which
-    // $150.00 is principal paid ahead. Before §121 the only way to record the
+    // $150.00 is principal paid ahead. Once, the only way to record the
     // extra was a second Record payment, and then the register held two rows
     // against a statement holding one.
     setIpcHandlers({
@@ -181,7 +181,7 @@ describe("Record payment (§94)", () => {
     expect(p.interestCents + p.principalCents + p.escrowCents + p.extraPrincipalCents).toBe(180_000);
   });
 
-  it("§121: a month with nothing extra sends zero, and the extra can be typed over", async () => {
+  it("A month with nothing extra sends zero, and the extra can be typed over", async () => {
     setIpcHandlers({
       get_loan_terms: () => ({ ...terms, extra_principal_cents: 15_000 }),
       next_loan_payment: () => ({
@@ -219,7 +219,7 @@ describe("Record payment (§94)", () => {
   });
 });
 
-describe("§183 — Record payment", () => {
+describe("Record payment", () => {
   it("does not preselect a funding account that has been closed, and will not record against it", async () => {
     const closed = { ...checking, is_closed: true };
     useAccountStore.setState({ accounts: [mortgage, closed] });

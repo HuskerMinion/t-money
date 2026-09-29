@@ -12,7 +12,7 @@ import { HELP_TOPICS } from "../help/topics";
 
 beforeEach(() => resetCommands());
 
-describe("the command registry (§97)", () => {
+describe("the command registry", () => {
   it("a command is available exactly while something offers it", () => {
     expect(isCommandAvailable("file.print")).toBe(false);
     const off = registerCommand("file.print", () => {});
@@ -79,7 +79,7 @@ describe("the command registry (§97)", () => {
 const openFile = vi.fn();
 const forgetMissingFiles = vi.fn();
 
-describe("the menu's contents (§97)", () => {
+describe("the menu's contents", () => {
   const menus = buildMenus({
     favoriteAccounts: [{ id: "a1", name: "Everyday Checking" }],
     savedReports: [{ id: "r1", name: "By Category - Sam" }],
@@ -101,7 +101,7 @@ describe("the menu's contents (§97)", () => {
     expect(new Set(ms).size).toBe(ms.length);
   });
 
-  // §186 — the underline is drawn at the mnemonic's place in the label, so a
+  // The underline is drawn at the mnemonic's place in the label, so a
   // letter the label does not contain would underline nothing and leave the
   // Alt key a secret. One lower-case letter, so `e.key.toLowerCase()` in the
   // menu bar can match it.
@@ -155,7 +155,7 @@ describe("the menu's contents (§97)", () => {
   });
 });
 
-describe("accelerators are read off the label they print (§97)", () => {
+describe("accelerators are read off the label they print", () => {
   const ev = (init: Partial<KeyboardEvent> & { key: string }) =>
     ({ ctrlKey: false, altKey: false, shiftKey: false, metaKey: false, ...init }) as KeyboardEvent;
 
@@ -210,7 +210,7 @@ const menus_for_accel = buildMenus({
   openReport: () => {},
 });
 
-describe("Recent files in the File menu (§98)", () => {
+describe("Recent files in the File menu", () => {
   const recents = () =>
     buildMenus({
       favoriteAccounts: [],
@@ -264,7 +264,7 @@ describe("Recent files in the File menu (§98)", () => {
   });
 });
 
-// §102 — the menu prints Windows spellings and announces ARIA ones.
+// The menu prints Windows spellings and announces ARIA ones.
 describe("ariaKeys", () => {
   it("translates the printed shortcut into the names ARIA defines", () => {
     expect(ariaKeys("Ctrl+M")).toBe("Control+M");
@@ -297,13 +297,13 @@ describe("ariaKeys", () => {
   });
 });
 
-// §102 — "anything that has a keyboard shortcut should show it".
+// "anything that has a keyboard shortcut should show it".
 //
 // Two places print shortcuts: the menu item itself, and Help → Keyboard
 // shortcuts. The menu table is the single source, so the risk is the help
 // page falling behind it — which is exactly what happened to Ctrl+M, bound
 // in the register with a private listener and printed in neither.
-describe("the shortcuts help page (§102)", () => {
+describe("the shortcuts help page", () => {
   const shortcuts = HELP_TOPICS.find((t) => t.id === "shortcuts")!;
 
   it("lists every accelerator the menus bind", () => {
@@ -326,7 +326,7 @@ describe("the shortcuts help page (§102)", () => {
   });
 });
 
-describe("§155 — an argument rides along", () => {
+describe("An argument rides along", () => {
   it("hands runCommand's argument to the handler that serves it", () => {
     const seen: unknown[] = [];
     const off = registerCommand("import.tsp", (arg) => {

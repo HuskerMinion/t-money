@@ -1,4 +1,4 @@
-// §118 — choosing several things from a long list.
+// Choosing several things from a long list.
 //
 // The report customizer used `<select multiple>` for accounts, categories,
 // payees and securities. That control is a trap outside a spreadsheet: you

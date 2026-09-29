@@ -21,14 +21,14 @@ export type Tab = (typeof TABS)[number] | "Settings" | "Search";
 interface AeroHeaderProps {
   active: Tab;
   onTab: (tab: Tab) => void;
-  /** Enter, or the magnifier, in the Search box (§38). */
+  /** Enter, or the magnifier, in the Search box. */
   onSearch?: (query: string) => void;
-  /** §99: false when the look navigates somewhere else — the Sidebar look
+  /** False when the look navigates somewhere else — the Sidebar look
    *  puts the tabs in the rail, Tiles puts them on the wall. The header keeps
    *  the brand and the search box either way, because those belong to the app
    *  rather than to a way of getting around it. */
   showTabs?: boolean;
-  /** §100: the gear opens the Settings pop-up rather than navigating to a
+  /** The gear opens the Settings pop-up rather than navigating to a
    *  tab — you come back from settings, you do not travel to them. */
   onSettings?: () => void;
 }
@@ -36,7 +36,7 @@ interface AeroHeaderProps {
 export default function AeroHeader({ active, onTab, onSearch, showTabs = true, onSettings }: AeroHeaderProps) {
   const [query, setQuery] = useState("");
   const [dark, setDark] = useState(() => isDark(readTheme()));
-  // §183 — follow a theme chosen in Settings, not only this button. The
+  // Follow a theme chosen in Settings, not only this button. The
   // state was read once, so picking Evening in Settings left the button
   // offering "Switch to the dark theme" over an app that already was.
   // `applyTheme` marks a dark theme on <html>, which is the one place every
@@ -82,7 +82,7 @@ export default function AeroHeader({ active, onTab, onSearch, showTabs = true, o
         ))}
       </nav>
 
-      {/* §87: light / dark, one click. Settings → Theme still picks among all. */}
+      {/* Light / dark, one click. Settings → Theme still picks among all. */}
       <button
         className="aero-gear self-center"
         type="button"
@@ -109,7 +109,7 @@ export default function AeroHeader({ active, onTab, onSearch, showTabs = true, o
           hard-coded near-white ground and no `color` at all, so under the
           Evening theme it inherited that theme's light text and typed
           characters came out white on white — you could search, you just
-          could not read what you had typed (§96). */}
+          could not read what you had typed. */}
       <div className="flex items-center pb-1">
         <input
           value={query}

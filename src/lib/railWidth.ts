@@ -1,4 +1,4 @@
-// The left rail's width (§42). Money's rail is fixed; the user asked for one
+// The left rail's width. Money's rail is fixed; the user asked for one
 // they can drag, because account names and balances did not fit. Kept in
 // localStorage — a per-machine screen preference, not something that
 // belongs in the encrypted file.

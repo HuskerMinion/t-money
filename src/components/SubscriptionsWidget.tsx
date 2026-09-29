@@ -1,4 +1,4 @@
-// Home's subscription reminder (§60): what is being paid for on a schedule,
+// Home's subscription reminder: what is being paid for on a schedule,
 // so a service nobody uses any more gets noticed and canceled instead of
 // billing quietly for months.
 //
@@ -21,7 +21,7 @@ import type { ReportOpen } from "./ReportsView";
 /** Rows shown on Home before "more in the report"; the card is a reminder, not the report. */
 const SHOW = 10;
 
-/** §76: the ignore list — payees the card should not remind about (the
+/** The ignore list — payees the card should not remind about (the
  *  mortgage is a recurring charge, not news). Kept in the file's UI settings
  *  as a JSON array of payee names, so it follows the data file. */
 export const IGNORED_KEY = "subscriptions.ignored";
@@ -86,7 +86,7 @@ export default function SubscriptionsWidget({ onOpenReport }: Props) {
   const [ignored, setIgnored] = useState<string[]>([]);
   const [showIgnored, setShowIgnored] = useState(false);
 
-  // §183 — a save that failed now puts the list back. The row vanished from
+  // A save that failed now puts the list back. The row vanished from
   // the card on the click and stayed gone, so the card said "ignored" about a
   // payee the file would remind about again the next time Home opened.
   const [saveError, setSaveError] = useState<string | null>(null);

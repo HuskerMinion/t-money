@@ -8,7 +8,7 @@
 //
 // It takes generic items rather than categories because the register's
 // Category field is also how Money enters a transfer — "Transfer : <Account>"
-// lives in the same list (§10.2 item 5).
+// lives in the same list.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -34,9 +34,9 @@ interface Props {
   onAddNew?: (query: string) => void;
 }
 
-/** §162 — one spelling for a category name, so that what is typed is
+/** One spelling for a category name, so that what is typed is
  *  compared with what is stored on the same terms. The standard form is
- *  "Parent : Child" (space, colon, space — §14), but "Loan:HELOC",
+ *  "Parent : Child" (space, colon, space), but "Loan:HELOC",
  *  "loan : heloc" and "Loan  :HELOC" all mean the same thing, and the field
  *  should recognize them rather than offer to create a duplicate. Case is
  *  folded, whitespace around every colon is normalized, runs of spaces
@@ -48,7 +48,7 @@ export function categoryKey(text: string): string {
     .join(" : ");
 }
 
-/** Match on the label, spelling normalized (§162): "loan:heloc" finds
+/** Match on the label, spelling normalized: "loan:heloc" finds
  *  "Loan : HELOC". An item whose whole name is what was typed comes first,
  *  so Tab and Enter take it over a longer name that merely contains it. */
 export function filterItems(
@@ -121,7 +121,7 @@ export default function CategoryCombo({
     };
   }, [open]);
 
-  // §117.2 — open ON the category the row already has, not at the top of the
+  // Open ON the category the row already has, not at the top of the
   // list. `openList` has always highlighted the current one, so Enter and the
   // arrows started from the right place; what nothing did was SCROLL to it.
   // With a full chart of accounts that meant clicking "Loan : HELOC Interest"
@@ -193,7 +193,7 @@ export default function CategoryCombo({
       // saving the row are two different intents.
       e.preventDefault();
       e.stopPropagation();
-      // §183 — nothing matches what was typed: Enter used to choose "(none)"
+      // Nothing matches what was typed: Enter used to choose "(none)"
       // and wipe the category the row had, where Tab leaves it alone. Offer
       // to create what was typed when that is on offer; otherwise do nothing,
       // and the list stays open showing "No match".
@@ -225,7 +225,7 @@ export default function CategoryCombo({
 
   // Offer creation only when they have typed something that is not already
   // an exact match — otherwise the row is noise on every keystroke.
-  // §162 — compared on the normalized spelling, so "Loan:HELOC" typed against
+  // Compared on the normalized spelling, so "Loan:HELOC" typed against
   // an existing "Loan : HELOC" is recognized, not offered as a new one.
   const canAdd =
     !!onAddNew &&

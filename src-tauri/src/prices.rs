@@ -7,11 +7,10 @@
 //! narrow:
 //!
 //! - **Nothing fetches unless the user said so.** By default a request leaves
-//!   this machine only when the user presses "Refresh prices". §115 added an
+//!   this machine only when the user presses "Refresh prices". A later change added an
 //!   opt-in timer (Settings → Money → Prices: once a day or once a week, off
-//!   by default) that runs only while T-Money is open with a file open (§158)
-//!   — no background service, nothing while the app is closed. (§180: this
-//!   line still said "nothing fetches automatically" after §115.)
+//!   by default) that runs only while T-Money is open with a file open
+//!   — no background service, nothing while the app is closed.
 //! - **Only ticker symbols leave.** Not quantities, not cost basis, not
 //!   account names, not balances. The remote end learns which symbols were
 //!   asked about and nothing else — no holding sizes, no identity.
@@ -58,10 +57,10 @@ use rust_decimal::prelude::ToPrimitive;
 use rust_decimal::{Decimal, RoundingStrategy};
 use std::str::FromStr;
 
-/// How old the source's latest quote may be before it is refused (§180).
+/// How old the source's latest quote may be before it is refused.
 /// A week covers a long weekend plus a market holiday with room to spare; a
 /// quote older than that is a delisted or halted symbol whose "current" price
-/// is history, and writing it would make the §115 staleness line say the
+/// is history, and writing it would make the staleness line say the
 /// holding was priced today.
 pub const MAX_QUOTE_AGE_DAYS: i64 = 7;
 
@@ -70,7 +69,7 @@ pub const MAX_QUOTE_AGE_DAYS: i64 = 7;
 pub struct Quote {
     pub price: Decimal,
     /// The day of `meta.regularMarketTime` in the exchange's own time zone
-    /// (`meta.gmtoffset`). §180: a price refreshed on Monday morning is
+    /// (`meta.gmtoffset`). A price refreshed on Monday morning is
     /// Friday's close, and storing it under Monday invents a price for a day
     /// that has none. `None` only when the reply omits the timestamp — every
     /// reply measured has it, so this is the endpoint changing shape, and the
@@ -88,7 +87,7 @@ impl Quote {
 }
 
 /// Why a quote could not be had — split so a refresh can tell "this symbol"
-/// from "the price source" (§180). Twenty symbols against a machine with no
+/// from "the price source". Twenty symbols against a machine with no
 /// network would otherwise wait out twenty ten-second timeouts and print the
 /// same line twenty times.
 #[derive(Debug, Clone, PartialEq)]
@@ -257,15 +256,15 @@ pub fn price_to_cents(price: Decimal) -> Result<i64, String> {
         .ok_or_else(|| format!("price {price} does not fit in i64 cents"))
 }
 
-/// A price in millionths of a dollar — the unit `security_prices` stores
-/// (§41), because fund NAVs carry four decimals. Same rounding rule as
+/// A price in millionths of a dollar — the unit `security_prices` stores,
+/// because fund NAVs carry four decimals. Same rounding rule as
 /// `price_to_cents`.
 pub fn price_to_micro(price: Decimal) -> Result<i64, String> {
     let micro = (price * Decimal::from(1_000_000))
         .round_dp_with_strategy(0, RoundingStrategy::MidpointAwayFromZero)
         .to_i64()
         .ok_or_else(|| format!("price {price} does not fit in i64 micro-dollars"))?;
-    // §180: the parser refuses a zero price because a zero silently wipes a
+    // The parser refuses a zero price because a zero silently wipes a
     // holding's value — and 0.0000004 passed that check and then rounded to
     // exactly the zero it exists to keep out.
     if price > Decimal::ZERO && micro == 0 {
@@ -312,7 +311,7 @@ pub fn quote_url(symbol: &str) -> String {
 /// never heard of a symbol — so its JSON body is parsed rather than discarded,
 /// and the endpoint's own wording is what reaches the user.
 ///
-/// §180: any OTHER non-2xx status is an error that names the status. Before,
+/// Any OTHER non-2xx status is an error that names the status. Before,
 /// every status's body went to the parser, so a 429 or a 503 with an HTML
 /// page read as "the price source did not return JSON" — true, and no help
 /// at all in working out that the source was refusing or down.
@@ -369,7 +368,7 @@ pub fn status_error(code: u16, status_text: &str, body: &str, url: &str) -> Quot
 }
 
 /// A quote for one symbol, with its trading day and a `QuoteError` that says
-/// whether the failure was this symbol or the source (§180). `today` is the
+/// whether the failure was this symbol or the source. `today` is the
 /// user's local date, for the staleness check.
 pub fn quote_dated(symbol: &str, today: NaiveDate) -> Result<Quote, QuoteError> {
     let body = fetch_body(symbol)?;
@@ -420,7 +419,7 @@ mod tests {
         NaiveDate::from_ymd_opt(2026, 9, 14).unwrap()
     }
 
-    /// §180: the reply as it really arrives, with the quote's own time.
+    /// The reply as it really arrives, with the quote's own time.
     /// 1789156800 is 2026-09-11 20:00 UTC — 4:00 p.m. in New York (EDT,
     /// gmtoffset -14400), Friday's close.
     fn timed_json(price: &str, time: i64, gmtoffset: i64) -> String {
@@ -465,7 +464,7 @@ mod tests {
 
     #[test]
     fn the_quote_is_dated_by_its_own_trading_day_not_the_refresh_day() {
-        // §180. Refreshed Monday the 14th, the price is Friday the 11th's
+        // Refreshed Monday the 14th, the price is Friday the 11th's
         // close, and that is the row it belongs in.
         let q = parse_quote_json(&timed_json("183.44", 1_789_156_800, -14_400), today()).unwrap();
         assert_eq!(q.price, Decimal::from_str("183.44").unwrap());
@@ -485,7 +484,7 @@ mod tests {
 
     #[test]
     fn a_quote_more_than_a_week_old_is_a_failure_not_a_price() {
-        // §180. 28 August is seventeen days before the 14th: a halted or
+        // 28 August is seventeen days before the 14th: a halted or
         // delisted symbol, whose last price must not be written as today's.
         let err = parse_quote_json(&timed_json("50", 1_787_947_200, -14_400), today()).unwrap_err();
         assert_eq!(err, "the price source's latest quote is from 08/28/2026");
@@ -503,7 +502,7 @@ mod tests {
             date: NaiveDate::from_ymd_opt(2026, 9, 15),
         };
         assert_eq!(ahead.store_date(today()), today());
-        // No timestamp in the reply: today, as before §180.
+        // No timestamp in the reply: today, as before.
         let q = parse_quote_json(&ok_json("USD", "1"), today()).unwrap();
         assert_eq!(q.date, None);
         assert_eq!(q.store_date(today()), today());
@@ -511,7 +510,7 @@ mod tests {
 
     #[test]
     fn an_http_failure_names_its_status_and_says_whose_failure_it_is() {
-        // §180. A 503's HTML page used to surface as "did not return JSON".
+        // A 503's HTML page used to surface as "did not return JSON".
         let url = quote_url("AAPL");
         let e = status_error(503, "Service Unavailable", "<html>down</html>", &url);
         assert!(e.is_source(), "{e:?}");
@@ -530,7 +529,7 @@ mod tests {
 
     #[test]
     fn a_positive_price_that_rounds_to_zero_micro_dollars_is_refused() {
-        // §180: it passed the parser's zero check and then became the zero.
+        // It passed the parser's zero check and then became the zero.
         assert!(price_to_micro(Decimal::from_str("0.0000004").unwrap()).is_err());
         assert_eq!(price_to_micro(Decimal::from_str("0.0000005").unwrap()).unwrap(), 1);
         assert_eq!(price_to_micro(Decimal::from_str("183.4412").unwrap()).unwrap(), 183_441_200);

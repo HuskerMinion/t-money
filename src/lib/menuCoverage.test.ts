@@ -1,6 +1,6 @@
-// §102 — which menu items still have no owner.
+// Which menu items still have no owner.
 //
-// §97's promise is that a dead menu item is impossible by construction: the
+// The menu bar's promise is that a dead menu item is impossible by construction: the
 // registry decides, so an unserved item grays out rather than lying. That is
 // true, and it is not the whole job — an item that is grayed out EVERYWHERE
 // is a feature nobody can reach, and there were fourteen of those.
@@ -47,7 +47,7 @@ const commands = menuLeaves(
 /** Named, not silently tolerated. Each of these is a decision with a reason,
  *  and the list is meant to shrink.
  *
- *  §106 emptied it. `edit.replace` was the last entry: Money's Find and
+ *  A later change emptied it. `edit.replace` was the last entry: Money's Find and
  *  Replace was a bulk editor over any field, and promising it in the Edit
  *  menu while nothing served it made the menu carry a permanently gray lie.
  *  What T-Money actually has — the payee rules, run backwards over the file,
@@ -55,7 +55,7 @@ const commands = menuLeaves(
  *  the item that overpromised was removed. An empty list is the point. */
 const PENDING: string[] = [];
 
-describe("every menu item has an owner (§102)", () => {
+describe("every menu item has an owner", () => {
   it("nothing in the menus is unreachable from every screen", () => {
     const orphans = commands
       .filter((c) => !PENDING.includes(c))

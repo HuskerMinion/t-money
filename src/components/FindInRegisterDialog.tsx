@@ -1,8 +1,8 @@
-// §163 — Find, in a register. Money's Edit → Find opens a small window OVER
+// Find, in a register. Money's Edit → Find opens a small window OVER
 // the register: type something, choose which field to look in (or any), and
 // the rows that match are listed; click one and the register behind selects
 // it and scrolls to it; close the window and the selection stays where you
-// put it. That is the difference from the header search (§38), which opens a
+// put it. That is the difference from the header search, which opens a
 // screen of its own across every account and comes back to the register when
 // a hit is chosen. This is for "where is that check" while you are already
 // looking at the account.

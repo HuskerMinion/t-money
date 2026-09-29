@@ -1,4 +1,4 @@
-// Loan terms (§94) — the rate, the payment, and where each part of it goes.
+// Loan terms — the rate, the payment, and where each part of it goes.
 //
 // THE SCHEDULE IS A STARTING POINT, NOT THE TRUTH. Banks round differently,
 // change escrow mid-year, apply a payment a day late and charge an extra day
@@ -47,7 +47,7 @@ export default function LoanTermsDialog({ account, onDone, onCancel }: Props) {
   const [fromAccountId, setFromAccountId] = useState("");
   const [paymentDay, setPaymentDay] = useState("");
   const [firstDate, setFirstDate] = useState("");
-  // §183 — the first payment date is optional, so "" alone cannot tell a
+  // The first payment date is optional, so "" alone cannot tell a
   // blank field from text DateField could not read; it reports the second.
   const [firstDateBad, setFirstDateBad] = useState(false);
   const [termMonths, setTermMonths] = useState("");

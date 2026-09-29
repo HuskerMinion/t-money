@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// §104 — the calculator's arithmetic, which is the only part of it that can
+// The calculator's arithmetic, which is the only part of it that can
 // be wrong in a way you would not notice.
 //
 // The tape is what makes it checkable by eye; these check the thing the tape
@@ -20,7 +20,7 @@ function open() {
 const total = () => screen.getByLabelText("Tape").parentElement!.textContent ?? "";
 const totalRow = () => screen.getByText("Total").parentElement!.textContent ?? "";
 
-describe("CalculatorDialog (§104)", () => {
+describe("CalculatorDialog", () => {
   it("adds a column of amounts, and shows each step on the tape", async () => {
     const user = open();
     const amount = screen.getByLabelText("Amount");
@@ -117,7 +117,7 @@ describe("CalculatorDialog (§104)", () => {
   });
 });
 
-describe("§183 — dividing by zero", () => {
+describe("Dividing by zero", () => {
   it("is refused: an error, the total unchanged, nothing on the tape, and the division still waiting", async () => {
     const user = open();
     const amount = screen.getByLabelText("Amount");

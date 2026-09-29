@@ -1,4 +1,4 @@
-// §84 / §171 — rename rules. §183: an amount limit that is not an amount is
+// Rename rules: an amount limit that is not an amount is
 // refused, and Apply to existing tells the Edit menu.
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -12,7 +12,7 @@ import { useAccountStore } from "../stores/useAccountStore";
 
 const rule = { id: "r-1", match_text: "NETFLIX", payee_name: "Netflix", category_id: null, category_name: null, created_at: "" };
 
-describe("PayeeRulesCard (§183)", () => {
+describe("PayeeRulesCard", () => {
   beforeEach(() => {
     resetIpc();
     useAccountStore.setState({ accounts: [] });

@@ -1,4 +1,4 @@
-// §84 — the duplicate finder lists sets and deletes only what is clicked.
+// The duplicate finder lists sets and deletes only what is clicked.
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -34,7 +34,7 @@ describe("DuplicatesDialog", () => {
   });
 });
 
-describe("§183 — a refused delete", () => {
+describe("A refused delete", () => {
   beforeEach(() => resetIpc());
 
   it("is shown beside Close, outside the scrolling list", async () => {

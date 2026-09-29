@@ -1,7 +1,7 @@
 // SpendingTrackerWidget — modular dashboard card showing budget vs. actual
 // spending per category for a month, with progress bars.
 //
-// §58: the title bar pages month by month (◀ ▶, "Today" to come back), and
+// The title bar pages month by month (◀ ▶, "Today" to come back), and
 // each line is a button that opens the Transactions by Category report for
 // that category and month — "pull up the transaction report it's coming
 // from", as asked.
@@ -27,7 +27,7 @@ export default function SpendingTrackerWidget({ onOpenReport }: Props) {
   const summary = useBudgetStore((s) => s.summary);
   const month = useBudgetStore((s) => s.month);
   const setMonth = useBudgetStore((s) => s.setMonth);
-  // §183 — a failed load is not an empty month. The card said "No spending
+  // A failed load is not an empty month. The card said "No spending
   // recorded" over a database it could not read.
   const error = useBudgetStore((s) => s.error);
   const thisMonth = currentMonth();
@@ -80,7 +80,7 @@ export default function SpendingTrackerWidget({ onOpenReport }: Props) {
           <div className="text-[12px] text-slate-500 p-3 text-center">No spending recorded for {monthTitle(month)}.</div>
         ) : (
           summary.map((row) => {
-            // §96: the bar used to be `spent / target`, and 0% whenever there
+            // The bar used to be `spent / target`, and 0% whenever there
             // was no target — so every category the user had not budgeted drew
             // an empty trough. The summary deliberately includes those (its
             // WHERE is `has a budget OR spent something`), so on a file with

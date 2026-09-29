@@ -1,7 +1,7 @@
 // Goals — savings goals with progress toward target (MS Money "Planning").
 // CRUD over list_goals / create_goal / update_goal / delete_goal.
 //
-// §46: a goal may WATCH an account. Its progress is then the starting
+// A goal may WATCH an account. Its progress is then the starting
 // amount plus every row in that account tagged for it — the monthly
 // transfer to savings "for the roof" moves the roof — and "Contribute…"
 // writes such a transfer from here. An unlinked goal is the typed number,
@@ -22,7 +22,7 @@ export default function GoalsView() {
   const accounts = useAccountStore((s) => s.accounts);
   const loadAccounts = useAccountStore((s) => s.loadAccounts);
   const [accountId, setAccountId] = useState("");
-  // Contribute… (§46): which goal is taking one, and the form.
+  // Contribute…: which goal is taking one, and the form.
   const [contributing, setContributing] = useState<string | null>(null);
   const [fromAccount, setFromAccount] = useState("");
   const [contribAmount, setContribAmount] = useState("");
@@ -67,7 +67,7 @@ export default function GoalsView() {
     setContribMsg(null);
     try {
       await api.contributeToGoal(g.id, fromAccount, contribDate, cents, null);
-      noteChanged(); // §185 — the backend cleared the undo stack.
+      noteChanged(); // The backend cleared the undo stack.
       setContributing(null);
       setContribAmount("");
       await load();
@@ -79,7 +79,7 @@ export default function GoalsView() {
     }
   }
 
-  // §102 — File → New → Savings goal, when this screen is in front (§97
+  // File → New → Savings goal, when this screen is in front (command
   // priority); off screen, the shell navigates here first.
   useCommand(
     "new.goal",
@@ -248,7 +248,7 @@ export default function GoalsView() {
                             <button
                               className="aero-btn !py-0 !px-1.5 text-[11px]"
                               onClick={() => {
-                                // §183 — a new form for a different goal starts
+                                // A new form for a different goal starts
                                 // empty. "From" carried over, and a From that was
                                 // THIS goal's own account is filtered out of its
                                 // list: the picker read "(choose)" while the state
@@ -423,7 +423,7 @@ export default function GoalsView() {
               </button>
             )}
           </div>
-          {/* §183 — every message this form sets is a refusal (a missing figure,
+          {/* Every message this form sets is a refusal (a missing figure,
               or the backend's), and in gray text it read as a hint. */}
           {msg && (
             <Notice tone="error" boxed>

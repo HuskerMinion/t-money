@@ -1,8 +1,8 @@
-// Taxes (§43) — Money's tax tools, cut down to what the file can honestly
+// Taxes — Money's tax tools, cut down to what the file can honestly
 // say: a year's totals by tax line (Money's "Tax-related transactions"),
 // the Tax Line Manager (categories with money this year and NO line, so
 // the gaps are visible and can be fixed here), Schedule D from the lots
-// (§41) and Schedule B from investment income. Everything is a summary of
+// and Schedule B from investment income. Everything is a summary of
 // what was recorded. No estimator, no advice.
 //
 // The numbers come from the same report engine the Reports tab uses
@@ -61,7 +61,7 @@ export default function TaxesView({ onOpenReport }: Props) {
   const [gains, setGains] = useState<Report | null>(null);
   const [income, setIncome] = useState<Report | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // §183 — a refusal is said beside the control that caused it. Both of these
+  // A refusal is said beside the control that caused it. Both of these
   // wrote to `error`, which is drawn in the top card — above the fold from
   // the Tax Line Manager, and a screen away from the accounts list.
   const [lineError, setLineError] = useState<string | null>(null);
@@ -76,7 +76,7 @@ export default function TaxesView({ onOpenReport }: Props) {
   const from = `${year}-01-01`;
   const to = `${year}-12-31`;
 
-  // §183 — which load still counts. Changing the year while the last one is
+  // Which load still counts. Changing the year while the last one is
   // still running must not let the old year's answer land under the new
   // year's heading.
   const latest = useRef(0);
@@ -137,7 +137,7 @@ export default function TaxesView({ onOpenReport }: Props) {
   }
   const open = (kind: string, categoryIds?: string[]) => onOpenReport({ kind, categoryIds, from, to, taxScope: true });
 
-  // Money's "Choose accounts to include in tax information" (§48): the
+  // Money's "Choose accounts to include in tax information": the
   // Taxes tab and its reports count only these. Retirement accounts start
   // out excluded; their dividends and sales are not taxable events.
   async function setIncluded(accountId: string, included: boolean) {

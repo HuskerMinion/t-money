@@ -1,4 +1,4 @@
-// §141 — build next year from what this year did.
+// Build next year from what this year did.
 //
 // The whole value of this screen is in what it decides FOR you, so that is
 // what is tested: a job that stopped arrives unticked, a job that started
@@ -127,7 +127,7 @@ describe("what the dialog decides before you look at it", () => {
     ]);
   });
 
-  // §179 — a set-aside line's monthly figure is a twelfth of the bill, set
+  // A set-aside line's monthly figure is a twelfth of the bill, set
   // aside every month; its mask only says when the bill is due. Written back
   // over the mask's one month, and without its spread, it arrived as a $300
   // January and nothing else.
@@ -253,7 +253,7 @@ describe("the dialog", () => {
   });
 });
 
-describe("§183 — the dialog while it works, and a figure it cannot take", () => {
+describe("The dialog while it works, and a figure it cannot take", () => {
   it("ignores a click outside while the write is running", async () => {
     let finish!: (n: number) => void;
     stub(undefined, { apply_year_plan: () => new Promise<number>((r) => (finish = r)) });

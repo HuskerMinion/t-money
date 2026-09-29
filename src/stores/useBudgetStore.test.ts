@@ -1,4 +1,4 @@
-// §183 — the budget store's month summary. Stepping months quickly sends one
+// The budget store's month summary. Stepping months quickly sends one
 // request per month; only the last one asked for may land.
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -23,7 +23,7 @@ function deferred<T>() {
 
 const line = (name: string) => ({ category_name: name }) as unknown as CategoryBudget;
 
-describe("§183 — loadSummary ignores a stale reply", () => {
+describe("loadSummary ignores a stale reply", () => {
   it("a slow answer for the month you left does not overwrite the month you are on", async () => {
     const slow = deferred<CategoryBudget[]>();
     setIpcHandlers({

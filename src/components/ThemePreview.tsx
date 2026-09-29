@@ -1,4 +1,4 @@
-// A thumbnail of the app in a theme (§63): header, tabs, subnav, rail, a
+// A thumbnail of the app in a theme: header, tabs, subnav, rail, a
 // card with a little chart, and a register with a selected row — drawn
 // from the theme's own tokens, so the swatch is a true preview.
 import { themeToken, type Theme } from "../lib/theme";

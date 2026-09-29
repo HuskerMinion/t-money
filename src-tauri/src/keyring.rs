@@ -14,13 +14,13 @@ const ACCOUNT: &str = "master-key";
 
 /// The keyring account name in use. `master-key` for the real database; a
 /// name derived from the data directory when the app runs against a scratch
-/// one (§38). Set once at startup, before any other call here.
+/// one. Set once at startup, before any other call here.
 static ACCOUNT_NAME: OnceLock<String> = OnceLock::new();
 
 /// Use a keyring entry private to `data_dir`, so a scratch database never
 /// reads — and, on first run or Change Master Key, never OVERWRITES — the
 /// entry that opens the real file. That risk is the whole reason first run
-/// had never been tested (§37.6). Returns the account name chosen.
+/// had never been tested. Returns the account name chosen.
 pub fn use_scratch_entry(data_dir: &std::path::Path) -> String {
     let name = scratch_account_name(data_dir);
     let _ = ACCOUNT_NAME.set(name.clone());
@@ -45,7 +45,7 @@ fn entry() -> Result<Entry, String> {
 }
 
 // ---------------------------------------------------------------------------
-// §98 — a key per FILE.
+// A key per FILE.
 //
 // One key for the whole app was right while there was one database. With
 // several, sharing a key would mean that changing one file's key silently
@@ -63,7 +63,7 @@ fn entry() -> Result<Entry, String> {
 /// own database — the one that predates this section — and keeps the original
 /// account name.
 ///
-/// §180: when §180's spelling of the path names a different account from the
+/// When the current spelling of the path names a different account from the
 /// one used before it (`legacy_normalize`) and only the old account holds a
 /// key, the key is copied forward, so a file that opened yesterday still
 /// opens. The old entry is left in place — deleting a key is not something a
@@ -100,7 +100,7 @@ fn file_account_name(normalized: &str) -> String {
 /// Two spellings of one path — case, separators, the `\\?\` prefix — must
 /// name one key, or opening the same file two ways would ask for two.
 ///
-/// §180: **a file that does not exist yet resolves through its folder.**
+/// **a file that does not exist yet resolves through its folder.**
 /// `canonicalize` fails for it, and this used to hash the spelling as typed —
 /// which is exactly when a new file's key is stored. The next launch found
 /// the file, canonicalized it, and on a mapped network drive (`Z:\` becomes
@@ -135,7 +135,7 @@ fn spelling(s: &str) -> String {
     s.replace('\\', "/").to_lowercase()
 }
 
-/// `normalize` as it was before §180, kept only so `account_for` can find a
+/// `normalize` as it was before its spelling changed, kept only so `account_for` can find a
 /// key stored under it.
 fn legacy_normalize(path: &std::path::Path) -> String {
     let resolved = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
@@ -248,7 +248,7 @@ mod tests {
         d
     }
 
-    /// §180 — the key is stored when the file does not exist yet and looked
+    /// The key is stored when the file does not exist yet and looked
     /// up after it does. Both must name one account. The spelling here goes
     /// through `sub\..`, which `canonicalize` resolves exactly as it resolves
     /// a mapped drive or a junction: a path that is not the one typed.
@@ -277,7 +277,7 @@ mod tests {
 
     #[test]
     fn a_verbatim_unc_path_and_a_typed_one_normalize_alike() {
-        // §180: `\\?\UNC\server\share` is what a mapped drive canonicalizes
+        // `\\?\UNC\server\share` is what a mapped drive canonicalizes
         // to; it used to become `unc/server/share`, never `//server/share`.
         // `spelling`, not `normalize`: resolving a made-up server would wait
         // on the network.

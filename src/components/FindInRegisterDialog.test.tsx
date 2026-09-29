@@ -1,4 +1,4 @@
-// §163 — Find, in a register: a window over the register that lists the
+// Find, in a register: a window over the register that lists the
 // rows matching what was typed in the field chosen, selects the one you
 // click, and leaves it selected when it closes.
 import { render, screen, within } from "@testing-library/react";

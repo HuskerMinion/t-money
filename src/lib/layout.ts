@@ -1,4 +1,4 @@
-// §99 — looks. A LOOK is the shape of the app; a THEME is its colors. They
+// Looks. A LOOK is the shape of the app; a THEME is its colors. They
 // are two settings on purpose, so Sidebar in Evening and Compact in Copper are
 // both things you can have.
 //
@@ -29,7 +29,7 @@ export type Structure =
   | "ribbon"
   /** Open registers as tabs across the top. */
   | "documents"
-  /** A second, read-only register beside the one being worked (§126). */
+  /** A second, read-only register beside the one being worked. */
   | "two-up";
 
 export interface Look {
@@ -109,7 +109,7 @@ export const LOOKS: readonly Look[] = [
     blurb: "One column, wide margins, no gridlines. For reading and reviewing rather than entering.",
     structure: "classic",
   },
-  // §102 — four more, asked for by name: "a few more interesting layouts",
+  // Four more, asked for by name: "a few more interesting layouts",
   // "maybe with some rounded tabs".
   {
     id: "rounded",

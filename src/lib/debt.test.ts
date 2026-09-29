@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { amortize, formatAprBp, monthAfter, monthInterest, parseAprBp, paymentFor, plan } from "./debt";
 
-describe("the debt planner's arithmetic (§55)", () => {
+describe("the debt planner's arithmetic", () => {
   it("computes a month's interest in whole cents, half away from zero", () => {
     expect(monthInterest(100_000, 1200)).toBe(1_000); // $1,000 at 12% → $10
     expect(monthInterest(1_742_200, 650)).toBe(9_437); // 17,422 × 6.5% / 12 = 94.369…

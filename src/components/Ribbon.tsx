@@ -1,11 +1,11 @@
-// §99 — the Ribbon look's ribbon.
+// The Ribbon look's ribbon.
 //
 // Office's idea, and a good one: the things you do are named and drawn, in
 // groups, where you can see them — rather than remembered, and hunted for in
 // a menu. It costs vertical space and buys discoverability, which is the
 // trade a menu makes in the other direction.
 //
-// EVERY BUTTON IS A REGISTRY COMMAND (§97), so the ribbon grays out exactly
+// EVERY BUTTON IS A REGISTRY COMMAND, so the ribbon grays out exactly
 // as the menu does: Print is live in a register and dead everywhere else,
 // without the ribbon knowing what a register is. A ribbon of buttons that do
 // nothing when they do not apply would be worse than the menu it replaces.
@@ -18,7 +18,7 @@
 // is text-only rather than wearing an icon that means something else — a
 // wrong icon is worse than none, because it is read instead of the label.
 //
-// §125 — AND IT COLLAPSES.
+// AND IT COLLAPSES.
 //
 // > *"The Ribbon collaps to an icon strip and expand on a click"*
 //
@@ -132,7 +132,7 @@ function Button({ item, big }: { item: Item; big: boolean }) {
   );
 }
 
-/** §125 — one command in the collapsed strip. The label is the accessible
+/** One command in the collapsed strip. The label is the accessible
  *  name and the tooltip rather than text on screen; that is the whole trade
  *  the strip makes, and it is why nothing without an icon appears here. */
 function IconButton({ item }: { item: Item }) {
@@ -154,7 +154,7 @@ function IconButton({ item }: { item: Item }) {
 }
 
 export default function Ribbon() {
-  // §183 — subscribed, as the menu bar is. The buttons read the registry
+  // Subscribed, as the menu bar is. The buttons read the registry
   // while rendering, and nothing re-rendered the ribbon when a screen
   // registered or dropped a command, so Print stayed gray in a register until
   // some unrelated click redrew the shell.
@@ -173,7 +173,7 @@ export default function Ribbon() {
     });
   }
 
-  // §127 — the control says what it does.
+  // The control says what it does.
   //
   // > *"the small ^ on the right is a little too small it should be something
   // > that makes it more intuitive that it collapses the ribbon"*

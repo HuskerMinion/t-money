@@ -23,7 +23,7 @@ beforeEach(() => {
   });
 });
 
-describe("Autobudget (§51)", () => {
+describe("Autobudget", () => {
   it("collects the ticked lines and refuses a bad amount", () => {
     expect(acceptedLines(lines, { "c-elec": { on: true, amount: "120.00" }, "c-gift": { on: false, amount: "50" }, "c-groc": { on: true, amount: "$500" } })).toEqual([
       ["c-elec", 12_000],

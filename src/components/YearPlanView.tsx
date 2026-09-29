@@ -1,4 +1,4 @@
-// §139 — the year plan: the Budget screen as one decision a year.
+// The year plan: the Budget screen as one decision a year.
 //
 // > *"I'm seeing that I have to budget every single month. Not put a budget
 // >  in and see how it holds up for every month of the year."*
@@ -50,7 +50,7 @@ export function monthCount(months: string): number {
  *  year" for registration and "$1,000 a month" for food, and neither should
  *  have to be converted by hand.
  *
- *  §143 — over TWELVE for a set-aside line, whatever its mask says. Its
+ *  Over TWELVE for a set-aside line, whatever its mask says. Its
  *  mask names the months the bill is due, not the months it is funded, so
  *  multiplying by the mask's count would read "$340 a month" as a $680 year.
  */
@@ -62,7 +62,7 @@ export function annualFromMonthly(
   return monthlyCents * (spread === "aside" ? 12 : monthCount(months));
 }
 
-/** §144 — what a month cell shows when nothing has been recorded in it.
+/** What a month cell shows when nothing has been recorded in it.
  *
  * > *"it should have the monthly amount until an actual categorized item is
  * >  entered... the amount for the spread over payment should land in the
@@ -77,7 +77,7 @@ export function annualFromMonthly(
 export function projectedCents(line: PlanLine, i: number, elapsed = 12): number | null {
   if (!line.has_plan) return null;
   if (line.spread === "aside") {
-    // §151 — a due month that has already GONE BY without a payment does
+    // A due month that has already GONE BY without a payment does
     // not get to promise one.
     //
     // Insurance due Jan and Jul, paid 1,950.00 in June, and
@@ -123,7 +123,7 @@ export function groupIsInteresting(g: PlanGroup): boolean {
   );
 }
 
-/** §143 — what the Spread over column reads for one line.
+/** What the Spread over column reads for one line.
  *
  * A "spent" line says when it runs, as it always did. An "aside" line has two
  * numbers and both matter: *"I show what I need to save monthly and I show
@@ -139,7 +139,7 @@ export function spreadLabel(line: PlanLine): string {
   )} due ${due}`;
 }
 
-/** §145 — what the last column MEANS for one line.
+/** What the last column MEANS for one line.
  *
  * On an ordinary line it is a variance: ahead of plan, or behind it.
  *
@@ -173,7 +173,7 @@ export function varianceNote(line: PlanLine): string | undefined {
     : `${line.name}: ${amount} over plan, so far`;
 }
 
-/** §143 — is month `i` (0-based) one this line's bill is DUE in? Only
+/** Is month `i` (0-based) one this line's bill is DUE in? Only
  *  "aside" lines mark a month: for a "spent" line every month it runs in is
  *  already carrying its own figure, and underlining all of them would say
  *  nothing. */
@@ -181,7 +181,7 @@ export function isDueMonth(line: PlanLine, i: number): boolean {
   return line.has_plan && line.spread === "aside" && line.months.length === 12 && line.months[i] === "1";
 }
 
-/** What to say about a parent this write moved (§130/§137). */
+/** What to say about a parent this write moved. */
 export function raiseNotice(
   raised: { category_name: string; target_cents: number; created: boolean } | null
 ): string | null {
@@ -199,7 +199,7 @@ export default function YearPlanView() {
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [showAll, setShowAll] = useState(false);
-  // §156 — Ctrl+F here finds a budget line, not a transaction.
+  // Ctrl+F here finds a budget line, not a transaction.
   const [find, setFind] = useState("");
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<string | null>(null);
@@ -210,7 +210,7 @@ export default function YearPlanView() {
   const [spreadFor, setSpreadFor] = useState<PlanLine | null>(null);
   const [building, setBuilding] = useState(false);
 
-  /** §183 — the year on screen, and the newest request whose answer has been
+  /** The year on screen, and the newest request whose answer has been
    *  shown. Typing a figure and clicking › saved into 2026 and started 2027's
    *  load; the save's own reload of 2026 then landed last and put 2026's
    *  figures under "2027", where the next edit wrote them into 2027. An answer
@@ -246,7 +246,7 @@ export default function YearPlanView() {
   }, []);
 
   useEffect(() => {
-    // §183 — the old year's rows go the moment the heading changes, so no
+    // The old year's rows go the moment the heading changes, so no
     // figure is ever on screen under a year it does not belong to, and no box
     // from the old year is there to type into while the new one loads.
     if (shownYear.current !== year) {
@@ -257,7 +257,7 @@ export default function YearPlanView() {
     void load(year);
   }, [load, year]);
 
-  /** §140 — the month column the eye should land on. Only in the current
+  /** The month column the eye should land on. Only in the current
    *  year: tinting January of 2031 because today is January would be a lie
    *  about which figures are real. 0 means no column is now. */
   const nowMonth = useMemo(() => {
@@ -283,7 +283,7 @@ export default function YearPlanView() {
     line: PlanLine,
     annualCents: number,
     months: string,
-    // §143 — defaults to the line's OWN reading, so typing a new figure into
+    // Defaults to the line's OWN reading, so typing a new figure into
     // a set-aside line does not quietly turn it back into a spent one.
     spread: PlanSpread = line.spread
   ) {
@@ -303,9 +303,9 @@ export default function YearPlanView() {
   async function commit(line: PlanLine, col: "annual" | "monthly", text: string) {
     setEditing(null);
 
-    // §151 — EMPTYING A BOX CLEARS THE LINE. It does not write a zero.
+    // EMPTYING A BOX CLEARS THE LINE. It does not write a zero.
     //
-    // §146 made an emptied box mean zero, on the reasoning that §138 defines
+    // An earlier change made an emptied box mean zero, on the reasoning that the year plan defines
     // zero as a real plan of nothing. Driven, that was wrong twice over:
     //
     // > *"when I put an amount in a child category and then delete it it goes
@@ -329,7 +329,7 @@ export default function YearPlanView() {
     }
 
     const cents = parseMoneyToCents(text);
-    // Not a number: put the row back rather than guess — and §183, say so.
+    // Not a number: put the row back rather than guess — and say so.
     // The figure used to vanish without a word, which reads as a save.
     if (cents === null) {
       setError(`"${text.trim()}" is not an amount. ${line.full_name} was left as it was.`);
@@ -339,10 +339,10 @@ export default function YearPlanView() {
       setError("A plan cannot be negative.");
       return;
     }
-    // §144 — tabbing THROUGH a monthly box must not rewrite the plan. The
+    // Tabbing THROUGH a monthly box must not rewrite the plan. The
     // monthly figure is rounded up, so $4,000 a year reads $340 a month and
     // 340 x 12 is $4,080: committing a figure nobody retyped would walk the
-    // annual up every time the field was visited. This is the §38 Tab-through
+    // annual up every time the field was visited. This is the old Tab-through
     // class of bug, and the guard is to compare against what was SHOWN.
     if (line.has_plan && col === "monthly" && cents === line.monthly_cents) return;
     const annual =
@@ -374,7 +374,7 @@ export default function YearPlanView() {
           className="aero-field tm-budget-amount"
           aria-label={`${col === "annual" ? "Annual" : "Monthly"} plan for ${line.full_name}`}
           value={editingThis ? editing.text : line.has_plan ? formatAmountBare(value) : ""}
-          /* §143 — an empty field still shows the tic the empty month cells
+          /* An empty field still shows the tic the empty month cells
              use, so a line with no plan reads as two boxes waiting for a
              figure rather than as blank table. */
           placeholder="—"
@@ -462,7 +462,7 @@ export default function YearPlanView() {
         </td>
         {line.actual_cents.map((cents, i) => {
           const future = i + 1 > (plan?.months_elapsed ?? 0);
-          // §143 — an "aside" line runs in EVERY month: its twelfth is being
+          // An "aside" line runs in EVERY month: its twelfth is being
           // set aside all year, and the mask is naming where the bill lands,
           // not where the line is active.
           const aside = line.spread === "aside";
@@ -470,13 +470,13 @@ export default function YearPlanView() {
           // An expense month over its share reads red. An income month never
           // does: a month is what it was.
           //
-          // §143 — and neither does an "aside" month, for the same reason.
+          // And neither does an "aside" month, for the same reason.
           // The bill landing in January is not an overspend, it is the thing
           // eleven months of saving were FOR. Judging it per month would paint
           // the due month red every single year. Only `vs plan` judges an
           // aside line, and over the year it comes back to zero.
           const over = !income && !aside && line.has_plan && runs && cents > line.monthly_cents;
-          // §144 — a month with nothing recorded shows what it is PLANNED to
+          // A month with nothing recorded shows what it is PLANNED to
           // be, so the row reads as a whole year: what happened behind you,
           // what you are budgeting for ahead. A real figure replaces it the
           // moment one is categorized.
@@ -524,7 +524,7 @@ export default function YearPlanView() {
           className={`num ${line.variance_cents >= 0 ? "money-pos" : "money-neg"}`}
           title={varianceNote(line)}
         >
-          {/* §145 — a set-aside line shows a BALANCE, and a balance does not
+          {/* A set-aside line shows a BALANCE, and a balance does not
               take a plus sign: "380.00" is what is put by, not "+380.00" as
               though it were a surplus against something. A shortfall keeps
               its minus, because that one IS a warning. */}
@@ -534,8 +534,8 @@ export default function YearPlanView() {
               ? (
                   <>
                     {(line.variance_cents < 0 ? "−" : "") + formatAmountBare(Math.abs(line.variance_cents))}
-                    {/* §154 — the word ON the screen, not only in the hover
-                        note. §151 put "saved so far, not yet spent" in the
+                    {/* The word ON the screen, not only in the hover
+                        note. An earlier change put "saved so far, not yet spent" in the
                         title, and the user never saw it: nobody hovers a number.
                         One word fits the column; the sentence stays as the
                         title for anyone who does. */}
@@ -609,7 +609,7 @@ export default function YearPlanView() {
 
         <div className="flex items-center gap-3 p-2 bg-white border-b border-[color:var(--tm-ms-card-border)] flex-wrap">
           <div className="flex items-center gap-1">
-            {/* §183 — held while a write is in flight: the write belongs to the
+            {/* Held while a write is in flight: the write belongs to the
                 year it was typed in, and its reload must not cross a year
                 change (see `shownYear`). */}
             <button type="button" className="aero-btn" aria-label="Previous year" disabled={busy} onClick={() => setYear((y) => y - 1)}>
@@ -773,9 +773,9 @@ export default function YearPlanView() {
   );
 }
 
-/** §139 — the one place a line says anything about individual months, and it
+/** The one place a line says anything about individual months, and it
  *  says it once for the year rather than twelve times. */
-/** §143 — "January", "January and July", "January, April and July". The
+/** "January", "January and July", "January, April and July". The
  *  dialog says which months a bill lands in, and a comma-separated machine
  *  list reads like a setting rather than like a sentence. */
 export function monthsPhrase(months: string): string {
@@ -801,7 +801,7 @@ export function SpreadDialog({
   const every = months === EVERY_MONTH;
   const count = [...months].filter((c) => c === "1").length;
   const aside = spread === "aside";
-  // §143 — the divisor is the whole difference between the two readings.
+  // The divisor is the whole difference between the two readings.
   const per = aside
     ? Math.round(line.annual_cents / 12)
     : count === 0
@@ -814,7 +814,7 @@ export function SpreadDialog({
       const chars = [...m];
       chars[i] = chars[i] === "1" ? "0" : "1";
       const next = chars.join("");
-      // §152 — AN EXPENSE THAT STOPS RUNNING ALL YEAR IS ASSUMED TO BE SAVED
+      // AN EXPENSE THAT STOPS RUNNING ALL YEAR IS ASSUMED TO BE SAVED
       // FOR, not merely skipped.
       //
       // An expense that is ticked for only some months is, in practice, one
@@ -888,7 +888,7 @@ export function SpreadDialog({
                 oil over the cold months.
               </span>
             </label>
-            {/* §143 — the third reading. */}
+            {/* The third reading. */}
             <label className="flex items-start gap-2">
               <input
                 type="radio"
