@@ -98,7 +98,13 @@ If you want to be sure the file is the real one before you run it:
 
 ## Coming from Microsoft Money
 
-Money can't be read directly, but it exports each account as QIF. In Money, open an account and use
+T-Money was built to replace Money Plus Sunset Deluxe. Compared with Sunset, it adds real encryption,
+undo, built-in share prices, CSV import, attachments and recurring-charge detection. What it doesn't do:
+open `.mny` files, sign in to your bank (Direct Connect), the Lifetime Planner, the tax estimator, check
+printing, or more than one currency. **[The full side-by-side comparison](docs/money-comparison.md)**
+covers both directions.
+
+To move your data over: Money can't be read directly, but it exports each account as QIF. In Money, open an account and use
 **File → Export → Loose QIF**. In T-Money, create the account first, then use
 **File → Import → Bank or broker file (QIF, OFX, QFX)**. The *Import and export* page in
 **Help → T-Money Help** (F1) walks through it, and
