@@ -233,7 +233,9 @@ Click a selected row again (or double-click, or **Edit**) to change it. Give a c
 
 Transactions: **added, edited, deleted, voided**, and **splits changed**. A deleted transfer comes back as both halves, linked, with both balances right. A split that put a row in another account takes that row with it when you undo, and brings it back when you redo.
 
-Applying the payee rules to existing transactions is one step too, however many rows it changed — see [[categories-payees|Categories and payees]]. So is **tagging with a classification**.
+Applying the payee rules to existing transactions is one step too, however many rows it changed — see [[categories-payees|Categories and payees]]. So is **tagging with a classification**, and so are **merging, renaming and deleting a payee**.
+
+**An import is one step.** Ctrl+Z takes out every transaction it added, in every account it touched — the answer to importing into the wrong account. Payees and securities it created stay in their lists, unused. See [[import-export|Import and export]].
 
 The two ways of writing a transaction that are not typing one are covered as well:
 
@@ -243,8 +245,6 @@ The two ways of writing a transaction that are not typing one are covered as wel
 # What it does not
 
 Accounts and categories. Deleting an account takes every transaction in it, and something that consequential stays confirm-then-commit rather than becoming a thing you can shrug off. The menu says so by staying gray — an undo that quietly covers half of what you assume is worse than none.
-
-Imports are not undoable either. Take a backup before a big one; that is what Settings → File → Backups is for.
 
 # It is not a history
 
