@@ -3,7 +3,7 @@
 // "Click the account you want to use." Accounts are links, grouped under Bank /
 // Credit / Investment / Other, with collapsible group headers. Closed accounts
 // render grayed — §181: and only once "Show closed accounts" is ticked.
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import Money from "./Money";
 import { ACCOUNT_GROUPS, accountWorth, groupFor, isValuedAsset, labelFor, placedFirst, type AccountGroup } from "../lib/accountTypes";
 import { maskNumber } from "./AccountDetailsDialog";
@@ -93,9 +93,8 @@ export default function AccountListView({
             if (list.length === 0) return null;
             const isCollapsed = collapsed[g] ?? false;
             return (
-              <>
+              <Fragment key={g}>
                 <tr
-                  key={g}
                   className="group"
                   onClick={() => setCollapsed((c) => ({ ...c, [g]: !isCollapsed }))}
                   style={{ cursor: "pointer" }}
@@ -169,7 +168,7 @@ export default function AccountListView({
                       </td>
                     </tr>
                   ))}
-              </>
+              </Fragment>
             );
           })}
         </tbody>
