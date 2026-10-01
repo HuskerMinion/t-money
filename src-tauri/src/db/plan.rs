@@ -702,6 +702,7 @@ pub fn materialize(conn: &Conn, year: i32) -> Result<u32, String> {
 /// the one its kind cares about — an expense category that received a refund
 /// should not have that netted against its spending without saying so.
 fn month_sums(conn: &Conn, year: i32) -> Result<HashMap<(String, u32), (i64, i64)>, String> {
+    crate::db::queries::require_rates(conn)?;
     let sql = format!(
         "{CATEGORY_LINES}
          SELECT category_id,

@@ -3,8 +3,10 @@
 // — plus the investment fields when a row has them. Amounts are plain
 // decimals (no $, no parens) so a spreadsheet reads them as numbers; the
 // Balance column is left out when the view's sort makes it meaningless.
+//
+// Numbers are written the same way in every region — a dot for the decimal
+// mark, no thousands marks — so the columns a comma separates stay columns.
 import type { RegisterRow } from "./types";
-import { formatPrice, formatShares } from "./shares";
 
 /** A quoted TEXT cell. Excel evaluates a cell that begins with = + - @
  *  (or a tab or carriage return ahead of one) as a formula even inside quotes,
@@ -21,6 +23,16 @@ export function csvCents(cents: number): string {
   const sign = cents < 0 ? "-" : "";
   const abs = Math.abs(cents);
   return `${sign}${Math.floor(abs / 100)}.${String(abs % 100).padStart(2, "0")}`;
+}
+
+/** Millionths → "12.3456", trailing zeros trimmed, at least `minDecimals`
+ *  places. Integer arithmetic; the same in every region. */
+export function csvMicro(micro: number, minDecimals = 0): string {
+  const sign = micro < 0 ? "-" : "";
+  const abs = Math.abs(micro);
+  let frac = String(abs % 1_000_000).padStart(6, "0").replace(/0+$/, "");
+  while (frac.length < minDecimals) frac += "0";
+  return `${sign}${Math.floor(abs / 1_000_000)}${frac ? `.${frac}` : ""}`;
 }
 
 export function registerCsv(rows: readonly RegisterRow[], withBalance: boolean): string {
@@ -44,8 +56,8 @@ export function registerCsv(rows: readonly RegisterRow[], withBalance: boolean):
         ? [
             r.activity ?? "",
             q(r.security_name ?? ""),
-            r.shares_micro ? formatShares(r.shares_micro).replace(/,/g, "") : "",
-            r.price_micro ? formatPrice(r.price_micro).replace(/,/g, "") : "",
+            r.shares_micro ? csvMicro(r.shares_micro) : "",
+            r.price_micro ? csvMicro(r.price_micro, 2) : "",
             r.gross_cents ? csvCents(r.gross_cents) : "",
             r.commission_cents ? csvCents(r.commission_cents) : "",
           ]

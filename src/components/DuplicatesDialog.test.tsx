@@ -55,3 +55,17 @@ describe("A refused delete", () => {
     expect(alert.nextElementSibling).toContainElement(screen.getByRole("button", { name: "Close" }));
   });
 });
+
+describe("DuplicatesDialog in another currency", () => {
+  beforeEach(() => resetIpc());
+
+  it("writes the amount in the account's currency", async () => {
+    const rows = [
+      { id: "t-1", date: "2026-09-02", cleared_state: "", category_name: null, notes: null, fitid: null, check_number: null, is_transfer: false },
+      { id: "t-2", date: "2026-09-02", cleared_state: "", category_name: null, notes: null, fitid: null, check_number: null, is_transfer: false },
+    ];
+    setIpcHandlers({ find_duplicates: () => [{ date: "2026-09-02", payee: "Netflix", amount_cents: -1549, rows }] });
+    render(<DuplicatesDialog accountId="a-1" accountName="Paris" currency="EUR" onDelete={vi.fn()} onClose={vi.fn()} />);
+    expect(await screen.findByText(/€15.49/)).toBeInTheDocument();
+  });
+});

@@ -7,7 +7,7 @@
 // over ten years of history is only ever pressed by someone who believes both.
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@tauri-apps/api/core", () => import("../test/tauriMock"));
 
@@ -144,5 +144,15 @@ describe("Two rules with the same text", () => {
     expect(screen.getAllByRole("checkbox", { name: /^All 1 rows matching netflix$/ })).toHaveLength(2);
     expect(spy.mock.calls.some((c) => String(c[0]).includes("same key"))).toBe(false);
     spy.mockRestore();
+  });
+});
+
+describe("ApplyPayeeRulesDialog in another currency", () => {
+  it("writes each row in its account's currency", async () => {
+    plan = [change({ account_name: "Paris Checking", currency: "EUR" }), change({ transaction_id: "t-2", amount_cents: -2000 })];
+    open();
+    await screen.findByText(/2 transactions would change/);
+    expect(screen.getByText("(€15.49)")).toBeInTheDocument();
+    expect(screen.getByText("($20.00)")).toBeInTheDocument();
   });
 });

@@ -56,6 +56,38 @@ pub struct Account {
     pub website: Option<String>,
     pub address: Option<String>,
     pub account_notes: Option<String>,
+    /// The currency the account is kept in (ISO code). Its amounts are
+    /// hundredths of THIS currency; totals across accounts are in dollars.
+    #[serde(default = "default_home")]
+    pub currency: String,
+    /// Dollars per unit of `currency` today, in millionths — 1,000,000 for
+    /// dollars, 0 when the currency has no rate. Lets the frontend total
+    /// accounts in dollars with the same arithmetic as the backend.
+    #[serde(default)]
+    pub home_rate_micro: i64,
+}
+
+fn default_home() -> String {
+    crate::currency::DEFAULT_HOME.to_string()
+}
+
+/// How a file writes money and dates: its home currency and its region
+/// (a tag from `region::REGIONS`).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct FileFormat {
+    pub home_currency: String,
+    pub region: String,
+}
+
+/// One exchange rate: home-currency units per unit of `currency` from
+/// `date` on.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExchangeRate {
+    pub currency: String,
+    pub date: String,
+    pub rate_micro: i64,
+    /// "manual" or "fetched".
+    pub source: String,
 }
 
 /// What a loan costs and how its payment divides. Every field is a
@@ -432,6 +464,10 @@ pub struct RegisterRow {
     /// the row is not a far row, or no line points at it any more.
     #[serde(default)]
     pub split_payment_account_name: Option<String>,
+    /// For a transfer, the OTHER row's amount, in that account's
+    /// currency — what an edit across two currencies starts from.
+    #[serde(default)]
+    pub transfer_amount_cents: Option<i64>,
 }
 
 /// A file attached to a transaction or an account: what it is, not
@@ -863,6 +899,9 @@ impl RuleConditions {
 pub struct PayeeRuleChange {
     pub transaction_id: String,
     pub account_name: String,
+    /// The account's currency, which `amount_cents` is in.
+    #[serde(default = "default_home")]
+    pub currency: String,
     pub date: String,
     pub amount_cents: i64,
     pub payee: String,
@@ -1659,24 +1698,26 @@ pub struct BackupConfig {
 /// Integer arithmetic only. This exists so a refusal can name the amount it
 /// is refusing over without any caller reaching for `f64`.
 pub fn format_cents(cents: i64) -> String {
-    let sign = if cents < 0 { "-" } else { "" };
-    let abs = cents.unsigned_abs();
-    let dollars = abs / 100;
-    let rem = abs % 100;
-    let digits = dollars.to_string();
-    let mut grouped = String::new();
-    for (i, ch) in digits.chars().enumerate() {
-        if i > 0 && (digits.len() - i) % 3 == 0 {
-            grouped.push(',');
-        }
-        grouped.push(ch);
-    }
-    format!("{sign}${grouped}.{rem:02}")
+    // In the open file's home currency and region; "$1,234.56" outside one.
+    crate::region::money(cents)
+}
+
+/// `format_cents` for an amount in an account kept in `currency`: behind
+/// that currency's symbol, so a euro amount never reads as dollars.
+pub fn format_cents_in(cents: i64, currency: &str) -> String {
+    crate::region::money_of(cents, currency)
 }
 
 #[cfg(test)]
 mod format_tests {
-    use super::format_cents;
+    use super::{format_cents, format_cents_in};
+
+    #[test]
+    fn an_amount_in_another_currency_carries_its_symbol() {
+        assert_eq!(format_cents_in(-123_456, "EUR"), "-€1,234.56");
+        assert_eq!(format_cents_in(500, "CAD"), "CA$5.00");
+        assert_eq!(format_cents_in(500, "USD"), "$5.00");
+    }
 
     #[test]
     fn cents_format_as_grouped_dollars() {

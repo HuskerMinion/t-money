@@ -2,6 +2,7 @@
 // mimicking the MS Money Plus left rail.
 import { useState } from "react";
 import { accountWorth } from "../lib/accountTypes";
+import { currencyOf } from "../lib/currency";
 import TmIcon from "./TmIcon";
 import Money from "./Money";
 import type { Account } from "../lib/types";
@@ -159,7 +160,7 @@ export default function AeroSidebar({
                     >
                       <span className="truncate flex-1">{a.name}</span>
                       <span className="tabular-nums" style={{ color: "var(--tm-ms-text)" }}>
-                        <Money cents={accountWorth(a)} />
+                        <Money cents={accountWorth(a)} currency={currencyOf(a)} />
                       </span>
                     </div>
                   ))}

@@ -367,6 +367,25 @@ fn extract_blocks(text: &str, tag: &str) -> Vec<String> {
     blocks
 }
 
+/// Every currency the file's statements name in `<CURDEF>`, upper-cased, in
+/// order of appearance, once each. Empty when the file does not say. Every
+/// one counts: a file can hold several statements, and the rows of all of
+/// them are read.
+pub fn statement_currencies(text: &str) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    let mut rest = text;
+    while let Some(at) = rest.find("<CURDEF>") {
+        rest = &rest[at..];
+        if let Some(v) = tag_value(rest, "CURDEF").map(|v| v.trim().to_ascii_uppercase()) {
+            if !out.contains(&v) {
+                out.push(v);
+            }
+        }
+        rest = &rest["<CURDEF>".len()..];
+    }
+    out
+}
+
 /// Return the value of the first `<TAG>value` in `block`, whether or not a
 /// `</TAG>` follows it. The value runs to the next `<` — which in SGML is the
 /// next element, and in XML is this element's closing tag — or to the end of

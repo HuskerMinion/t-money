@@ -1009,6 +1009,11 @@ const FROZEN: &[(&str, u64)] = &[
     // comments; the statements are byte-for-byte what they were.
     // Was 0xe645609482f1652a.
     ("0046", 0xc1f136cdbc9bf148),
+    // Accounts in other currencies: `accounts.currency`, defaulting to
+    // dollars, and `exchange_rates`, dollars per unit by date.
+    ("0047", 0xb17f346f3c001837),
+    // Rates say which home currency they are quoted in.
+    ("0048", 0xaed8b3c80164a049),
 ];
 
 #[test]

@@ -54,7 +54,7 @@ pub fn verify_file(conn: &Connection, repair: bool) -> Result<FileCheck, String>
     let halves: Vec<(String, String)> = {
         let mut st = conn
             .prepare(
-                "SELECT t.id, t.date, t.payee, t.amount_cents, a.name
+                "SELECT t.id, t.date, t.payee, t.amount_cents, a.name, a.currency
                    FROM transactions t JOIN accounts a ON a.id = t.account_id
                   WHERE t.transfer_id IS NOT NULL
                     AND NOT EXISTS (SELECT 1 FROM transactions p WHERE p.id = t.transfer_id)
@@ -63,8 +63,8 @@ pub fn verify_file(conn: &Connection, repair: bool) -> Result<FileCheck, String>
             .map_err(|e| e.to_string())?;
         let rows: Vec<(String, String)> = st
             .query_map([], |r| {
-                let (id, date, payee, cents, acct): (String, String, String, i64, String) = (r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?);
-                Ok((id, format!("{date} {payee} {} ({acct})", crate::models::format_cents(cents))))
+                let (id, date, payee, cents, acct, cur): (String, String, String, i64, String, String) = (r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?);
+                Ok((id, format!("{date} {payee} {} ({acct})", crate::models::format_cents_in(cents, &cur))))
             })
             .map_err(|e| e.to_string())?
             .collect::<Result<_, _>>()
@@ -75,8 +75,9 @@ pub fn verify_file(conn: &Connection, repair: bool) -> Result<FileCheck, String>
     {
         let mut st = conn
             .prepare(
-                "SELECT t.date, t.payee, s.total, t.amount_cents
+                "SELECT t.date, t.payee, s.total, t.amount_cents, a.currency
                    FROM transactions t
+                   JOIN accounts a ON a.id = t.account_id
                    JOIN (SELECT transaction_id, SUM(amount_cents) AS total FROM splits GROUP BY transaction_id) s ON s.transaction_id = t.id
                   WHERE s.total <> t.amount_cents
                   ORDER BY t.date",
@@ -84,8 +85,8 @@ pub fn verify_file(conn: &Connection, repair: bool) -> Result<FileCheck, String>
             .map_err(|e| e.to_string())?;
         out.split_mismatch = st
             .query_map([], |r| {
-                let (date, payee, lines, row): (String, String, i64, i64) = (r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?);
-                Ok(format!("{date} {payee}: lines {}, row {}", crate::models::format_cents(lines), crate::models::format_cents(row)))
+                let (date, payee, lines, row, cur): (String, String, i64, i64, String) = (r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?);
+                Ok(format!("{date} {payee}: lines {}, row {}", crate::models::format_cents_in(lines, &cur), crate::models::format_cents_in(row, &cur)))
             })
             .map_err(|e| e.to_string())?
             .collect::<Result<_, _>>()
@@ -141,11 +142,14 @@ pub fn verify_file(conn: &Connection, repair: bool) -> Result<FileCheck, String>
                 params![d.account_id, d.computed_cents],
             )
             .map_err(|e| e.to_string())?;
+            let cur: String = tx
+                .query_row("SELECT currency FROM accounts WHERE id = ?1", params![d.account_id], |r| r.get(0))
+                .map_err(|e| e.to_string())?;
             out.repaired.push(format!(
                 "{}: balance set to {} (was {})",
                 d.account_name,
-                crate::models::format_cents(d.computed_cents),
-                crate::models::format_cents(d.stored_cents)
+                crate::models::format_cents_in(d.computed_cents, &cur),
+                crate::models::format_cents_in(d.stored_cents, &cur)
             ));
         }
         for (id, label) in &halves {

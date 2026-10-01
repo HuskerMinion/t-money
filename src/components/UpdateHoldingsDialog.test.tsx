@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@tauri-apps/api/core", () => import("../test/tauriMock"));
 
 import UpdateHoldingsDialog, { linesToRequest } from "./UpdateHoldingsDialog";
+import { useFileFormat } from "../lib/region";
 import { invokeCalls, resetIpc, setIpcHandlers } from "../test/tauriMock";
 import type { Account, HoldingChange, Security, StatementHolding } from "../lib/types";
 
@@ -136,5 +137,20 @@ describe("A refused preview", () => {
     await userEvent.type(screen.getByLabelText("Shares of Target Fund"), "0");
     await waitFor(() => expect(screen.getByRole("button", { name: "Update" })).toBeEnabled());
     expect(screen.queryByRole("alert")).toBeNull();
+  });
+});
+
+describe("in the file's region", () => {
+  it("fills the price and reads shares the German way", async () => {
+    useFileFormat.getState().setFormat({ home_currency: "EUR", region: "de-DE" });
+    render(<UpdateHoldingsDialog account={account} securities={securities} onCancel={() => {}} onDone={() => {}} />);
+    await screen.findByText("Target Fund (TGTF)");
+    expect(screen.getByLabelText("Price of Target Fund")).toHaveValue("25,00");
+    await userEvent.clear(screen.getByLabelText("Price of Target Fund"));
+    await userEvent.type(screen.getByLabelText("Price of Target Fund"), "26,40");
+    await userEvent.type(screen.getByLabelText("Shares of Target Fund"), "112,5");
+    await waitFor(() => expect(screen.getByLabelText("Change for Target Fund")).toHaveTextContent(/\+12,5 sh \(330,00\s€\)/));
+    const dry = invokeCalls.filter((c) => c.cmd === "update_holdings");
+    expect(dry[dry.length - 1].args).toMatchObject({ lines: [{ security_id: "s-fund", shares_micro: 112_500_000, price_micro: 26_400_000 }] });
   });
 });

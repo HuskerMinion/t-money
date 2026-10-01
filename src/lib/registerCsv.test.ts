@@ -58,3 +58,15 @@ describe("registerCsv", () => {
     expect(line.endsWith(",buy,\"VTSAX\",12.3456,34.5678,426.74,")).toBe(true);
   });
 });
+
+describe("the export is the same in every region", () => {
+  it("writes dot decimals for shares and prices in a comma region", async () => {
+    const { useFileFormat } = await import("./region");
+    const { csvMicro } = await import("./registerCsv");
+    useFileFormat.getState().setFormat({ home_currency: "EUR", region: "de-DE" });
+    expect(csvMicro(12_345_600)).toBe("12.3456");
+    expect(csvMicro(1_234_500_000, 2)).toBe("1234.50");
+    expect(csvMicro(100_000_000)).toBe("100");
+    expect(csvMicro(-500_000)).toBe("-0.5");
+  });
+});

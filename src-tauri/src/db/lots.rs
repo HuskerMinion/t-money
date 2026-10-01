@@ -721,7 +721,8 @@ pub fn fmt_shares(micro: i64) -> String {
         format!("{whole}")
     } else {
         let f = format!("{frac:06}");
-        format!("{whole}.{}", f.trim_end_matches('0'))
+        // The file's decimal mark: "12.3456", "12,3456".
+        format!("{whole}{}{}", crate::region::display().region.decimal, f.trim_end_matches('0'))
     };
     if neg {
         s.insert(0, '-');

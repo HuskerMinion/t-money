@@ -28,6 +28,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../lib/ipc";
 import { formatAmountBare, formatMoney, parseMoneyToCents } from "../lib/format";
+import { currencyOf, homeCurrency } from "../lib/currency";
 import type { Account, Category, ClassPick, Classification, NewSplit, Payee, UsedText } from "../lib/types";
 import CategorySelect, { transferTargetOf, transferValue } from "./CategorySelect";
 import ClassPicker, { picksToSend, valueOn } from "./ClassPicker";
@@ -54,6 +55,10 @@ interface Props {
    *  so a paycheck can be split into salary, tax and "the part that went to
    *  savings" in one transaction. Omit and no line can be a transfer. */
   transferTargets?: readonly Account[];
+  /** The ISO code of the transaction's account; omitted = the home currency. A line
+   *  can only transfer to an account kept in the same currency — a line has
+   *  one amount, and a transfer between currencies needs two. */
+  currency?: string | null;
   /** The parent's signed amount, if it already has one. */
   parentAmountCents?: number | null;
   /** The transaction has been reconciled against a statement, so a
@@ -100,7 +105,8 @@ export function asPayees(texts: readonly UsedText[]): Payee[] {
 
 export default function SplitDialog({
   categories,
-  transferTargets = [],
+  transferTargets: allTargets = [],
+  currency = null,
   parentAmountCents = null,
   reconciled = false,
   initialSplits = [],
@@ -118,6 +124,8 @@ export default function SplitDialog({
         : "received";
 
   const [direction, setDirection] = useState<SplitDirection | null>(knownDirection);
+  // The backend refuses a line that moves money between two currencies.
+  const transferTargets = allTargets.filter((a) => currencyOf(a) === (currency || homeCurrency()));
   const [lines, setLines] = useState<SplitLine[]>(
     initialSplits.length ? toLines(initialSplits) : [BLANK]
   );
@@ -474,18 +482,18 @@ export default function SplitDialog({
           {target !== null && (
             <div className="flex justify-end gap-3">
               <span>Transaction amount:</span>
-              <span className="tabular-nums" aria-label="Transaction amount">{formatMoney(target)}</span>
+              <span className="tabular-nums" aria-label="Transaction amount">{formatMoney(target, { currency })}</span>
             </div>
           )}
           <div className="flex justify-end gap-3">
             <span className="font-bold">Total:</span>
-            <span className="font-bold tabular-nums" aria-label="Split total">{formatMoney(totalCents)}</span>
+            <span className="font-bold tabular-nums" aria-label="Split total">{formatMoney(totalCents, { currency })}</span>
           </div>
           {difference !== null && (
             <div className="flex justify-end gap-3">
               <span className={difference === 0 ? undefined : "money-neg"}>Difference:</span>
               <span className={`tabular-nums${difference === 0 ? "" : " money-neg"}`} aria-label="Difference">
-                {formatMoney(difference)}
+                {formatMoney(difference, { currency })}
               </span>
             </div>
           )}
@@ -496,7 +504,7 @@ export default function SplitDialog({
             {unreadable.length === 1
               ? `The amount on line ${unreadable[0] + 1}, “${lines[unreadable[0]]?.amount.trim()}”, is not an amount. `
               : `The amounts on lines ${unreadable.map((n) => n + 1).join(", ")} are not amounts. `}
-            Type dollars and cents, such as 12.34, or clear the line.
+            Type an amount, such as {formatAmountBare(1234)}, or clear the line.
           </Notice>
         )}
 
@@ -504,14 +512,14 @@ export default function SplitDialog({
           <div className="tm-merge-blocked mt-2" role="alert" style={{ lineHeight: 1.5 }}>
             <div className="tm-merge-blocked-head">The lines do not add up to the amount entered</div>
             <p>
-              The lines total {formatMoney(confirming.total)}, but the transaction amount is{" "}
-              {formatMoney(target ?? 0)}. Done will change the transaction amount to{" "}
-              {formatMoney(confirming.total)}.
+              The lines total {formatMoney(confirming.total, { currency })}, but the transaction amount is{" "}
+              {formatMoney(target ?? 0, { currency })}. Done will change the transaction amount to{" "}
+              {formatMoney(confirming.total, { currency })}.
             </p>
             {reconciled && (
               <p className="font-bold">
                 This transaction has already been reconciled against a statement. Changing its amount
-                will put the next reconcile out by {formatMoney(Math.abs((target ?? 0) - confirming.total))}.
+                will put the next reconcile out by {formatMoney(Math.abs((target ?? 0) - confirming.total), { currency })}.
               </p>
             )}
             <div className="flex gap-2 pt-1">
@@ -521,7 +529,7 @@ export default function SplitDialog({
                 autoFocus
                 onClick={() => onDone(confirming.splits, confirming.total)}
               >
-                Change the amount to {formatMoney(confirming.total)}
+                Change the amount to {formatMoney(confirming.total, { currency })}
               </button>
               <button className="aero-btn" type="button" onClick={() => setConfirming(null)}>
                 Go back

@@ -50,8 +50,12 @@ All screenshots use the made-up household in **File → New → Sample file with
   debt reduction planner.
 - **Reports and charts** — spending, income and expenses, net worth, taxes and more, all
   customizable.
+- **Currencies and regions** — keep a file in US dollars, Canadian dollars, euros, British pounds,
+  Mexican pesos or Australian dollars, with numbers and dates written the way your country writes
+  them. An account can be kept in another of those currencies; it converts at exchange rates you
+  type in or fetch.
 - **Import** — QIF from Microsoft Money (splits and transfers included), OFX and QFX from banks and
-  brokers, CSV from most US banks, and the TSP activity file. Export a register as QIF or CSV, and any report as CSV.
+  brokers, CSV from most banks (either decimal mark), and the TSP activity file. Export a register as QIF or CSV, and any report as CSV.
 - **Savings goals, classifications** (track a rental or a second house separately), attachments
   (receipts and statements kept inside the file), and built-in help.
 
@@ -100,8 +104,8 @@ If you want to be sure the file is the real one before you run it:
 
 T-Money was built to replace Money Plus Sunset Deluxe. Compared with Sunset, it adds real encryption,
 undo, built-in share prices, CSV import, attachments and recurring-charge detection. What it doesn't do:
-open `.mny` files, sign in to your bank (Direct Connect), the Lifetime Planner, the tax estimator, check
-printing, or more than one currency. **[The full side-by-side comparison](docs/money-comparison.md)**
+open `.mny` files, sign in to your bank (Direct Connect), the Lifetime Planner, the tax estimator, or
+check printing. It handles six currencies, where Money handled dozens. **[The full side-by-side comparison](docs/money-comparison.md)**
 covers both directions.
 
 To move your data over: Money can't be read directly, but it exports each account as QIF. In Money, open an account and use
@@ -128,11 +132,11 @@ Releases are built by [`.github/workflows/release.yml`](.github/workflows/releas
 
 ## Status
 
-T-Money is used every day for one household's money, and has a large test suite (about 500 Rust
-tests and 1,000 frontend tests). It has not yet been used by many people. Back up your file, and
+T-Money is used every day for one household's money, and has a large test suite (about 550 Rust
+tests and 1,200 frontend tests). It has not yet been used by many people. Back up your file, and
 please [open an issue](https://github.com/HuskerMinion/t-money/issues) if something is wrong.
 
-There is no bank sync (Direct Connect), no mobile app, and one currency.
+There is no bank sync (Direct Connect) and no mobile app. The tax reports follow US tax forms.
 
 ## License
 

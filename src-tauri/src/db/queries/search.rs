@@ -11,7 +11,17 @@ use super::*;
 /// If `q` reads as an amount ("340", "$1,234.56", "-58.42", "(58.42)"),
 /// its magnitude in cents. Integer arithmetic on the digits, no floats.
 pub fn query_as_cents(q: &str) -> Option<i64> {
-    let mut s: String = q.chars().filter(|c| !matches!(c, '$' | ',' | ' ')).collect();
+    // Written the file's way ("1.234,56 €" in Germany), with any currency
+    // symbol and any kind of space around it.
+    let q: String = q
+        .replace("US$", "")
+        .replace("CA$", "")
+        .replace("MX$", "")
+        .replace("A$", "")
+        .chars()
+        .filter(|c| !c.is_whitespace() && !matches!(c, '$' | '€' | '£'))
+        .collect();
+    let mut s = crate::region::typed_to_dot(&q, crate::region::display().region, 2)?;
     if s.starts_with('(') && s.ends_with(')') {
         s = s[1..s.len() - 1].to_string();
     }
@@ -322,5 +332,26 @@ mod tests {
         assert_eq!(search_transactions(&c, "_", None, 50).expect("search").len(), 0);
 
         assert!(search_transactions(&c, "   ", None, 50).expect("search").is_empty());
+    }
+}
+
+#[cfg(test)]
+mod region_tests {
+    use super::query_as_cents;
+
+    #[test]
+    fn an_amount_is_read_the_files_way() {
+        std::thread::spawn(|| {
+            crate::region::set_display(Some("EUR"), Some("de-DE"));
+            assert_eq!(query_as_cents("1.234,56 €"), Some(123_456));
+            assert_eq!(query_as_cents("12,50"), Some(1_250));
+            assert_eq!(query_as_cents("12.50"), Some(1_250));
+            assert_eq!(query_as_cents("1.234"), Some(123_400));
+            assert_eq!(query_as_cents("vet"), None);
+            assert_eq!(query_as_cents("1.2345"), None);
+            assert_eq!(query_as_cents("0.123"), None);
+        })
+        .join()
+        .unwrap();
     }
 }

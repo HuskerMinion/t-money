@@ -16,6 +16,11 @@ pub mod tsp;
 pub mod matching;
 pub mod plan;
 mod ofx;
+
+#[cfg(test)]
+pub(crate) fn ofx_currencies_for_tests(text: &str) -> Vec<String> {
+    ofx::statement_currencies(text)
+}
 mod qif;
 pub mod qif_export;
 
@@ -99,8 +104,13 @@ fn transfer_target(tx: &Connection, cat: &str, account_id: &str) -> Result<Optio
     if name.is_empty() {
         return Ok(None);
     }
+    // Only an account in the same currency: a QIF transfer names one amount,
+    // and writing it on both sides of two currencies would be wrong on one.
     tx.query_row(
-        "SELECT id, name FROM accounts WHERE lower(name) = lower(?1) AND id <> ?2 ORDER BY is_closed LIMIT 1",
+        "SELECT id, name FROM accounts
+          WHERE lower(name) = lower(?1) AND id <> ?2
+            AND currency = (SELECT currency FROM accounts WHERE id = ?2)
+          ORDER BY is_closed LIMIT 1",
         params![name, account_id],
         |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)),
     )
@@ -281,11 +291,16 @@ fn parse_csv_source(file_path: &str, mapping: &csv::CsvMapping) -> Result<Parsed
     let text = decode_text(&bytes);
     let delimiter = csv::sniff_delimiter(&text);
     let records = csv::parse_records(&text, delimiter);
-    let data = records.into_iter().skip(if mapping.has_header { 1 } else { 0 });
+    let data: Vec<Vec<String>> = records.into_iter().skip(if mapping.has_header { 1 } else { 0 }).collect();
+    // The file says which decimal mark it uses; the mapping the dialog sent
+    // back does not get to.
+    let mut mapping = mapping.clone();
+    csv::settle_decimal_mark(&mut mapping, &data);
+    let mapping = &mapping;
     let mut txns: Vec<ParsedTxn> = Vec::new();
     let mut unreadable = 0u32;
     let mut bad: Vec<String> = Vec::new();
-    for (i, row) in data.enumerate() {
+    for (i, row) in data.into_iter().enumerate() {
         match csv::row_to_txn(&row, mapping) {
             Ok(r) => txns.push(ParsedTxn {
                 date: r.date,
@@ -573,6 +588,18 @@ fn import_parsed(
         .query_row("SELECT type FROM accounts WHERE id = ?1", params![account_id], |r| r.get(0))
         .map_err(|e| e.to_string())?;
     let is_invest_account = matches!(account_kind.as_str(), "investment" | "retirement");
+    let account_currency: String = tx
+        .query_row("SELECT currency FROM accounts WHERE id = ?1", params![account_id], |r| r.get(0))
+        .map_err(|e| e.to_string())?;
+    // An OFX statement says what currency it is in. Read into an account
+    // kept in another, every amount would be off by the exchange rate.
+    for cur in ofx_text.map(ofx::statement_currencies).unwrap_or_default() {
+        if cur != account_currency {
+            return Err(format!(
+                "This statement is in {cur} and {account_name} is kept in {account_currency}. Import it into an account kept in {cur}."
+            ));
+        }
+    }
     let mut investments = 0u32;
     let mut securities_created = 0u32;
     // QIF security names → ids, resolved as they are met.
@@ -876,7 +903,7 @@ fn import_parsed(
                         "import aborted, nothing was written: the row dated {} for {} ({}) cannot be matched to that transaction — the amounts differ or it is void",
                         t.date,
                         t.payee,
-                        crate::models::format_cents(t.amount_cents)
+                        crate::models::format_cents_in(t.amount_cents, &account_currency)
                     ));
                 }
                 if !claimed.insert(existing_id.clone()) {
@@ -1105,7 +1132,7 @@ fn import_parsed(
                     "import aborted, nothing was written: the row dated {} for {} ({}) was refused — {e}",
                     t.date,
                     t.payee,
-                    crate::models::format_cents(t.amount_cents)
+                    crate::models::format_cents_in(t.amount_cents, &account_currency)
                 ))
             }
         }
@@ -1123,7 +1150,18 @@ fn import_parsed(
     // moves, splits — into lots. `insert_investment_transaction` keeps the
     // account's cash in step itself, so nothing is added to `balance_delta`.
     for name in &unknown_targets {
-        notes.push(format!("Transfers to \"{name}\" came in as plain rows: there is no account by that name yet. Add it and import its file, and they link up."));
+        let elsewhere: Option<String> = tx
+            .query_row(
+                "SELECT currency FROM accounts WHERE lower(name) = lower(?1) AND id <> ?2 LIMIT 1",
+                params![name, account_id],
+                |r| r.get(0),
+            )
+            .optional()
+            .map_err(|e| e.to_string())?;
+        notes.push(match elsewhere {
+            Some(cur) => format!("Transfers to \"{name}\" came in as plain rows: that account is kept in {cur}, so the other side of each has to be entered there with its own amount."),
+            None => format!("Transfers to \"{name}\" came in as plain rows: there is no account by that name yet. Add it and import its file, and they link up."),
+        });
     }
     if let Some(text) = ofx_text.filter(|t| ofx::has_investments(t)) {
         let inv = ofx::parse_ofx_investments(text);

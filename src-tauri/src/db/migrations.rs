@@ -1464,6 +1464,58 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         CREATE INDEX IF NOT EXISTS idx_payee_rules_match ON payee_rules(lower(match_text));
         "#,
     ),
+    (
+        "0047",
+        "account_currencies",
+        r#"
+        -- An account can be kept in a currency other than dollars. Its amounts
+        -- stay integer hundredths of ITS currency; reports, budgets and totals
+        -- convert to dollars at the rate in force on the day. Every account
+        -- already in the file is in dollars, which is what the default says.
+        ALTER TABLE accounts ADD COLUMN currency TEXT NOT NULL DEFAULT 'USD'
+            CHECK (length(currency) = 3 AND currency = upper(currency));
+
+        -- Dollars per one unit of `currency`, in millionths (the unit share
+        -- prices use), from `date` on.
+        -- A conversion uses the latest rate on or before the day, and the
+        -- earliest one for a day before any rate was entered. Dollars
+        -- themselves have no row: their rate is one.
+        CREATE TABLE IF NOT EXISTS exchange_rates (
+            currency   TEXT NOT NULL
+                CHECK (length(currency) = 3 AND currency = upper(currency) AND currency <> 'USD'),
+            date       TEXT NOT NULL
+                CHECK (date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+            rate_micro INTEGER NOT NULL CHECK (rate_micro > 0 AND rate_micro <= 1000000000),
+            source     TEXT NOT NULL DEFAULT 'manual' CHECK (source IN ('manual', 'fetched')),
+            PRIMARY KEY (currency, date)
+        ) WITHOUT ROWID;
+        "#,
+    ),
+    (
+        "0048",
+        "rates_quoted_in_the_home_currency",
+        r#"
+        -- A file's home currency can be other than dollars, so a rate says
+        -- which currency it is quoted in: `quote` units per one unit of
+        -- `currency`. Every rate already in the file was entered against
+        -- dollars. Only rates quoted in the current home currency are used.
+        CREATE TABLE exchange_rates_new (
+            currency   TEXT NOT NULL
+                CHECK (length(currency) = 3 AND currency = upper(currency)),
+            quote      TEXT NOT NULL
+                CHECK (length(quote) = 3 AND quote = upper(quote) AND quote <> currency),
+            date       TEXT NOT NULL
+                CHECK (date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+            rate_micro INTEGER NOT NULL CHECK (rate_micro > 0 AND rate_micro <= 1000000000),
+            source     TEXT NOT NULL DEFAULT 'manual' CHECK (source IN ('manual', 'fetched')),
+            PRIMARY KEY (currency, quote, date)
+        ) WITHOUT ROWID;
+        INSERT INTO exchange_rates_new (currency, quote, date, rate_micro, source)
+            SELECT currency, 'USD', date, rate_micro, source FROM exchange_rates;
+        DROP TABLE exchange_rates;
+        ALTER TABLE exchange_rates_new RENAME TO exchange_rates;
+        "#,
+    ),
 ];
 
 /// Apply all pending migrations to `conn`. Returns the number applied.

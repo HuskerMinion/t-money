@@ -162,6 +162,8 @@ fn validate_recurrence(conn: &Conn, r: &NewRecurrence) -> Result<(), String> {
             return Err("a scheduled transfer is money out of the first account — enter it as money out".to_string());
         }
         get_account(conn, to).map_err(|_| "the receiving account does not exist".to_string())?;
+        // A schedule names one amount, entered on both sides.
+        require_same_currency(conn, from, to, "A scheduled transfer")?;
         if let Some(g) = r.goal_id.as_deref().filter(|g| !g.is_empty()) {
             let goal = get_goal(conn, g)?;
             if goal.account_id.as_deref() != Some(to) {

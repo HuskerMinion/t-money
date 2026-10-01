@@ -19,6 +19,8 @@ interface Props {
   /** The low point, direct-labeled. */
   lowDate: string;
   height?: number;
+  /** The forecast account's currency; omitted, the home currency. */
+  currency?: string;
 }
 
 /** Plot geometry in the SVG's own user units; the SVG scales to its box. */
@@ -60,7 +62,7 @@ export function isFlat(values: readonly number[]): boolean {
   return values.length > 0 && values.every((v) => v === values[0]);
 }
 
-export default function ForecastChart({ points, lowDate, height = 132 }: Props) {
+export default function ForecastChart({ points, lowDate, height = 132, currency }: Props) {
   const [hover, setHover] = useState<number | null>(null);
   // Unique per instance: two forecasts on one page shared these ids, and the
   // FIRST definition won for both — so the second chart was clipped by the
@@ -88,7 +90,7 @@ export default function ForecastChart({ points, lowDate, height = 132 }: Props) 
   if (isFlat(values)) {
     return (
       <div className="tm-chart tm-chart-flat">
-        <div className="tm-fc-flatvalue">{formatMoney(values[0])}</div>
+        <div className="tm-fc-flatvalue">{formatMoney(values[0], { currency })}</div>
         <div className="tm-fc-flatnote">
           Nothing scheduled for this account, so the balance is not projected to
           change over the next {points.length - 1} days.
@@ -121,9 +123,7 @@ export default function ForecastChart({ points, lowDate, height = 132 }: Props) 
         viewBox={`0 0 ${W} ${h}`}
         preserveAspectRatio="none"
         role="img"
-        aria-label={`Projected balance over ${points.length} days. Lowest ${formatMoney(
-          low?.balance_cents ?? 0
-        )} on ${formatDateUS(lowDate)}.`}
+        aria-label={`Projected balance over ${points.length} days. Lowest ${formatMoney(low?.balance_cents ?? 0, { currency })} on ${formatDateUS(lowDate)}.`}
         style={{ width: "100%", height: h, display: "block" }}
         onMouseLeave={() => setHover(null)}
         onMouseMove={(e) => {
@@ -173,7 +173,7 @@ export default function ForecastChart({ points, lowDate, height = 132 }: Props) 
               y={Math.max(11, y(low.balance_cents) - 9)}
               className="tm-fc-lowlabel"
             >
-              {formatMoney(low.balance_cents)}
+              {formatMoney(low.balance_cents, { currency })}
             </text>
           </>
         )}
@@ -203,8 +203,8 @@ export default function ForecastChart({ points, lowDate, height = 132 }: Props) 
 
       <figcaption className="tm-fc-readout">
         {active
-          ? `${formatDateUS(active.date)} — ${formatMoney(active.balance_cents)}`
-          : `Lowest ${formatMoney(low?.balance_cents ?? 0)} on ${formatDateUS(lowDate)}`}
+          ? `${formatDateUS(active.date)} — ${formatMoney(active.balance_cents, { currency })}`
+          : `Lowest ${formatMoney(low?.balance_cents ?? 0, { currency })} on ${formatDateUS(lowDate)}`}
       </figcaption>
     </figure>
   );

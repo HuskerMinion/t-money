@@ -20,11 +20,13 @@ import RecordPaymentDialog from "./RecordPaymentDialog";
 import TaxLinePicker from "./TaxLinePicker";
 import TmIcon from "./TmIcon";
 import Notice from "./Notice";
+import DateField from "./DateField";
 import ReconcileDialog, { type ReconcileStage, type StatementDraft } from "./ReconcileDialog";
 import DuplicatesDialog from "./DuplicatesDialog";
 import { adjustmentForDifference, autoReconcile, reconcileDifferenceCents } from "../lib/reconcile";
 import { useAccountStore } from "../stores/useAccountStore";
 import { formatDateUS, formatMoney, today } from "../lib/format";
+import { currencyOf } from "../lib/currency";
 import { save } from "@tauri-apps/plugin-dialog";
 import { registerCsv } from "../lib/registerCsv";
 import {
@@ -569,7 +571,8 @@ export default function AccountRegister() {
             draft.date,
             draft.transfer_to_account_id,
             draft.amount_cents,
-            draft.notes
+            draft.notes,
+            draft.transfer_amount_cents ?? null
           );
         // "edit a transfer" is an undo step, and the store's
         // `editTransfer` does not say so the way `editTransaction` does.
@@ -589,14 +592,26 @@ export default function AccountRegister() {
           setLastWasCheck(false);
           setLastEntryDate(draft.date);
         }
-        const created = await api.createTransfer(
-          accountId,
-          draft.transfer_to_account_id,
-          draft.date,
-          Math.abs(draft.amount_cents),
-          draft.notes
-        );
-        // The backend follows the pair to the half in the goal's account.
+        // A deposit comes FROM the other account. The second amount is the
+        // other side's, so for a deposit it is what was sent and this
+        // account's amount is what was received.
+        const other = draft.transfer_to_account_id;
+        const amount = Math.abs(draft.amount_cents);
+        const otherAmount = draft.transfer_amount_cents ?? null;
+        const created =
+          draft.amount_cents > 0
+            ? await api.createTransfer(
+                other,
+                accountId,
+                draft.date,
+                otherAmount ?? amount,
+                draft.notes,
+                otherAmount === null ? null : amount
+              )
+            : await api.createTransfer(accountId, other, draft.date, amount, draft.notes, otherAmount);
+        // `created` is the sending half, which for a deposit is the other
+        // account's row. Both writes below follow the pair: the goal to the
+        // half in the goal's account, the classes to both halves.
         await applyGoal(created.id, draft);
         if (await applyClasses(created.id, draft)) noteChanged();
         await loadRegister(accountId);
@@ -1123,6 +1138,8 @@ export default function AccountRegister() {
   const showBalance = balanceIsMeaningful(viewOpts);
 
   // Money's Ending Balance is the running balance of the last row.
+  // Every amount in this register is in the account's own currency.
+  const currency = currencyOf(account);
   const endingBalanceCents =
     register.length > 0
       ? register[register.length - 1].running_balance_cents
@@ -1140,7 +1157,7 @@ export default function AccountRegister() {
         </span>
         <span>{account.name}</span>
       </div>
-      <div className="tm-print-only" data-print={`${account.name} — ${describeView(viewOpts)}. Printed ${formatDateUS(today())}. Ending balance ${formatMoney(endingBalanceCents)}.`} />
+      <div className="tm-print-only" data-print={`${account.name} — ${describeView(viewOpts)}. Printed ${formatDateUS(today())}. Ending balance ${formatMoney(endingBalanceCents, { currency })}.`} />
 
       {/* View selector — Money's register is driven by a saved view that sets
           filter, grouping and sort together. */}
@@ -1207,7 +1224,7 @@ export default function AccountRegister() {
         <div className="tm-asset-banner" role="region" aria-label="Value of this asset">
           <div className="flex-1">
             <div>
-              <strong>{account.name}</strong> is worth {formatMoney(endingBalanceCents)}
+              <strong>{account.name}</strong> is worth {formatMoney(endingBalanceCents, { currency })}
               {lastValuation ? `, valued on ${formatDateUS(lastValuation.date)}.` : " — its opening value; it has never been revalued."}
             </div>
             <div className="tm-text-muted">
@@ -1266,6 +1283,7 @@ export default function AccountRegister() {
           <ReconcileDialog
             inline
             accountName={account.name}
+            currency={currency}
             stage={stage}
             categories={categories}
             suggestedDate={statement?.statement_date ?? nextStatementDate(lastStatement)}
@@ -1369,6 +1387,7 @@ export default function AccountRegister() {
                   r.transfer_account_id,
                   ...editingSplits.map((l) => l.transfer_account_id),
                 ]).filter((a) => a.id !== selectedAccountId)}
+                currency={currency}
                 onCommit={commitDraft}
                 onCancel={closeForm}
                 busy={busy}
@@ -1423,6 +1442,7 @@ export default function AccountRegister() {
                       onCreateCategory={createCategoryInline}
                       // A new entry: open accounts only (N9).
                       transferTargets={pickableAccounts(accounts).filter((a) => a.id !== selectedAccountId)}
+                      currency={currency}
                       onCommit={commitDraft}
                       onCancel={closeForm}
                       busy={busy}
@@ -1444,6 +1464,7 @@ export default function AccountRegister() {
       {findOpen && account && (
         <FindInRegisterDialog
           accountName={account.name}
+          currency={currencyOf(account)}
           rows={shown}
           selectedId={selectedRowId}
           onPick={(id) => {
@@ -1604,12 +1625,12 @@ export default function AccountRegister() {
         </button>
         {isInvestment ? (
           <span className="font-bold" title="Cash is the register's balance; holdings are at the latest prices">
-            Cash: {formatMoney(endingBalanceCents)} · Holdings: {formatMoney(account.holdings_value_cents)} · Total:{" "}
-            {formatMoney(endingBalanceCents + account.holdings_value_cents)}
+            Cash: {formatMoney(endingBalanceCents, { currency })} · Holdings: {formatMoney(account.holdings_value_cents, { currency })} · Total:{" "}
+            {formatMoney(endingBalanceCents + account.holdings_value_cents, { currency })}
           </span>
         ) : (
           <span className="font-bold">
-            Ending Balance: {formatMoney(endingBalanceCents)}
+            Ending Balance: {formatMoney(endingBalanceCents, { currency })}
           </span>
         )}
       </div>
@@ -1652,6 +1673,7 @@ export default function AccountRegister() {
         <DuplicatesDialog
           accountId={selectedAccountId}
           accountName={account.name}
+          currency={currencyOf(account)}
           onDelete={(id) => removeTransaction(id, selectedAccountId)}
           onClose={() => setDupesOpen(false)}
         />
@@ -1669,15 +1691,14 @@ export default function AccountRegister() {
               </p>
               <label className="flex items-center gap-2">
                 Through
-                <input
-                  type="date"
-                  className="aero-field"
-                  aria-label="Reconcile through"
+                <DateField
+                  label="Reconcile through"
                   value={reconcileThrough}
-                  onChange={(e) => {
-                    setReconcileThrough(e.target.value);
+                  onChange={(v) => {
+                    setReconcileThrough(v);
                     setReconcileCount(null);
                   }}
+                  width={130}
                 />
                 <button
                   className="aero-btn"
@@ -1760,6 +1781,7 @@ export default function AccountRegister() {
           <div className="tm-dialog-backdrop" onClick={leaveReconcile} />
           <ReconcileDialog
             accountName={account.name}
+            currency={currency}
             stage={stage}
             categories={categories}
             suggestedDate={statement?.statement_date ?? nextStatementDate(lastStatement)}

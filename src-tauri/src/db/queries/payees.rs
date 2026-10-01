@@ -639,7 +639,8 @@ fn payee_rule_changes(conn: &Conn) -> Result<Vec<PayeeRuleChange>, String> {
                          WHEN c.parent_id IS NULL THEN c.name
                          ELSE p.name || ' : ' || c.name END,
                     a.name, COALESCE(t.notes, ''), t.account_id,
-                    EXISTS (SELECT 1 FROM splits s WHERE s.transaction_id = t.id)
+                    EXISTS (SELECT 1 FROM splits s WHERE s.transaction_id = t.id),
+                    a.currency
                FROM transactions t
                LEFT JOIN categories c ON c.id = t.category_id
                LEFT JOIN categories p ON p.id = c.parent_id
@@ -649,17 +650,17 @@ fn payee_rule_changes(conn: &Conn) -> Result<Vec<PayeeRuleChange>, String> {
               ORDER BY t.date DESC, t.rowid DESC",
         )
         .map_err(|e| e.to_string())?;
-    type Row = (String, String, String, i64, Option<String>, Option<String>, String, String, String, bool);
+    type Row = (String, String, String, i64, Option<String>, Option<String>, String, String, String, bool, String);
     let rows: Vec<Row> = st
         .query_map([], |r| {
-            Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?, r.get(6)?, r.get(7)?, r.get(8)?, r.get(9)?))
+            Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?, r.get(6)?, r.get(7)?, r.get(8)?, r.get(9)?, r.get(10)?))
         })
         .map_err(|e| e.to_string())?
         .collect::<Result<_, _>>()
         .map_err(|e| e.to_string())?;
 
     let mut out = Vec::new();
-    for (id, date, payee, amount_cents, category_id, category_name, account_name, notes, account_id, split) in rows {
+    for (id, date, payee, amount_cents, category_id, category_name, account_name, notes, account_id, split, currency) in rows {
         let Some(rule) = rule_for(&rules, &payee, amount_cents, &notes, &account_id) else { continue };
         let rename = payee != rule.payee_name;
         // A category is only FILLED IN, never overwritten: a rule is a guess
@@ -682,6 +683,7 @@ fn payee_rule_changes(conn: &Conn) -> Result<Vec<PayeeRuleChange>, String> {
         out.push(PayeeRuleChange {
             transaction_id: id,
             account_name,
+            currency,
             date,
             amount_cents,
             payee,

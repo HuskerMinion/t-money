@@ -11,6 +11,7 @@ use super::*;
 // ---------------------------------------------------------------------------
 
 pub fn get_spending_summary(conn: &Conn, month: &str) -> Result<Vec<CategoryBudget>, String> {
+    require_rates(conn)?;
     // month is "YYYY-MM". Spending comes from CATEGORY_LINES so a split
     // transaction is counted against each of its categories.
     //
@@ -98,6 +99,7 @@ pub fn get_spending_summary(conn: &Conn, month: &str) -> Result<Vec<CategoryBudg
 /// function that has to learn about it.
 pub fn budget_grid(conn: &Conn, month: &str) -> Result<crate::models::BudgetGrid, String> {
     parse_month(month)?;
+    require_rates(conn)?;
     let sql = format!("{CATEGORY_LINES}{}", r#"
         , month_lines AS (
             SELECT category_id,
@@ -257,6 +259,7 @@ pub fn budget_starter(
     limit: u32,
 ) -> Result<Vec<crate::models::AutobudgetLine>, String> {
     let (y, m) = parse_month(month)?;
+    require_rates(conn)?;
     let lookback = lookback.clamp(1, 60) as i64;
     let (fy, fm) = crate::schedule::add_months(y, m, -lookback);
     let from = format!("{fy:04}-{fm:02}");
@@ -287,22 +290,24 @@ pub fn budget_starter(
     }
 
     // Scheduled bills, rolled to the top-level parent the same way.
+    // In dollars, like the budget they seed.
     let mut sched_stmt = conn
         .prepare(
-            r#"
+            &r#"
             SELECT COALESCE(c.parent_id, c.id) AS top_id,
                    SUM(CASE r.freq
-                         WHEN 'weekly'       THEN -r.amount_cents * 52 / (12 * r.interval_n)
-                         WHEN 'semi_monthly' THEN -r.amount_cents * 2
-                         WHEN 'monthly'      THEN -r.amount_cents / r.interval_n
-                         WHEN 'yearly'       THEN -r.amount_cents / (12 * r.interval_n)
+                         WHEN 'weekly'       THEN -r.home_cents * 52 / (12 * r.interval_n)
+                         WHEN 'semi_monthly' THEN -r.home_cents * 2
+                         WHEN 'monthly'      THEN -r.home_cents / r.interval_n
+                         WHEN 'yearly'       THEN -r.home_cents / (12 * r.interval_n)
                          ELSE 0 END) AS monthly
-              FROM recurrences r
+              FROM __RECURRENCES_HOME__ r
               JOIN categories c ON c.id = r.category_id
              WHERE r.is_active = 1 AND r.amount_cents < 0 AND c.kind = 'expense'
                AND (r.end_date IS NULL OR r.end_date >= ?1 || '-01')
              GROUP BY top_id
-        "#,
+        "#
+            .replace("__RECURRENCES_HOME__", RECURRENCES_HOME),
         )
         .map_err(|e| e.to_string())?;
     let sched: std::collections::HashMap<String, i64> = sched_stmt
@@ -680,6 +685,7 @@ fn round_up_to(cents: i64, step: i64) -> i64 {
 /// left out. Nothing is written; `apply_autobudget` does that.
 pub fn autobudget(conn: &Conn, month: &str, lookback: u32) -> Result<Vec<AutobudgetLine>, String> {
     let (y, m) = parse_month(month)?;
+    require_rates(conn)?;
     let lookback = lookback.clamp(1, 60) as i64;
     let (fy, fm) = crate::schedule::add_months(y, m, -lookback);
     let from = format!("{fy:04}-{fm:02}");
@@ -697,12 +703,12 @@ pub fn autobudget(conn: &Conn, month: &str, lookback: u32) -> Result<Vec<Autobud
         ), sched AS (
             SELECT category_id,
                    SUM(CASE freq
-                         WHEN 'weekly'       THEN -amount_cents * 52 / (12 * interval_n)
-                         WHEN 'semi_monthly' THEN -amount_cents * 2
-                         WHEN 'monthly'      THEN -amount_cents / interval_n
-                         WHEN 'yearly'       THEN -amount_cents / (12 * interval_n)
+                         WHEN 'weekly'       THEN -home_cents * 52 / (12 * interval_n)
+                         WHEN 'semi_monthly' THEN -home_cents * 2
+                         WHEN 'monthly'      THEN -home_cents / interval_n
+                         WHEN 'yearly'       THEN -home_cents / (12 * interval_n)
                          ELSE 0 END) AS monthly
-              FROM recurrences
+              FROM __RECURRENCES_HOME__
              WHERE is_active = 1 AND amount_cents < 0 AND category_id IS NOT NULL
                AND (end_date IS NULL OR end_date >= ?2 || '-01')
              GROUP BY category_id
@@ -718,7 +724,7 @@ pub fn autobudget(conn: &Conn, month: &str, lookback: u32) -> Result<Vec<Autobud
           LEFT JOIN budgets b ON b.category_id = c.id AND b.month_year = ?2
          WHERE c.kind = 'expense' AND (h.total > 0 OR s.monthly > 0)
          ORDER BY 2 COLLATE NOCASE
-    "#);
+    "#.replace("__RECURRENCES_HOME__", RECURRENCES_HOME));
     let mut stmt = conn.prepare(&sql).map_err(|e| e.to_string())?;
     let rows = stmt
         .query_map(params![from, month], |r| {

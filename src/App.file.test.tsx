@@ -33,6 +33,7 @@ import App from "./App";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { runCommand } from "./lib/commands";
 import { useAccountStore } from "./stores/useAccountStore";
+import { useFileFormat } from "./lib/region";
 import { invokeCalls, resetIpc, setIpcHandlers } from "./test/tauriMock";
 
 const acct = {
@@ -92,6 +93,8 @@ let openFails = false;
 let onOwnFile = true;
 /** Whether File → Close has left the app with no file open. */
 let closed = false;
+/** The open file's home currency and region. */
+let fileFormat = { home_currency: "USD", region: "en-US" };
 /** What the price timer sees. Off by default, as in the app. */
 let priceStatus: Record<string, unknown> = {
   with_symbol: 0,
@@ -112,6 +115,12 @@ function stub() {
           closed = false;
           return { path: "E:\\New.tmny", name: "New", isDefault: false, scratch: false, isOpen: true };
         }
+        if (cmd === "get_file_format") {
+          if (closed) throw new Error("NO_FILE: no file is open");
+          return fileFormat;
+        }
+        if (cmd === "set_home_currency") return (fileFormat = { ...fileFormat, home_currency: "EUR" });
+        if (cmd === "set_region") return (fileFormat = { ...fileFormat, region: "de-DE" });
         if (cmd === "current_file")
           return { path: "E:\\x.tmny", name: swapped ? "New" : "Sam", isDefault: onOwnFile, scratch: false, isOpen: !closed };
         if (cmd === "close_file") {
@@ -159,6 +168,7 @@ beforeEach(() => {
   openFails = false;
   onOwnFile = true;
   closed = false;
+  fileFormat = { home_currency: "USD", region: "en-US" };
   priceStatus = { with_symbol: 0, newest_date: null, oldest_date: null, never_priced: 0, last_auto: null, interval: "off" };
   setTitle.mockClear();
   stub();
@@ -176,6 +186,7 @@ describe("opening a file from inside the app", () => {
     await act(async () => {
       runCommand("file.new");
     });
+    await userEvent.click(await screen.findByRole("button", { name: "Create file" }));
   }
 
   it("keeps the app on screen — menu, header and all", async () => {
@@ -238,6 +249,7 @@ describe("closing and remounting", () => {
     await act(async () => {
       runCommand("file.new");
     });
+    await userEvent.click(await screen.findByRole("button", { name: "Create file" }));
     await waitFor(() => expect(invokeCalls.some((c) => c.cmd === "open_file")).toBe(true));
     const swap = invokeCalls.findIndex((c) => c.cmd === "open_file");
     // The Home widgets run reports; a remount is what makes them ask again.
@@ -298,6 +310,97 @@ describe("closing and remounting", () => {
     await waitFor(() => expect(invokeCalls.some((c) => c.cmd === "open_file")).toBe(true));
     // Back to the shell, and the accounts are loaded from the file.
     await waitFor(() => expect(screen.queryByRole("region", { name: "No file open" })).not.toBeInTheDocument());
+  });
+});
+
+describe("the file's home currency and region", () => {
+  it("File → New asks for both, and sets them on the new file before anything is read", async () => {
+    savePicked.mockResolvedValue("E:\Haushalt.tmny");
+    render(<App />);
+    await screen.findByRole("menubar", { name: "Main menu" });
+    await act(async () => {
+      runCommand("file.new");
+    });
+    const dialog = await screen.findByRole("dialog", { name: "New file" });
+    expect(dialog).toHaveTextContent("Haushalt");
+    // Nothing is made until the dialog is answered.
+    expect(invokeCalls.some((c) => c.cmd === "open_file")).toBe(false);
+    // The region follows the currency until it is picked by hand.
+    await userEvent.selectOptions(screen.getByLabelText("Home currency"), "EUR");
+    expect((screen.getByLabelText("Region") as HTMLSelectElement).value).toBe("de-DE");
+    await userEvent.selectOptions(screen.getByLabelText("Region"), "de-DE");
+    expect(screen.getByLabelText("Region preview")).toHaveTextContent("1.234,56 €");
+    await userEvent.click(screen.getByRole("button", { name: "Create file" }));
+    await waitFor(() => expect(useFileFormat.getState().region.code).toBe("de-DE"));
+    await waitFor(() =>
+      expect(invokeCalls.slice(invokeCalls.findIndex((c) => c.cmd === "set_region")).some((c) => c.cmd === "list_categories")).toBe(true)
+    );
+    const cmds = invokeCalls.map((c) => c.cmd);
+    const open = cmds.indexOf("open_file");
+    const home = invokeCalls.findIndex((c) => c.cmd === "set_home_currency");
+    expect(open).toBeGreaterThan(-1);
+    expect(home).toBeGreaterThan(open);
+    expect(invokeCalls[home].args).toEqual({ currency: "EUR", relabel: false });
+    expect(invokeCalls.find((c) => c.cmd === "set_region")!.args).toEqual({ region: "de-DE" });
+    // Before the accounts of the new file are read.
+    // Before the new file is loaded. (Widgets on screen may ask earlier;
+    // <main> is keyed on the format, so they are drawn again once it is set.)
+    expect(cmds.indexOf("list_categories", open)).toBeGreaterThan(cmds.indexOf("set_region"));
+    expect(useFileFormat.getState().home).toBe("EUR");
+  });
+
+  it("asks on the start screen too, when no file is open", async () => {
+    closed = true;
+    onOwnFile = false;
+    savePicked.mockResolvedValue("E:\New.tmny");
+    render(<App />);
+    await screen.findByRole("region", { name: "No file open" });
+    await userEvent.click(screen.getByRole("button", { name: /New file/ }));
+    expect(await screen.findByRole("dialog", { name: "New file" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Create file" }));
+    await waitFor(() => expect(invokeCalls.some((c) => c.cmd === "open_file")).toBe(true));
+    await waitFor(() => expect(invokeCalls.some((c) => c.cmd === "set_home_currency")).toBe(false));
+    await waitFor(() => expect(screen.queryByRole("region", { name: "No file open" })).not.toBeInTheDocument());
+  });
+
+  it("Cancel makes no file", async () => {
+    savePicked.mockResolvedValue("E:\New.tmny");
+    render(<App />);
+    await screen.findByRole("menubar", { name: "Main menu" });
+    await act(async () => {
+      runCommand("file.new");
+    });
+    await userEvent.click(await screen.findByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("dialog", { name: "New file" })).not.toBeInTheDocument();
+    expect(invokeCalls.some((c) => c.cmd === "open_file")).toBe(false);
+  });
+
+  it("the sample file is not asked about", async () => {
+    savePicked.mockResolvedValue("E:\Sample.tmny");
+    render(<App />);
+    await screen.findByRole("menubar", { name: "Main menu" });
+    await act(async () => {
+      runCommand("file.sample");
+    });
+    await waitFor(() => expect(invokeCalls.some((c) => c.cmd === "create_sample_file")).toBe(true));
+    expect(screen.queryByRole("dialog", { name: "New file" })).not.toBeInTheDocument();
+    expect(invokeCalls.some((c) => c.cmd === "set_home_currency" || c.cmd === "set_region")).toBe(false);
+  });
+
+  it("an open file's format is loaded, and closing the file puts the default back", async () => {
+    fileFormat = { home_currency: "EUR", region: "de-DE" };
+    onOwnFile = false;
+    render(<App />);
+    await screen.findByRole("menubar", { name: "Main menu" });
+    await waitFor(() => expect(useFileFormat.getState().region.code).toBe("de-DE"));
+    // The rail draws the balance the file's way.
+    expect(await screen.findAllByText(/1\.500,00/)).not.toHaveLength(0);
+    await act(async () => {
+      runCommand("file.close");
+    });
+    await screen.findByRole("region", { name: "No file open" });
+    expect(useFileFormat.getState().home).toBe("USD");
+    expect(useFileFormat.getState().region.code).toBe("en-US");
   });
 });
 

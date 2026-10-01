@@ -132,7 +132,7 @@ describe("TspImportDialog", () => {
     await user.type(net, "850.00");
     const posted = screen.getByLabelText("Posted for 2026-03-16");
     await user.clear(posted);
-    await user.type(posted, "2026-03-17");
+    await user.type(posted, "3/17/2026");
 
     await waitFor(() => expect(screen.getByRole("button", { name: "Import" })).toBeEnabled());
     await user.click(screen.getByRole("button", { name: "Import" }));

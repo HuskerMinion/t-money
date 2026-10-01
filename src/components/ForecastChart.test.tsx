@@ -7,6 +7,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import ForecastChart, { domainOf, isFlat } from "./ForecastChart";
+import { useFileFormat } from "../lib/region";
 import type { ForecastPoint } from "../lib/types";
 
 function pts(values: number[]): ForecastPoint[] {
@@ -92,5 +93,25 @@ describe("<ForecastChart />", () => {
   it("names the low point for a screen reader", () => {
     render(<ForecastChart points={pts([100000, 40000, 120000])} lowDate="2026-09-02" />);
     expect(screen.getByRole("img").getAttribute("aria-label")).toMatch(/Lowest \$400\.00/);
+  });
+});
+
+describe("<ForecastChart /> in another currency", () => {
+  it("writes the amounts in the account's currency", () => {
+    render(<ForecastChart points={pts([100000, 90000, 120000])} lowDate="2026-09-02" currency="EUR" />);
+    expect(screen.getByRole("img")).toHaveAccessibleName(/Lowest €900.00/);
+    render(<ForecastChart points={pts([-3942, -3942])} lowDate="2026-09-01" currency="GBP" />);
+    expect(screen.getByText("(£39.42)")).toBeInTheDocument();
+  });
+});
+
+describe("in the file's region", () => {
+  it("writes the balance and the dates the German way", () => {
+    useFileFormat.getState().setFormat({ home_currency: "EUR", region: "de-DE" });
+    const points = pts([123_456, 100_000, 150_000, 90_000, 200_000]);
+    render(<ForecastChart points={points} lowDate="2026-09-04" />);
+    const label = screen.getByRole("img").getAttribute("aria-label") ?? "";
+    expect(label).toContain("900,00\u00a0€");
+    expect(label).toContain("04.09.2026");
   });
 });

@@ -112,4 +112,24 @@ describe("help keeps up with the app", () => {
     expect(topic("categories-payees")!.body).toMatch(/Rename payees in existing transactions/);
     expect(topic("splits-transfers")!.body).toMatch(/Transfer : \(account\)/);
   });
+
+  it("explains accounts in other currencies", async () => {
+    const t = topic("currencies");
+    expect(t, 'no help topic "currencies"').toBeDefined();
+    // Every currency an account can be kept in is named, by its symbol.
+    const { CURRENCY_SYMBOLS } = await import("../lib/currency");
+    const missing = Object.values(CURRENCY_SYMBOLS).filter((s) => !t!.body.includes(s));
+    expect(missing, `symbols not in Help → Accounts in other currencies: ${missing.join(", ")}`).toEqual([]);
+    expect(t!.body).toMatch(/Settings → Money → \*\*Currencies\*\*/);
+    expect(t!.body).toMatch(/two amounts/);
+    expect(t!.body).toMatch(/Investment and retirement accounts stay in the home currency/);
+    // The home currency is the file's, not fixed to US dollars, and the
+    // region is set beside it.
+    expect(t!.body).toMatch(/Settings → Money → \*\*Home currency and region\*\*/);
+    expect(t!.body).toMatch(/relabeled; no amount is converted/);
+    expect(t!.body).not.toMatch(/Totals are in US dollars/);
+    expect(topic("files")!.body).toMatch(/home currency/);
+    expect(t!.body).toMatch(/cannot be merged/);
+    expect(topic("accounts")!.body).toMatch(/\[\[currencies\|/);
+  });
 });

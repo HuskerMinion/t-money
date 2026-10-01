@@ -14,6 +14,7 @@
 import { useEffect, useMemo, useState } from "react";
 import DateField from "./DateField";
 import Money from "./Money";
+import { currencyOf } from "../lib/currency";
 import CategorySelect from "./CategorySelect";
 import { api } from "../lib/ipc";
 import { formatAmountBare, formatDateUS, formatRate, parseMoneyToCents, parseRateToMicro, today } from "../lib/format";
@@ -38,8 +39,8 @@ export default function LoanTermsDialog({ account, onDone, onCancel }: Props) {
   const [existing, setExisting] = useState(false);
   const [rate, setRate] = useState("");
   const [payment, setPayment] = useState("");
-  const [escrow, setEscrow] = useState("0.00");
-  const [extra, setExtra] = useState("0.00");
+  const [escrow, setEscrow] = useState(() => formatAmountBare(0));
+  const [extra, setExtra] = useState(() => formatAmountBare(0));
   const [escrowTo, setEscrowTo] = useState<EscrowTo>("account");
   const [escrowAccountId, setEscrowAccountId] = useState("");
   const [escrowCategoryId, setEscrowCategoryId] = useState("");
@@ -183,7 +184,7 @@ export default function LoanTermsDialog({ account, onDone, onCancel }: Props) {
       return;
     }
     if (firstDateBad) {
-      setError("Type a first payment date the form can read, such as 8/3/2026, or leave it blank.");
+      setError(`Type a first payment date the form can read, such as ${formatDateUS("2026-08-03")}, or leave it blank.`);
       return;
     }
     if (terms.escrow_cents > 0 && !terms.escrow_account_id && !terms.escrow_category_id) {
@@ -226,7 +227,7 @@ export default function LoanTermsDialog({ account, onDone, onCancel }: Props) {
               className="aero-field text-right"
               value={rate}
               autoFocus
-              placeholder="6.5"
+              placeholder={formatRate(6_500_000)}
               onChange={(e) => setRate(e.target.value)}
             />
 
@@ -235,7 +236,7 @@ export default function LoanTermsDialog({ account, onDone, onCancel }: Props) {
               id="lt-payment"
               className="aero-field text-right"
               value={payment}
-              placeholder="1,124.00"
+              placeholder={formatAmountBare(112_400)}
               onChange={(e) => setPayment(e.target.value)}
             />
 
@@ -330,7 +331,7 @@ export default function LoanTermsDialog({ account, onDone, onCancel }: Props) {
             />
 
             <label>First payment</label>
-            <DateField value={firstDate} onChange={setFirstDate} onInvalid={setFirstDateBad} />
+            <DateField value={firstDate} onChange={setFirstDate} onInvalid={setFirstDateBad} optional />
 
             <label htmlFor="lt-term">Term (months)</label>
             <input
@@ -346,7 +347,7 @@ export default function LoanTermsDialog({ account, onDone, onCancel }: Props) {
           </div>
 
           <div className="tm-text-muted">
-            Owed now: <Money cents={owed} tone="neutral" />. These terms only propose how the next payment divides — when
+            Owed now: <Money cents={owed} tone="neutral" currency={currencyOf(account)} />. These terms only propose how the next payment divides — when
             you record one, every part of it can be typed over, and the balance follows what you actually applied. Extra
             principal is paid on top of the payment and comes straight off the balance, so the schedule below is the payoff
             you are actually driving toward, not the lender's original one.

@@ -9,6 +9,7 @@ const dialog = vi.hoisted(() => ({ open: vi.fn(), save: vi.fn() }));
 vi.mock("@tauri-apps/plugin-dialog", () => ({ open: dialog.open, save: dialog.save }));
 
 import AttachmentsPanel, { kindLabel, sizeLabel } from "./AttachmentsPanel";
+import { useFileFormat } from "../lib/region";
 import { invokeCalls, resetIpc, setIpcHandlers } from "../test/tauriMock";
 import type { Attachment } from "../lib/types";
 
@@ -185,5 +186,12 @@ describe("Attachments and the Edit menu, and a partial add", () => {
     await userEvent.click(screen.getByRole("button", { name: "Remove receipt.pdf" }));
     await screen.findByText(/database is locked/);
     expect(onChanged).not.toHaveBeenCalled();
+  });
+});
+
+describe("in the file's region", () => {
+  it("writes a size with the German decimal comma", () => {
+    useFileFormat.getState().setFormat({ home_currency: "EUR", region: "de-DE" });
+    expect(sizeLabel(Math.round(3.4 * 1024 * 1024))).toBe("3,4 MB");
   });
 });

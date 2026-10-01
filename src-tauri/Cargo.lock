@@ -3981,10 +3981,11 @@ dependencies = [
 
 [[package]]
 name = "t-money"
-version = "1.0.1"
+version = "1.1.0"
 dependencies = [
  "chrono",
  "keyring",
+ "openssl-sys",
  "r2d2",
  "r2d2_sqlite",
  "rand 0.8.8",

@@ -3,6 +3,7 @@
 import MarketWatermark from "./MarketWatermark";
 import Money from "./Money";
 import { accountWorth } from "../lib/accountTypes";
+import { currencyOf } from "../lib/currency";
 import TmIcon from "./TmIcon";
 import { useAccountStore } from "../stores/useAccountStore";
 
@@ -75,7 +76,7 @@ export default function FavoriteAccountsWidget({ onOpen }: Props) {
                     {a.name}
                   </td>
                   <td className="py-1 text-right font-medium tabular-nums">
-                    <Money cents={accountWorth(a)} />
+                    <Money cents={accountWorth(a)} currency={currencyOf(a)} />
                   </td>
                 </tr>
               ))}

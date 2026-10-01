@@ -24,6 +24,7 @@ import RegisterGrid from "./RegisterGrid";
 import Money from "./Money";
 import { api } from "../lib/ipc";
 import { registerColumnLabels } from "../lib/accountTypes";
+import { currencyOf } from "../lib/currency";
 import type { Account, RegisterRow } from "../lib/types";
 
 /** Remembered like the look and the ribbon are: which account you watch is a
@@ -140,7 +141,7 @@ export default function WatchPane({ accounts, workingId, onWork }: Props) {
       ) : (
         <>
           <div className="tm-watch-balance">
-            {account.name} · Ending Balance: <Money cents={ending ?? account.balance_cents} tone="neutral" />
+            {account.name} · Ending Balance: <Money cents={ending ?? account.balance_cents} tone="neutral" currency={currencyOf(account)} />
             {loading && <span className="tm-text-muted"> · loading…</span>}
           </div>
           <div className="tm-watch-grid">

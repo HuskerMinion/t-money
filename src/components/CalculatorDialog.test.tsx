@@ -11,6 +11,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import CalculatorDialog from "./CalculatorDialog";
+import { useFileFormat } from "../lib/region";
 
 function open() {
   render(<CalculatorDialog onClose={vi.fn()} />);
@@ -134,5 +135,30 @@ describe("Dividing by zero", () => {
     await user.type(amount, "2{Enter}");
     expect(totalRow()).toContain("25.00");
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+});
+
+describe("in the file's region", () => {
+  it("takes and gives the German decimal comma, with the same arithmetic", async () => {
+    useFileFormat.getState().setFormat({ home_currency: "EUR", region: "de-DE" });
+    const user = open();
+    const amount = screen.getByLabelText("Amount");
+    expect(amount).toHaveAttribute("placeholder", "0,00");
+    await user.type(amount, "100{Enter}");
+    await user.type(amount, "+8,5%");
+    expect(screen.getByLabelText("Amount")).toHaveValue("8,50");
+    await user.type(screen.getByLabelText("Amount"), "{Enter}");
+    expect(totalRow()).toContain("108,50\u00a0€");
+    // The point key types the region's mark.
+    await user.click(screen.getByRole("button", { name: "+" }));
+    await user.click(screen.getByRole("button", { name: "1" }));
+    await user.click(screen.getByRole("button", { name: "," }));
+    await user.click(screen.getByRole("button", { name: "5" }));
+    expect(screen.getByLabelText("Amount")).toHaveValue("1,5");
+    await user.type(screen.getByLabelText("Amount"), "{Enter}");
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    await user.click(screen.getByRole("button", { name: "Copy total" }));
+    expect(writeText).toHaveBeenCalledWith("110,00");
   });
 });

@@ -9,13 +9,16 @@ import Money from "./Money";
 import Notice from "./Notice";
 import { api } from "../lib/ipc";
 import { runCommand } from "../lib/commands";
-import { formatDateUS } from "../lib/format";
+import { formatDate, formatScaled } from "../lib/format";
+import { currentRegion } from "../lib/region";
 import type { CsvMapping, CsvPreview, ImportSummary } from "../lib/types";
 
 interface Props {
   path: string;
   accountId: string;
   accountName: string;
+  /** The account's currency; omitted, the home currency. */
+  currency?: string;
   onImported: (summary: ImportSummary) => void;
   onCancel: () => void;
   /** When given, Import hands the confirmed mapping back instead of
@@ -35,7 +38,7 @@ const ROLES: [Role, string, string][] = [
   ["category", "Category", "as the bank names it"],
 ];
 
-export default function CsvImportDialog({ path, accountId, accountName, onImported, onCancel, onConfirm }: Props) {
+export default function CsvImportDialog({ path, accountId, accountName, currency, onImported, onCancel, onConfirm }: Props) {
   const [preview, setPreview] = useState<CsvPreview | null>(null);
   const [mapping, setMapping] = useState<CsvMapping | null>(null);
   const [busy, setBusy] = useState(false);
@@ -56,6 +59,13 @@ export default function CsvImportDialog({ path, accountId, accountName, onImport
       if (mine !== latest.current) return;
       setPreview(p);
       setMapping(p.mapping);
+      // The sample could not settle the order ("03/04/2026"). Where the
+      // file's region writes the day first, read it that way. A year-first
+      // region stays "auto": that already reads 2026-04-03, and forcing
+      // year-first would misread every 03/04/2026.
+      if (m === null && p.mapping.date_order === "auto" && currentRegion().date_order === "dmy") {
+        void load({ ...p.mapping, date_order: "dmy" }, p.mapping.has_header);
+      }
     } catch (e) {
       if (mine === latest.current) setError(String(e));
     }
@@ -163,7 +173,7 @@ export default function CsvImportDialog({ path, accountId, accountName, onImport
           {preview && mapping && !preview.looks_like_tsp && !preview.looks_like_brokerage && (
             <>
               <div className="tm-text-muted">
-                {preview.total_rows.toLocaleString("en-US")} rows; the first {preview.rows.length} are shown. Say which column is which — the guess is from the
+                {formatScaled(preview.total_rows, 0)} rows; the first {preview.rows.length} are shown. Say which column is which — the guess is from the
                 column names. Nothing is written until you click Import.
               </div>
 
@@ -279,13 +289,13 @@ export default function CsvImportDialog({ path, accountId, accountName, onImport
                           </tr>
                         ) : (
                           <tr key={i}>
-                            <td className="whitespace-nowrap">{p.date ? formatDateUS(p.date) : ""}</td>
+                            <td className="whitespace-nowrap">{p.date ? formatDate(p.date) : ""}</td>
                             {mapping.check_number !== null && <td>{p.check_number ?? ""}</td>}
                             <td className="tm-csv-payee" title={p.payee ?? ""}>
                               {p.payee}
                             </td>
-                            <td className="num">{p.amount_cents !== null && p.amount_cents < 0 ? <Money cents={-p.amount_cents} tone="neutral" /> : ""}</td>
-                            <td className="num">{p.amount_cents !== null && p.amount_cents > 0 ? <Money cents={p.amount_cents} tone="neutral" /> : ""}</td>
+                            <td className="num">{p.amount_cents !== null && p.amount_cents < 0 ? <Money cents={-p.amount_cents} tone="neutral" currency={currency} /> : ""}</td>
+                            <td className="num">{p.amount_cents !== null && p.amount_cents > 0 ? <Money cents={p.amount_cents} tone="neutral" currency={currency} /> : ""}</td>
                             {mapping.category !== null && (
                               <td className="tm-csv-payee" title={p.category ?? ""}>
                                 {p.category ?? <span className="tm-text-muted">(none — a payee rule may fill it in)</span>}

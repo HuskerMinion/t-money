@@ -12,9 +12,14 @@
 //
 // This replaced the one-off payments screen. Migration 0019 folded those rows
 // into recurrence rules, so there is one list of upcoming money.
+//
+// Every amount here belongs to one account and is in that account's
+// currency. A scheduled transfer moves one amount, so both its accounts
+// must be in the same currency — the picker offers only those.
 import { useEffect, useMemo, useState, useRef } from "react";
 import TmIcon from "./TmIcon";
 import Notice from "./Notice";
+import DateField from "./DateField";
 import Money from "./Money";
 import CategorySelect from "./CategorySelect";
 import CategoryCombo, { type ComboItem } from "./CategoryCombo";
@@ -26,6 +31,8 @@ import { describeStatus, isOpen, pickForecastAccount } from "../lib/bills";
 import BillCalendar, { monthRange } from "./BillCalendar";
 import { useAccountStore } from "../stores/useAccountStore";
 import { formatDateUS, parseMoneyToCents, today } from "../lib/format";
+import { currentRegion } from "../lib/region";
+import { currencyOf, homeCurrency } from "../lib/currency";
 import type {
   Account,
   CashForecast,
@@ -120,6 +127,8 @@ export default function PaymentsView() {
   // The rule form.
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<NewRecurrence>(BLANK);
+  // The end date may be blank; DateField reports text it could not read.
+  const [endBad, setEndBad] = useState(false);
   const payeeRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLElement>(null);
   const [amount, setAmount] = useState("");
@@ -148,6 +157,15 @@ export default function PaymentsView() {
       })),
     [accounts, editingRule?.account_id, editingRule?.transfer_account_id]
   );
+  /** The currency an account is kept in; one not on file reads as the home currency. */
+  const currencyFor = (id: string | null | undefined) => {
+    const a = id ? accounts.find((x) => x.id === id) : undefined;
+    return a ? currencyOf(a) : undefined;
+  };
+  const fromCurrency = currencyFor(draft.account_id);
+  // A scheduled transfer moves one amount: only an account in the same
+  // currency can receive it (the backend refuses the others).
+  const sameCurrency = (id: string) => fromCurrency === undefined || currencyFor(id) === fromCurrency;
 
   async function load() {
     const [rs, up, accts, cats, gs] = await Promise.all([
@@ -242,7 +260,7 @@ export default function PaymentsView() {
   function startEdit(r: Recurrence) {
     setEditingId(r.id);
     setDirection(r.amount_cents < 0 ? "out" : "in");
-    setAmount((Math.abs(r.amount_cents) / 100).toFixed(2));
+    setAmount((Math.abs(r.amount_cents) / 100).toFixed(2).replace(".", currentRegion().decimal));
     setIntervalText(String(r.interval_n));
     // A twice-a-month rule saved with no second day (the form used to
     // show 15 while sending nothing) is loaded as it is: the box stays empty
@@ -320,6 +338,15 @@ export default function PaymentsView() {
       setMsg("Enter the second day of the month it is due.");
       return;
     }
+    // DateField sends "" for text it cannot read.
+    if (!draft.start_date) {
+      setMsg(`Type a first due date the form can read, such as ${formatDateUS("2026-08-03")}.`);
+      return;
+    }
+    if (endBad) {
+      setMsg(`Type an end date the form can read, such as ${formatDateUS("2026-08-03")}, or leave it blank.`);
+      return;
+    }
     // One sign convention: out is negative, the same as a transaction.
     const signed = direction === "out" ? -Math.abs(cents) : Math.abs(cents);
     const payload: NewRecurrence = {
@@ -343,6 +370,8 @@ export default function PaymentsView() {
   const dueTotal = open
     .filter((o) => o.account_id === forecastAccount)
     .reduce((s, o) => s + o.amount_cents, 0);
+  // The forecast is one account's, in that account's currency.
+  const fc = currencyFor(forecastAccount);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -376,19 +405,20 @@ export default function PaymentsView() {
         {forecast && (
           <div className="p-3">
             <div className="flex flex-wrap gap-6 pb-3">
-              <Stat label="Today" cents={forecast.starting_balance_cents} />
+              <Stat label="Today" cents={forecast.starting_balance_cents} currency={fc} />
               {/* The headline. A forecast is for spotting the floor, not the
                   finish line. */}
               <Stat
                 label={`Lowest — ${formatDateUS(forecast.low_date)}`}
                 cents={forecast.low_balance_cents}
+                currency={fc}
                 emphasis
               />
-              <Stat label={`In ${HORIZON_DAYS} days`} cents={forecast.ending_balance_cents} />
+              <Stat label={`In ${HORIZON_DAYS} days`} cents={forecast.ending_balance_cents} currency={fc} />
               <div>
                 <div className="text-[11px] text-slate-600">Still to come</div>
                 <div className="text-[13px] tabular-nums">
-                  <Money cents={dueTotal} />
+                  <Money cents={dueTotal} currency={fc} />
                 </div>
               </div>
             </div>
@@ -398,7 +428,7 @@ export default function PaymentsView() {
                 {formatDateUS(forecast.low_date)}.
               </div>
             )}
-            <ForecastChart points={forecast.points} lowDate={forecast.low_date} />
+            <ForecastChart points={forecast.points} lowDate={forecast.low_date} currency={fc} />
             {/* The recurring charges the detector noticed, projected
                 alongside the scheduled bills; the switch turns them off,
                 and a charge you have told the Home card to ignore is never
@@ -415,7 +445,7 @@ export default function PaymentsView() {
                 Also project recurring charges T-Money has noticed
                 {includeDetected && detected.length > 0 && (
                   <span className="tm-text-muted">
-                    {" "}— {detected.length}, <Money cents={detected.reduce((n, d) => n + d.amount_cents * d.dates.length, 0)} tone="neutral" /> over the {HORIZON_DAYS} days
+                    {" "}— {detected.length}, <Money cents={detected.reduce((n, d) => n + d.amount_cents * d.dates.length, 0)} tone="neutral" currency={fc} /> over the {HORIZON_DAYS} days
                   </span>
                 )}
                 {includeDetected && detected.length === 0 && (
@@ -426,7 +456,7 @@ export default function PaymentsView() {
                 <ul className="pl-5 pt-1 tm-text-muted" aria-label="Recurring charges projected">
                   {detected.map((d) => (
                     <li key={d.payee}>
-                      {d.payee} · every {d.cadence} · <Money cents={d.amount_cents} tone="neutral" />
+                      {d.payee} · every {d.cadence} · <Money cents={d.amount_cents} tone="neutral" currency={fc} />
                       {d.varies ? " (amount varies; a typical recent one)" : ""} · next {formatDateUS(d.dates[0])}
                       {d.ignored_on_home ? " · ignored on the Home page's Subscriptions card, still projected here" : ""}
                       {d.dates.length > 1 ? ` and ${d.dates.length - 1} more` : ""}
@@ -464,6 +494,7 @@ export default function PaymentsView() {
           )}
           {billsView === "calendar" ? (
             <BillCalendar
+              accounts={accounts}
               month={calMonth}
               occurrences={calItems}
               today={today()}
@@ -516,7 +547,7 @@ export default function PaymentsView() {
                       <td>{o.payee}</td>
                       <td className="text-slate-600">{o.account_name ?? "—"}{o.transfer_account_name && ` → ${o.transfer_account_name}`}</td>
                       <td className="num">
-                        <Money cents={o.actual_amount_cents ?? o.amount_cents} />
+                        <Money cents={o.actual_amount_cents ?? o.amount_cents} currency={currencyFor(o.account_id)} />
                       </td>
                       <td className="text-[11px]">{s.label}</td>
                       <td className="num">
@@ -636,7 +667,7 @@ export default function PaymentsView() {
               <input
                 className="aero-field mt-1 w-full"
                 inputMode="decimal"
-                placeholder="0.00"
+                placeholder={fromCurrency && fromCurrency !== homeCurrency() ? `${fromCurrency} 0${currentRegion().decimal}00` : `0${currentRegion().decimal}00`}
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
               />
@@ -650,7 +681,7 @@ export default function PaymentsView() {
                 onChange={(e) => {
                   if (e.target.value === "transfer") {
                     setDirection("out");
-                    setDraft({ ...draft, category_id: null, transfer_account_id: draft.transfer_account_id || accounts.find((a) => !a.is_closed && a.id !== draft.account_id)?.id || null });
+                    setDraft({ ...draft, category_id: null, transfer_account_id: draft.transfer_account_id || accounts.find((a) => !a.is_closed && a.id !== draft.account_id && sameCurrency(a.id))?.id || null });
                   } else {
                     setDirection(e.target.value as "out" | "in");
                     setDraft({ ...draft, transfer_account_id: null, goal_id: null });
@@ -674,7 +705,16 @@ export default function PaymentsView() {
               placeholder="(choose an account)"
               items={accountItems}
               value={draft.account_id ?? ""}
-              onChange={(v) => setDraft({ ...draft, account_id: v || null })}
+              onChange={(v) => {
+                // A transfer whose receiving account is now in another
+                // currency moves to one that is not, if there is one.
+                let to = draft.transfer_account_id;
+                const cur = currencyFor(v);
+                if (to && cur && currencyFor(to) !== cur) {
+                  to = accounts.find((a) => !a.is_closed && a.id !== v && currencyOf(a) === cur)?.id ?? to;
+                }
+                setDraft({ ...draft, account_id: v || null, transfer_account_id: to });
+              }}
             />
           </label>
           {draft.transfer_account_id ? (
@@ -685,7 +725,7 @@ export default function PaymentsView() {
                   className="aero-field mt-1 w-full"
                   label="Transfer to"
                   placeholder="(choose the receiving account)"
-                  items={accountItems.filter((i) => i.value !== draft.account_id)}
+                  items={accountItems.filter((i) => i.value !== draft.account_id && (sameCurrency(i.value) || i.value === draft.transfer_account_id))}
                   value={draft.transfer_account_id}
                   onChange={(v) => setDraft({ ...draft, transfer_account_id: v || null, goal_id: null })}
                 />
@@ -784,23 +824,21 @@ export default function PaymentsView() {
           <div className="flex gap-2">
             <label className="block flex-1">
               First due
-              <input
-                className="aero-field mt-1 w-full"
-                type="date"
-                aria-label="First due"
-                value={draft.start_date}
-                onChange={(e) => setDraft({ ...draft, start_date: e.target.value })}
-              />
+              <span className="block mt-1">
+                <DateField label="First due" value={draft.start_date} onChange={(v) => setDraft({ ...draft, start_date: v })} />
+              </span>
             </label>
             <label className="block flex-1">
               Ends (optional)
-              <input
-                className="aero-field mt-1 w-full"
-                type="date"
-                aria-label="Ends"
-                value={draft.end_date ?? ""}
-                onChange={(e) => setDraft({ ...draft, end_date: e.target.value || null })}
-              />
+              <span className="block mt-1">
+                <DateField
+                  label="Ends"
+                  value={draft.end_date ?? ""}
+                  onChange={(v) => setDraft({ ...draft, end_date: v || null })}
+                  onInvalid={setEndBad}
+                  optional
+                />
+              </span>
             </label>
           </div>
           <label className="block">
@@ -890,12 +928,12 @@ export default function PaymentsView() {
   );
 }
 
-function Stat({ label, cents, emphasis }: { label: string; cents: number; emphasis?: boolean }) {
+function Stat({ label, cents, currency, emphasis }: { label: string; cents: number; currency?: string; emphasis?: boolean }) {
   return (
     <div>
       <div className="text-[11px] text-slate-600">{label}</div>
       <div className={emphasis ? "text-[16px] font-semibold tabular-nums" : "text-[13px] tabular-nums"}>
-        <Money cents={cents} />
+        <Money cents={cents} currency={currency} />
       </div>
     </div>
   );

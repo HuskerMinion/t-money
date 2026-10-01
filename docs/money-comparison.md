@@ -25,7 +25,7 @@ classifications, and QIF/OFX/QFX import.
 | Tax line on a single transaction | Yes | Categories only |
 | Merge accounts | Yes | No |
 | Looks and text size | 14 looks, 14 color themes, scalable text | One fixed 2008 look |
-| Still maintained | Yes, with about 1,600 automated tests | No updates since 2010 |
+| Still maintained | Yes, with about 1,750 automated tests | No updates since 2010 |
 
 ## What Money Sunset does that T-Money doesn't
 
@@ -36,7 +36,7 @@ classifications, and QIF/OFX/QFX import.
 | Lifetime Planner, retirement and college planners | Yes | No |
 | Tax estimator and TXF export to TurboTax | Yes | No |
 | Check printing | Yes | No |
-| Multi-currency | Yes | No, one currency |
+| Multi-currency | Dozens of currencies | Six: US, Canadian and Australian dollars, euros, British pounds and Mexican pesos |
 | Reminders when the app is closed | Yes | No, only inside the app |
 | Home Inventory | Yes | No |
 | Stock option grants | Yes | No |

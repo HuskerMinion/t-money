@@ -69,6 +69,22 @@ pub fn get_setting(conn: &Conn, key: &str) -> Result<Option<String>, String> {
     .map_err(|e| e.to_string())
 }
 
+/// How the open file writes numbers and dates (see `region.rs`), and its home
+/// currency.
+pub fn file_format(conn: &Conn) -> Result<crate::models::FileFormat, String> {
+    let region = get_setting(conn, crate::region::REGION_KEY)?
+        .and_then(|r| crate::region::find(&r).map(|r| r.code))
+        .unwrap_or(crate::region::DEFAULT_REGION);
+    Ok(crate::models::FileFormat { home_currency: home_currency(conn)?, region: region.to_string() })
+}
+
+/// Set the region the file writes numbers and dates in. Display only:
+/// nothing stored changes.
+pub fn set_region(conn: &Conn, code: &str) -> Result<(), String> {
+    let r = crate::region::validate(code)?;
+    set_setting(conn, crate::region::REGION_KEY, r.code)
+}
+
 pub fn set_setting(conn: &Conn, key: &str, value: &str) -> Result<(), String> {
     conn.execute(
         "INSERT INTO app_settings (key, value) VALUES (?1, ?2)

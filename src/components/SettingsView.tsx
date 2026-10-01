@@ -7,14 +7,18 @@ import { api } from "../lib/ipc";
 import { useCommand } from "../lib/useCommand";
 import { refreshUndo } from "../lib/undo";
 import Notice from "./Notice";
+import DateField from "./DateField";
 import { ZOOM_LEVELS, applyZoom, readZoom, saveZoom } from "../lib/zoom";
 import { THEMES, applyTheme, readTheme, saveTheme } from "../lib/theme";
 import { applyLook, LOOKS, readLook, saveLook, type Look } from "../lib/layout";
 import ThemePreview from "./ThemePreview";
 import { useAccountStore } from "../stores/useAccountStore";
 import { useBudgetStore } from "../stores/useBudgetStore";
-import type { BackupConfig, DbInfo, FileCheck, HoldingRounding, KeyStatus, PriceInterval, PriceStatus } from "../lib/types";
-import { formatMoney } from "../lib/format";
+import type { BackupConfig, Currency, DbInfo, ExchangeRate, FileCheck, HoldingRounding, KeyStatus, PriceInterval, PriceStatus } from "../lib/types";
+import { formatDate, formatMoney, today } from "../lib/format";
+import { formatRate, homeCurrency, homeName, rateForBackend } from "../lib/currency";
+import { useFileFormat } from "../lib/region";
+import HomeCurrencyPane from "./HomeCurrencyPane";
 import { HOLDING_ROUNDING_KEY } from "../lib/shares";
 import { PRICE_INTERVALS } from "../lib/prices";
 
@@ -54,7 +58,7 @@ const GROUPS: { id: GroupId; label: string; panes: { id: string; label: string }
       { id: "verify", label: "Verify" },
     ],
   },
-  { id: "money", label: "Money", panes: [{ id: "holdings", label: "Holding values" }, { id: "prices", label: "Prices" }] },
+  { id: "money", label: "Money", panes: [{ id: "holdings", label: "Holding values" }, { id: "prices", label: "Prices" }, { id: "currencies", label: "Currencies" }, { id: "format", label: "Home currency and region" }] },
   { id: "security", label: "Security", panes: [{ id: "key", label: "Master key" }] },
   { id: "advanced", label: "Advanced", panes: [{ id: "developer", label: "Developer" }] },
 ];
@@ -415,6 +419,8 @@ export default function SettingsView() {
       // Every step on the undo stack described the database that was
       // just replaced; the backend dropped them and the menu must too.
       void refreshUndo();
+      // The restored file has its own home currency and region.
+      useFileFormat.getState().setFormat(await api.getFileFormat());
       await load();
       // Every cached row came from the database that was just replaced.
       await useAccountStore.getState().reloadAll();
@@ -628,6 +634,9 @@ export default function SettingsView() {
           </section>
         </>
       )}
+
+      {at("money", "currencies") && <CurrenciesPane />}
+      {at("money", "format") && <HomeCurrencyPane onCurrencies={() => setPane("currencies")} />}
 
       {at("appearance", "theme") && (
         <>
@@ -1116,6 +1125,185 @@ export default function SettingsView() {
       {(msg || error) && where === null && <StatusLine text={error ?? msg} bad={!!error} />}
       </div>
     </div>
+  );
+}
+
+/** Exchange rates: home-currency units per one unit of each currency, by date. Its own
+ *  status line, so a result is said on the pane that produced it. */
+function CurrenciesPane() {
+  const [currencies, setCurrencies] = useState<Currency[]>([]);
+  const [rates, setRates] = useState<ExchangeRate[] | null>(null);
+  const [code, setCode] = useState("");
+  const [date, setDate] = useState(() => today());
+  const [rateText, setRateText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Rates are quoted in the home currency, so it has none of its own.
+  const home = useFileFormat((s) => s.home);
+  const foreign = currencies.filter((c) => c.code !== home);
+  const pick = code || foreign[0]?.code || "";
+
+  async function reload() {
+    setRates(await api.listExchangeRates());
+    // Accounts carry today's rate; a changed rate changes their worth at home.
+    await useAccountStore.getState().loadAccounts().catch(() => {});
+  }
+
+  useEffect(() => {
+    (async () => {
+      try {
+        setCurrencies(await api.listCurrencies());
+        setRates(await api.listExchangeRates());
+      } catch (e) {
+        setError(String(e));
+      }
+    })();
+  }, []);
+
+  async function run(work: () => Promise<string>) {
+    setBusy(true);
+    setMsg(null);
+    setError(null);
+    try {
+      setMsg(await work());
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const add = () =>
+    run(async () => {
+      if (!rateText.trim()) throw `Enter what 1 ${pick} is worth in ${homeName()}.`;
+      // DateField sends "" for text it cannot read.
+      if (!date) throw `Type a date the form can read, such as ${formatDate("2026-08-03")}.`;
+      await api.setExchangeRate(pick, date, rateForBackend(rateText));
+      setRateText("");
+      await reload();
+      return `Saved: 1 ${pick} = ${rateText.trim()} ${homeCurrency()} from ${formatDate(date)}.`;
+    });
+
+  const remove = (r: ExchangeRate) =>
+    run(async () => {
+      await api.deleteExchangeRate(r.currency, r.date);
+      await reload();
+      return `Deleted the ${r.currency} rate of ${formatDate(r.date)}.`;
+    });
+
+  // Explicit only: the app never fetches a rate on its own.
+  const fetchAll = () =>
+    run(async () => {
+      const s = await api.fetchExchangeRates(foreign.map((c) => c.code));
+      await reload();
+      const parts = [`${s.updated} updated`];
+      for (const f of s.failures) parts.push(f.symbol ? `${f.symbol}: ${f.reason}` : f.reason);
+      const text = parts.join(" · ");
+      if (s.updated === 0 && s.failures.length > 0) throw text;
+      return text;
+    });
+
+  // Grouped by currency, newest first.
+  const groups = foreign
+    .map((c) => ({
+      c,
+      rows: (rates ?? []).filter((r) => r.currency === c.code).sort((a, b) => b.date.localeCompare(a.date)),
+    }))
+    .filter((g) => g.rows.length > 0);
+
+  return (
+    <section className="aero-card">
+      <div className="aero-card-title flex items-center gap-2">
+        <TmIcon name="investments" size={15} /> Currencies — exchange rates
+      </div>
+      <div className="p-3 space-y-2 text-[12px]">
+        <div className="text-slate-500">
+          An account can be kept in another currency. Totals, net worth and reports are in {homeName()} ({home}): an
+          account's money converts at the rate in force on the day — the latest rate on or before it. The home
+          currency and the region are set under Home currency and region.
+        </div>
+        <div className="flex items-center gap-2">
+          <button className="aero-btn" type="button" onClick={() => void fetchAll()} disabled={busy || foreign.length === 0}>
+            {busy ? "Working…" : "Get today's rates"}
+          </button>
+          <span className="text-slate-500">Looks up today's rates online. Only the currency codes are sent.</span>
+        </div>
+
+        {rates !== null && groups.length === 0 && (
+          <div className="text-slate-600">No exchange rates yet. Add one below, or get today's.</div>
+        )}
+        {groups.map((g) => (
+          <table key={g.c.code} className="register-table" aria-label={`${g.c.code} rates`} style={{ tableLayout: "auto" }}>
+            <caption className="text-left font-bold py-1">
+              {g.c.code} — {g.c.name}
+            </caption>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th className="num">{home} per 1 {g.c.code}</th>
+                <th>Source</th>
+                <th style={{ width: 80 }} />
+              </tr>
+            </thead>
+            <tbody>
+              {g.rows.map((r) => (
+                <tr key={r.date}>
+                  <td>{formatDate(r.date)}</td>
+                  <td className="num">{formatRate(r.rate_micro)}</td>
+                  <td className="tm-text-muted">{r.source === "fetched" ? "Fetched" : "Typed"}</td>
+                  <td>
+                    <button
+                      type="button"
+                      className="aero-btn !py-0 !px-2 text-[11px]"
+                      onClick={() => void remove(r)}
+                      disabled={busy}
+                      aria-label={`Delete the ${r.currency} rate of ${r.date}`}
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ))}
+
+        <form
+          className="flex flex-wrap items-center gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void add();
+          }}
+        >
+          <span className="text-slate-600">Add a rate:</span>
+          <span>1</span>
+          <select className="aero-field" aria-label="Currency" value={pick} onChange={(e) => setCode(e.target.value)}>
+            {foreign.map((c) => (
+              <option key={c.code} value={c.code}>
+                {c.code} — {c.name}
+              </option>
+            ))}
+          </select>
+          <span>=</span>
+          <input
+            className="aero-field"
+            style={{ width: 100 }}
+            aria-label={`${home} per unit`}
+            value={rateText}
+            onChange={(e) => setRateText(e.target.value)}
+            placeholder={formatRate(1_087_500)}
+          />
+          <span>{home} from</span>
+          <DateField label="Rate date" value={date} onChange={setDate} width={120} />
+          <button className="aero-btn" type="submit" disabled={busy || !pick}>
+            Add
+          </button>
+        </form>
+        <StatusLine text={error ?? msg} bad={!!error} />
+      </div>
+    </section>
   );
 }
 

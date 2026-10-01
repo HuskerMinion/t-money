@@ -12,6 +12,7 @@ import { useState } from "react";
 import Money from "./Money";
 import Notice from "./Notice";
 import { accountWorth } from "../lib/accountTypes";
+import { currencyOf } from "../lib/currency";
 import type { Account } from "../lib/types";
 
 interface Props {
@@ -92,7 +93,7 @@ export default function OrganizeFavoritesDialog({ accounts, onToggle, onReorder,
                 />
                 <span className="flex-1 truncate">{a.name}</span>
                 <span className="tabular-nums">
-                  <Money cents={accountWorth(a)} />
+                  <Money cents={accountWorth(a)} currency={currencyOf(a)} />
                 </span>
                 {onReorder && (
                   <span className="inline-flex gap-0.5 pl-2">

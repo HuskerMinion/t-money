@@ -75,7 +75,9 @@ pub fn get_register(conn: &Conn, account_id: &str) -> Result<Vec<RegisterRow>, S
                     JOIN accounts pa ON pa.id = p.account_id
                    WHERE s.transfer_account_id = t.account_id AND s.transfer_txn_id = t.id
                    LIMIT 1)
-               END AS split_payment_account_name
+               END AS split_payment_account_name,
+               (SELECT tp.amount_cents FROM transactions tp WHERE tp.id = t.transfer_id)
+                 AS transfer_amount_cents
         FROM transactions t
         LEFT JOIN categories c ON c.id = t.category_id
         LEFT JOIN securities sec ON sec.id = t.security_id
@@ -118,6 +120,7 @@ pub fn get_register(conn: &Conn, account_id: &str) -> Result<Vec<RegisterRow>, S
                 attachment_count: r.get(28)?,
                 is_split_transfer: r.get::<_, i64>(29)? != 0,
                 split_payment_account_name: r.get(30)?,
+                transfer_amount_cents: r.get(31)?,
                 classes: Vec::new(),
                 line_classes: Vec::new(),
             })
@@ -305,8 +308,8 @@ fn update_transaction_in(
             .map_err(|e| e.to_string())?;
         if let Some(total) = split_total {
             return Err(format!(
-                "this transaction is split into lines totaling {}; change the split lines,                  not the total",
-                crate::models::format_cents(total)
+                "this transaction is split into lines totaling {}; change the split lines, not the total",
+                crate::models::format_cents_in(total, &account_currency(tx, &account_id)?)
             ));
         }
     }
@@ -362,7 +365,7 @@ fn split_payment_of(conn: &Connection, far_id: &str) -> Result<Option<String>, S
         .map_err(|e| e.to_string())?;
     Ok(found.map(|(account, payee, date)| {
         let us = NaiveDate::parse_from_str(&date, "%Y-%m-%d")
-            .map(|d| d.format("%m/%d/%Y").to_string())
+            .map(crate::region::date)
             .unwrap_or(date);
         if payee.trim().is_empty() {
             format!("a split in {account} ({us})")
@@ -543,10 +546,7 @@ pub fn create_transfer(
         return Err("cannot transfer to the same account".to_string());
     }
     refuse_new_link_to_closed(conn, &[from_account_id, to_account_id])?;
-    let magnitude = amount_cents.abs();
-    if magnitude == 0 {
-        return Err("transfer amount must not be zero".to_string());
-    }
+    let magnitude = magnitude(amount_cents)?;
 
     let tx = conn.unchecked_transaction().map_err(|e| e.to_string())?;
     let (from_id, _to_id) = insert_transfer_pair(&tx, from_account_id, to_account_id, date, magnitude, notes)?;
@@ -559,6 +559,50 @@ pub fn create_transfer(
         map_txn,
     )
     .map_err(|e| e.to_string())
+}
+
+/// A transfer that names an amount for each side: `sent` leaves `from` in
+/// its currency and `received` arrives in `to` in its own. For two accounts
+/// kept in different currencies; between two in one currency the amounts
+/// must agree, and it is an ordinary `create_transfer`.
+pub fn create_transfer_between(
+    conn: &Conn,
+    from_account_id: &str,
+    to_account_id: &str,
+    date: &str,
+    sent_cents: i64,
+    received_cents: i64,
+    notes: Option<&str>,
+) -> Result<Transaction, String> {
+    let (sent, received) = (magnitude(sent_cents)?, magnitude(received_cents)?);
+    if account_currency(conn, from_account_id)? == account_currency(conn, to_account_id)? {
+        if sent != received {
+            return Err("Both accounts are kept in the same currency, so the amount sent and the amount received must be the same.".to_string());
+        }
+        return create_transfer(conn, from_account_id, to_account_id, date, sent, notes);
+    }
+    if from_account_id == to_account_id {
+        return Err("cannot transfer to the same account".to_string());
+    }
+    refuse_new_link_to_closed(conn, &[from_account_id, to_account_id])?;
+    let tx = conn.unchecked_transaction().map_err(|e| e.to_string())?;
+    let (from_id, _) = insert_transfer_pair_amounts(&tx, from_account_id, to_account_id, date, sent, received, notes, "Transfer Money")?;
+    tx.commit().map_err(|e| e.to_string())?;
+    conn.query_row(
+        "SELECT id, account_id, date, payee, category_id, amount_cents, is_reconciled, notes
+         FROM transactions WHERE id = ?1",
+        params![from_id],
+        map_txn,
+    )
+    .map_err(|e| e.to_string())
+}
+
+/// The currency an account is kept in.
+pub(crate) fn account_currency(conn: &Connection, id: &str) -> Result<String, String> {
+    conn.query_row("SELECT currency FROM accounts WHERE id = ?1", params![id], |r| r.get(0))
+        .optional()
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("account {id} not found"))
 }
 
 /// The two linked rows of a transfer, inside a transaction the caller holds.
@@ -587,6 +631,26 @@ pub(crate) fn insert_transfer_pair_named(
     notes: Option<&str>,
     payee: &str,
 ) -> Result<(String, String), String> {
+    // One amount for both sides is only right in one currency. Every caller
+    // that names one amount — goals, investment cash, schedules, imports —
+    // is refused across currencies here; `create_transfer_between` takes two.
+    require_same_currency(tx, from_account_id, to_account_id, "Moving one amount")?;
+    insert_transfer_pair_amounts(tx, from_account_id, to_account_id, date, magnitude, magnitude, notes, payee)
+}
+
+/// The pair with an amount for each side: `sent` leaves `from_account_id`
+/// in its currency, `received` arrives in `to_account_id` in its own. Both
+/// positive. Equal unless the accounts are kept in different currencies.
+pub(crate) fn insert_transfer_pair_amounts(
+    tx: &Connection,
+    from_account_id: &str,
+    to_account_id: &str,
+    date: &str,
+    sent: i64,
+    received: i64,
+    notes: Option<&str>,
+    payee: &str,
+) -> Result<(String, String), String> {
     let from_id = Uuid::new_v4().to_string();
     let to_id = Uuid::new_v4().to_string();
 
@@ -603,7 +667,7 @@ pub(crate) fn insert_transfer_pair_named(
              (id, account_id, date, payee, payee_id, category_id, amount_cents,
               notes, transfer_id)
          VALUES (?1, ?2, ?3, ?4, ?5, NULL, ?6, ?7, NULL)",
-        params![from_id, from_account_id, date, payee, payee_id, -magnitude, notes],
+        params![from_id, from_account_id, date, payee, payee_id, -sent, notes],
     )
     .map_err(|e| e.to_string())?;
     tx.execute(
@@ -611,7 +675,7 @@ pub(crate) fn insert_transfer_pair_named(
              (id, account_id, date, payee, payee_id, category_id, amount_cents,
               notes, transfer_id)
          VALUES (?1, ?2, ?3, ?4, ?5, NULL, ?6, ?7, NULL)",
-        params![to_id, to_account_id, date, payee, payee_id, magnitude, notes],
+        params![to_id, to_account_id, date, payee, payee_id, received, notes],
     )
     .map_err(|e| e.to_string())?;
     tx.execute("UPDATE transactions SET transfer_id = ?2 WHERE id = ?1", params![from_id, to_id])
@@ -621,13 +685,13 @@ pub(crate) fn insert_transfer_pair_named(
     tx.execute(
         "UPDATE accounts SET balance_cents = balance_cents - ?1, updated_at = datetime('now')
          WHERE id = ?2",
-        params![magnitude, from_account_id],
+        params![sent, from_account_id],
     )
     .map_err(|e| e.to_string())?;
     tx.execute(
         "UPDATE accounts SET balance_cents = balance_cents + ?1, updated_at = datetime('now')
          WHERE id = ?2",
-        params![magnitude, to_account_id],
+        params![received, to_account_id],
     )
     .map_err(|e| e.to_string())?;
     Ok((from_id, to_id))
@@ -658,8 +722,26 @@ pub fn update_transfer(
     amount_cents: i64,
     notes: Option<&str>,
 ) -> Result<Transaction, String> {
-    if amount_cents == 0 {
-        return Err("transfer amount must not be zero".to_string());
+    update_transfer_amounts(conn, id, date, other_account_id, amount_cents, None, notes)
+}
+
+/// `update_transfer` with the amount on the OTHER side, for a transfer
+/// between accounts kept in different currencies. `other_amount_cents` is a
+/// magnitude in the other account's currency; its sign follows from
+/// `amount_cents`. Between two accounts in one currency it must be None or
+/// the same magnitude, and the partner takes the negation as always.
+pub fn update_transfer_amounts(
+    conn: &Conn,
+    id: &str,
+    date: &str,
+    other_account_id: &str,
+    amount_cents: i64,
+    other_amount_cents: Option<i64>,
+    notes: Option<&str>,
+) -> Result<Transaction, String> {
+    magnitude(amount_cents)?;
+    if let Some(o) = other_amount_cents.filter(|o| *o != 0) {
+        magnitude(o)?;
     }
 
     let (this_account, this_amount, transfer_id, is_void): (String, i64, Option<String>, i64) =
@@ -691,14 +773,29 @@ pub fn update_transfer(
         refuse_new_link_to_closed(conn, &[other_account_id, this_account.as_str()])?;
     }
 
+    // What the partner row holds: the negation in one currency, or the
+    // amount the other side names, signed the opposite way, across two.
+    let this_currency = account_currency(conn, &this_account)?;
+    let other_currency = account_currency(conn, other_account_id)?;
+    let partner_amount = if this_currency == other_currency {
+        if other_amount_cents.is_some_and(|o| o.abs() != amount_cents.abs()) {
+            return Err("Both accounts are kept in the same currency, so the amount sent and the amount received must be the same.".to_string());
+        }
+        -amount_cents
+    } else {
+        match other_amount_cents.filter(|o| *o != 0) {
+            Some(o) => -amount_cents.signum() * o.abs(),
+            None => return Err(format!("Enter the amount in {other_currency} as well: the two accounts are kept in different currencies.")),
+        }
+    };
+
     // A voided transfer never contributed to a balance; unwinding it would
     // invent money. Re-applying is suppressed the same way.
-    let (old_this, old_other, new_this) = if is_void != 0 {
-        (0, 0, 0)
+    let (old_this, old_other, new_this, new_other) = if is_void != 0 {
+        (0, 0, 0, 0)
     } else {
-        (this_amount, other_amount, amount_cents)
+        (this_amount, other_amount, amount_cents, partner_amount)
     };
-    let new_other = -new_this;
 
     let tx = conn.unchecked_transaction().map_err(|e| e.to_string())?;
 
@@ -730,7 +827,7 @@ pub fn update_transfer(
         "UPDATE transactions
             SET date = ?2, amount_cents = ?3, notes = ?4, account_id = ?5
           WHERE id = ?1",
-        params![other_id, date, -amount_cents, notes, other_account_id],
+        params![other_id, date, partner_amount, notes, other_account_id],
     )
     .map_err(|e| e.to_string())?;
 
@@ -1002,6 +1099,9 @@ pub fn convert_to_transfer(conn: &Conn, id: &str, other_account_id: &str) -> Res
     }
     // Becoming a transfer writes a new row in the other account.
     refuse_new_link_to_closed(conn, &[other_account_id, this_account.as_str()])?;
+    // The new row would carry the same amount, which is only right in one
+    // currency. Across two, the transfer has to be entered with both amounts.
+    require_same_currency(conn, &this_account, other_account_id, "Turning an entry into a transfer")?;
 
     let other_id = Uuid::new_v4().to_string();
     let tx = conn.unchecked_transaction().map_err(|e| e.to_string())?;

@@ -9,8 +9,12 @@
 // Grouped the way the net-worth report groups: what you can spend, what you
 // have invested, what you own, what you owe. Sorted by size within a group,
 // because the big ones are the ones you are looking for.
+//
+// Each row is in its own account's currency; a group total adds accounts
+// together, so it is in the home currency at today's rate.
 import Money from "./Money";
 import { accountWorth, placedFirst } from "../lib/accountTypes";
+import { currencyOf, homeName, rateOf, worthHome } from "../lib/currency";
 import type { Account } from "../lib/types";
 
 interface Props {
@@ -38,14 +42,23 @@ export default function AccountsPane({ accounts, selectedId, onSelect }: Props) 
         // as they always did.
         const rows = open
           .filter((a) => kinds.includes(a.type))
-          .sort((a, b) => placedFirst(a, b) || Math.abs(accountWorth(b)) - Math.abs(accountWorth(a)));
+          .sort((a, b) => placedFirst(a, b) || Math.abs(worthHome(b)) - Math.abs(worthHome(a)));
         for (const r of rows) seen.add(r.id);
         if (rows.length === 0) return null;
-        const total = rows.reduce((n, a) => n + accountWorth(a), 0);
+        const total = rows.reduce((n, a) => n + worthHome(a), 0);
+        // A currency with no rate cannot be added in; say so rather than
+        // count it as nothing without a word.
+        const unrated = rows.filter((a) => rateOf(a) === 0);
+        const note = unrated.length
+          ? `In ${homeName()}. Leaves out ${unrated.map((a) => a.name).join(", ")} — no rate for ${[...new Set(unrated.map(currencyOf))].join(", ")} (Settings → Currencies).`
+          : `In ${homeName()} at today's rates.`;
         return (
           <div key={title}>
             <div className="tm-accounts-group">
-              {title} · <Money cents={total} tone="neutral" />
+              {title} · <span title={note}>
+                <Money cents={total} tone="neutral" />
+                {unrated.length > 0 && "*"}
+              </span>
             </div>
             {rows.map((a) => (
               <Row key={a.id} account={a} active={a.id === selectedId} onSelect={onSelect} />
@@ -81,7 +94,7 @@ function Row({ account, active, onSelect }: { account: Account; active: boolean;
     >
       <span className="tm-accounts-line">
         <span className="truncate">{account.name}</span>
-        <Money cents={accountWorth(account)} />
+        <Money cents={accountWorth(account)} currency={currencyOf(account)} />
       </span>
       {account.institution && <span className="tm-accounts-sub truncate">{account.institution}</span>}
     </button>

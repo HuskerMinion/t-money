@@ -459,9 +459,12 @@ describe("rail Transactions", () => {
   });
 
   it("Bills switches to the calendar and back", async () => {
+    // Due in the month the calendar opens on, whatever today is.
+    const now = new Date();
+    const due = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
     stubEverything({
       get_occurrences: () => [
-        { recurrence_id: "r-1", payee: "Anytown Properties", amount_cents: -145_000, account_id: "acc-1", account_name: "Checking", category_id: null, category_name: null, due_date: "2026-09-01", status: "paid", transaction_id: "t-1", actual_amount_cents: -145_000 },
+        { recurrence_id: "r-1", payee: "Anytown Properties", amount_cents: -145_000, account_id: "acc-1", account_name: "Checking", category_id: null, category_name: null, due_date: due, status: "paid", transaction_id: "t-1", actual_amount_cents: -145_000 },
       ],
     });
     render(<App />);

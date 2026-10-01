@@ -9,6 +9,7 @@ import CsvImportDialog from "./CsvImportDialog";
 import { invokeCalls, resetIpc, setIpcHandlers } from "../test/tauriMock";
 import type { CsvMapping, CsvPreview } from "../lib/types";
 import { registerCommand } from "../lib/commands";
+import { useFileFormat } from "../lib/region";
 
 const headers = ["Date", "Description", "Withdrawal", "Deposit", "Balance"];
 const rows = [
@@ -208,5 +209,32 @@ describe("A slow preview does not undo a newer choice", () => {
     waiting[0].answer();
     await new Promise((r) => setTimeout(r, 20));
     expect(within(dlg).getByLabelText("Memo")).toHaveValue("1");
+  });
+});
+
+// A sample that cannot settle the date order reads the way the file's
+// region writes dates.
+describe("an unsettled date order", () => {
+  beforeEach(() => resetIpc());
+
+  it("reads day first in a German file", async () => {
+    useFileFormat.getState().setFormat({ home_currency: "EUR", region: "de-DE" });
+    setIpcHandlers({ preview_csv: (args) => previewFor((args.mapping as CsvMapping | null) ?? guess) });
+    render(<CsvImportDialog path="bank.csv" accountId="a" accountName="Girokonto" onImported={vi.fn()} onCancel={vi.fn()} />);
+    const dlg = await screen.findByRole("dialog", { name: "Import CSV" });
+    await waitFor(() => expect(within(dlg).getByLabelText("Date order")).toHaveValue("dmy"));
+    const calls = invokeCalls.filter((c) => c.cmd === "preview_csv");
+    expect(calls.length).toBe(2);
+    expect((calls[1].args.mapping as CsvMapping).date_order).toBe("dmy");
+    const how = within(dlg).getByRole("table", { name: "How the first rows read" });
+    expect(within(how).getAllByRole("row")[1]).toHaveTextContent("03.09.2026FRESH MARKET42,50 €");
+  });
+
+  it("works it out, as before, in a US file", async () => {
+    setIpcHandlers({ preview_csv: (args) => previewFor((args.mapping as CsvMapping | null) ?? guess) });
+    render(<CsvImportDialog path="bank.csv" accountId="a" accountName="Checking" onImported={vi.fn()} onCancel={vi.fn()} />);
+    const dlg = await screen.findByRole("dialog", { name: "Import CSV" });
+    await waitFor(() => expect(within(dlg).getByLabelText("Date order")).toHaveValue("auto"));
+    expect(invokeCalls.filter((c) => c.cmd === "preview_csv").length).toBe(1);
   });
 });

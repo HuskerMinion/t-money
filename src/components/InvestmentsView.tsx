@@ -7,12 +7,14 @@ import { useEffect, useRef, useState } from "react";
 import Money from "./Money";
 import TmIcon from "./TmIcon";
 import Notice from "./Notice";
+import DateField from "./DateField";
 import { api } from "../lib/ipc";
 import { useCommand } from "../lib/useCommand";
 import { formatDateUS, formatMoney, today } from "../lib/format";
 import { formatPrice, formatShares, isLongTerm, parseMicro, priceFrom, valueCents } from "../lib/shares";
 import type { HoldingRounding, Portfolio, Position, PriceStatus, Performance, RoiPeriod, Security, SecurityKind, SecurityPrice } from "../lib/types";
 import { isStale, stalenessNote } from "../lib/prices";
+import { currentRegion } from "../lib/region";
 
 interface Props {
   onOpenAccount?: (accountId: string) => void;
@@ -499,16 +501,16 @@ export default function InvestmentsView({ onOpenAccount }: Props) {
   );
 }
 
-/** Basis points → "1.5%", rounded in integers (145 bps is 1.45%, which a
- *  float would print as 1.4). */
+/** Basis points → "1.5%" ("1,5%" in a comma region), rounded in integers
+ *  (145 bps is 1.45%, which a float would print as 1.4). */
 export function pctFromBps(bps: number): string {
   const tenths = Math.round(Math.abs(bps) / 10);
-  return `${bps < 0 ? "-" : ""}${Math.floor(tenths / 10)}.${tenths % 10}%`;
+  return `${bps < 0 ? "-" : ""}${Math.floor(tenths / 10)}${currentRegion().decimal}${tenths % 10}%`;
 }
 
 function pctText(part: number, whole: number): string {
   if (whole === 0) return "";
-  return `${((part / whole) * 100).toFixed(1)}%`;
+  return `${((part / whole) * 100).toFixed(1).replace(".", currentRegion().decimal)}%`;
 }
 
 function PositionRows({
@@ -744,6 +746,8 @@ function SecuritiesPanel({ securities, onChanged }: { securities: Security[]; on
     if (!pricesFor) return;
     const micro = parseMicro(priceText);
     if (micro === null || micro < 0) return setError("The price is unreadable.");
+    // DateField sends "" for text it cannot read.
+    if (!priceDate) return setError(`Type a date the form can read, such as ${formatDateUS("2026-08-03")}.`);
     setError(null);
     try {
       await api.setSecurityPrice(pricesFor, priceDate, micro);
@@ -908,7 +912,7 @@ function SecuritiesPanel({ securities, onChanged }: { securities: Security[]; on
                   void addPrice();
                 }}
               >
-                <input className="aero-field" type="date" aria-label="Price date" value={priceDate} onChange={(e) => setPriceDate(e.target.value)} />
+                <DateField label="Price date" value={priceDate} onChange={setPriceDate} width={120} />
                 <input className="aero-field text-right" style={{ width: 110 }} aria-label="Price" placeholder="Price" value={priceText} onChange={(e) => setPriceText(e.target.value)} />
                 <button className="aero-btn" type="submit">
                   Record

@@ -25,6 +25,8 @@ import type { Category, CsvMapping, ImportMatchPreview, ImportSummary, MemoRule,
 interface Props {
   path: string;
   accountId: string;
+  /** The account's currency; omitted, the home currency. */
+  currency?: string;
   mapping: CsvMapping | null;
   /** For the category picker on rows that have none. */
   categories?: readonly Category[];
@@ -42,6 +44,7 @@ type Choice = { action: "match" | "new" | "skip"; existingId?: string };
 export default function ImportMatchDialog({
   path,
   accountId,
+  currency,
   mapping,
   categories = [],
   memoRules = [],
@@ -171,7 +174,7 @@ export default function ImportMatchDialog({
                           {formatDateUS(row.date)} {row.payee}
                         </td>
                         <td className="num">
-                          <Money cents={row.amount_cents} />
+                          <Money cents={row.amount_cents} currency={currency} />
                         </td>
                         <td>
                           <CategorySelect
@@ -241,7 +244,7 @@ export default function ImportMatchDialog({
                       {row.check_number ? ` — check ${row.check_number}` : ""}
                     </td>
                     <td className="num">
-                      <Money cents={row.amount_cents} />
+                      <Money cents={row.amount_cents} currency={currency} />
                     </td>
                     <td>
                       {row.candidates.map((c) => (

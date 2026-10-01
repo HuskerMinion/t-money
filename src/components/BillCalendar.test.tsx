@@ -3,7 +3,8 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import BillCalendar, { monthGrid, monthRange, shiftMonth } from "./BillCalendar";
-import type { Occurrence } from "../lib/types";
+import type { Account, Occurrence } from "../lib/types";
+import { useFileFormat } from "../lib/region";
 
 function occ(over: Partial<Occurrence> = {}): Occurrence {
   return {
@@ -66,5 +67,37 @@ describe("the bill calendar", () => {
     expect(onDay).toHaveBeenCalledWith("2026-09-20");
     await userEvent.click(screen.getByRole("button", { name: "Next month" }));
     expect(onMonth).toHaveBeenCalledWith("2026-10");
+  });
+});
+
+describe("bills in other currencies", () => {
+  it("shows each in its account's currency and totals the month in the home currency", () => {
+    const eur = { id: "acc-eur", name: "Euro checking", currency: "EUR", home_rate_micro: 1_100_000 } as Account;
+    const items = [
+      occ(),
+      occ({ recurrence_id: "r-2", payee: "Rent abroad", amount_cents: -50_000, account_id: "acc-eur", account_name: "Euro checking", due_date: "2026-09-02" }),
+    ];
+    render(<BillCalendar accounts={[eur]} month="2026-09" occurrences={items} today="2026-09-06" onMonth={() => {}} onDayDoubleClick={() => {}} onPick={() => {}} />);
+    expect(within(screen.getByRole("gridcell", { name: "2026-09-02" })).getByText("€500.00")).toBeInTheDocument();
+    // $1,450 + €500 at 1.10 ($550).
+    expect(screen.getByText("Out this month: $2,000.00")).toBeInTheDocument();
+    expect(screen.getByText("(US dollars, at today's rates)")).toBeInTheDocument();
+  });
+});
+
+describe("a file in euros, written the German way", () => {
+  it("totals the month in euros and writes a dollar bill as US$", () => {
+    useFileFormat.getState().setFormat({ home_currency: "EUR", region: "de-DE" });
+    const usd = { id: "acc-usd", name: "Dollar checking", currency: "USD", home_rate_micro: 900_000 } as Account;
+    const items = [
+      occ({ amount_cents: -123_456 }),
+      occ({ recurrence_id: "r-2", payee: "Rent abroad", amount_cents: -50_000, account_id: "acc-usd", account_name: "Dollar checking", due_date: "2026-09-02" }),
+    ];
+    render(<BillCalendar accounts={[usd]} month="2026-09" occurrences={items} today="2026-09-06" onMonth={() => {}} onDayDoubleClick={() => {}} onPick={() => {}} />);
+    expect(within(screen.getByRole("gridcell", { name: "2026-09-01" })).getByText("1.234,56 €")).toBeInTheDocument();
+    expect(within(screen.getByRole("gridcell", { name: "2026-09-02" })).getByText("500,00 US$")).toBeInTheDocument();
+    // 1.234,56 € + US$500 at 0,90 (450 €).
+    expect(screen.getByText("Out this month: 1.684,56 €")).toBeInTheDocument();
+    expect(screen.getByText("(euros, at today's rates)")).toBeInTheDocument();
   });
 });

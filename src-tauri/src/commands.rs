@@ -105,6 +105,17 @@ fn with_conn<'a>(
         .as_ref()
         .ok_or_else(|| NO_FILE.to_string())?;
     let conn = pool.get().map_err(|e| format!("pool error: {e}"))?;
+    // Every message this command writes uses the open file's home currency
+    // and region.
+    let setting = |key: &str| -> Option<String> {
+        conn.prepare_cached("SELECT value FROM app_settings WHERE key = ?1")
+            .and_then(|mut st| st.query_row([key], |r| r.get(0)))
+            .ok()
+    };
+    crate::region::set_display(
+        setting(crate::currency::HOME_KEY).as_deref(),
+        setting(crate::region::REGION_KEY).as_deref(),
+    );
     Ok((guard, conn))
 }
 
@@ -145,9 +156,175 @@ pub fn create_account(
     account_type: String,
     opening_balance_cents: i64,
     opened_on: Option<String>,
+    currency: Option<String>,
 ) -> Result<Account, String> {
     let (_g, conn) = with_conn(&state)?;
-    queries::create_account(&conn, &name, &account_type, opening_balance_cents, opened_on.as_deref())
+    let currency = match currency {
+        Some(c) => c,
+        None => queries::home_currency(&conn)?,
+    };
+    queries::create_account_in(&conn, &name, &account_type, opening_balance_cents, opened_on.as_deref(), &currency)
+}
+
+/// Change the currency an account is kept in, without converting its
+/// amounts (`queries::set_account_currency` says when it is refused). Not
+/// undoable, so the undo stack is emptied, as for any write undo cannot take
+/// back.
+#[tauri::command(rename_all = "camelCase")]
+pub fn set_account_currency(state: State<AppState>, id: String, currency: String) -> Result<Account, String> {
+    let (_g, conn) = with_conn(&state)?;
+    let before = queries::get_account(&conn, &id)?.currency;
+    let out = queries::set_account_currency(&conn, &id, &currency)?;
+    if out.currency != before {
+        undo_stack_invalidated(&state)?;
+    }
+    Ok(out)
+}
+
+/// The currencies an account can be kept in.
+#[tauri::command(rename_all = "camelCase")]
+pub fn list_currencies() -> Vec<crate::currency::Currency> {
+    crate::currency::CURRENCIES.to_vec()
+}
+
+/// The regions a file can write its numbers and dates for.
+#[tauri::command(rename_all = "camelCase")]
+pub fn list_regions() -> Vec<crate::region::Region> {
+    crate::region::REGIONS.to_vec()
+}
+
+/// The open file's home currency and region.
+#[tauri::command(rename_all = "camelCase")]
+pub fn get_file_format(state: State<AppState>) -> Result<crate::models::FileFormat, String> {
+    let (_g, conn) = with_conn(&state)?;
+    queries::file_format(&conn)
+}
+
+/// Write the file's numbers and dates the way `region` does.
+#[tauri::command(rename_all = "camelCase")]
+pub fn set_region(state: State<AppState>, region: String) -> Result<crate::models::FileFormat, String> {
+    let (_g, conn) = with_conn(&state)?;
+    queries::set_region(&conn, &region)?;
+    queries::file_format(&conn)
+}
+
+/// Make `currency` the file's home currency; `relabel` says the accounts in
+/// the old one were really in the new one (`queries::set_home_currency`).
+/// Relabeling is not undoable, so the undo stack is emptied when it happens.
+#[tauri::command(rename_all = "camelCase")]
+pub fn set_home_currency(state: State<AppState>, currency: String, relabel: bool) -> Result<crate::models::FileFormat, String> {
+    let (_g, conn) = with_conn(&state)?;
+    let before = queries::home_currency(&conn)?;
+    queries::set_home_currency(&conn, &currency, relabel)?;
+    let out = queries::file_format(&conn)?;
+    if out.home_currency != before {
+        undo_stack_invalidated(&state)?;
+    }
+    Ok(out)
+}
+
+/// Every exchange rate in the file.
+#[tauri::command(rename_all = "camelCase")]
+pub fn list_exchange_rates(state: State<AppState>) -> Result<Vec<crate::models::ExchangeRate>, String> {
+    let (_g, conn) = with_conn(&state)?;
+    queries::list_rates(&conn)
+}
+
+/// Record a rate typed by the user: `rate` is dollars per one unit, as text
+/// ("1.0875"), so it is read as a decimal, never a float.
+#[tauri::command(rename_all = "camelCase")]
+pub fn set_exchange_rate(state: State<AppState>, currency: String, date: String, rate: String) -> Result<(), String> {
+    let micro = queries::parse_rate(&rate)?;
+    let (_g, conn) = with_conn(&state)?;
+    queries::set_rate(&conn, &currency, &date, micro, "manual").map(|_| ())
+}
+
+#[tauri::command(rename_all = "camelCase")]
+pub fn delete_exchange_rate(state: State<AppState>, currency: String, date: String) -> Result<(), String> {
+    let (_g, conn) = with_conn(&state)?;
+    queries::delete_rate(&conn, &currency, &date)
+}
+
+/// Fetch today's rate for each currency named — or, with none named, each
+/// currency an account is kept in — from the same quote source as share
+/// prices. Only ever run when the user asks; nothing fetches on its own.
+/// A failure for one currency is reported and the rest still run, unless the
+/// source cannot be reached at all.
+#[tauri::command(rename_all = "camelCase")]
+pub async fn fetch_exchange_rates(
+    state: State<'_, AppState>,
+    currencies: Option<Vec<String>>,
+) -> Result<PriceRefreshSummary, String> {
+    let started_on = db_path_of(&state)?;
+    let (home, in_use) = {
+        let (_g, conn) = with_conn(&state)?;
+        (queries::home_currency(&conn)?, queries::currencies_in_use(&conn)?)
+    };
+    let wanted: Vec<String> = match currencies.filter(|c| !c.is_empty()) {
+        Some(list) => list
+            .iter()
+            .map(|c| crate::currency::validate(c).map(str::to_string))
+            .collect::<Result<Vec<_>, _>>()?
+            .into_iter()
+            .filter(|c| *c != home)
+            .collect(),
+        None => in_use,
+    };
+    let today = chrono::Local::now().date_naive();
+    let mut summary = prices::empty_summary();
+    let total = wanted.len();
+    for (i, code) in wanted.into_iter().enumerate() {
+        let sym = crate::currency::rate_symbol(&code, &home);
+        let quote_in = home.clone();
+        let fetched = tauri::async_runtime::spawn_blocking(move || prices::quote_dated_in(&sym, today, &quote_in))
+            .await
+            .map_err(|e| format!("rate lookup did not run: {e}"))?;
+        let quote = match fetched {
+            Ok(q) => q,
+            Err(e) => {
+                let unreachable = e.is_source();
+                prices::fail(&mut summary, &code, e.message());
+                if unreachable {
+                    let rest = total - i - 1;
+                    if rest > 0 {
+                        prices::fail(&mut summary, "", format!("{rest} more not tried — the rate source could not be reached"));
+                    }
+                    break;
+                }
+                continue;
+            }
+        };
+        let micro = match queries::decimal_to_micro(quote.price) {
+            Ok(m) => m,
+            Err(e) => {
+                prices::fail(&mut summary, &code, e);
+                continue;
+            }
+        };
+        // The file may have been switched — or closed — while the fetch
+        // ran. Checked while holding the pool, so no switch can land between
+        // the check and the write; a closed file ends the run with what was
+        // already saved.
+        let Ok((_g, conn)) = with_conn(&state) else {
+            return Ok(summary);
+        };
+        if !crate::files::is_same(&db_path_of(&state)?, &started_on) {
+            return Ok(summary);
+        }
+        let on = quote.store_date(today).format("%Y-%m-%d").to_string();
+        match queries::set_rate_quoted(&conn, &code, &home, &on, micro, "fetched") {
+            Ok(true) => summary.updated += 1,
+            Ok(false) => prices::fail(&mut summary, &code, format!("kept the rate you typed for {}", crate::region::date(quote.store_date(today)))),
+            Err(e) => {
+                prices::fail(&mut summary, &code, e);
+                // A changed home currency makes every remaining quote wrong.
+                if queries::home_currency(&conn)? != home {
+                    return Ok(summary);
+                }
+            }
+        }
+    }
+    Ok(summary)
 }
 
 /// Deleting an account empties the undo stack.
@@ -2519,12 +2696,14 @@ pub async fn refresh_investment_prices(
     // Read the securities, then release the connection: the fetches take
     // seconds and must not hold a pooled connection while they run.
     let started_on = db_path_of(&state)?;
-    let securities: Vec<(String, String)> = {
+    // Prices are stored in the home currency, so only quotes in it are taken.
+    let (home, securities): (String, Vec<(String, String)>) = {
         let (_g, conn) = with_conn(&state)?;
-        queries::list_securities(&conn)?
+        let list = queries::list_securities(&conn)?
             .into_iter()
             .map(|s| (s.id, s.symbol))
-            .collect()
+            .collect();
+        (queries::home_currency(&conn)?, list)
     };
     let today = chrono::Local::now().date_naive();
     let still_open = |state: &State<'_, AppState>| -> Result<bool, String> {
@@ -2540,7 +2719,8 @@ pub async fn refresh_investment_prices(
         }
         // `ureq` is blocking; keep it off the async runtime's threads.
         let sym = symbol.clone();
-        let fetched = tauri::async_runtime::spawn_blocking(move || prices::quote_dated(&sym, today))
+        let quote_in = home.clone();
+        let fetched = tauri::async_runtime::spawn_blocking(move || prices::quote_dated_in(&sym, today, &quote_in))
             .await
             .map_err(|e| format!("price lookup did not run: {e}"))?;
 
@@ -2575,6 +2755,11 @@ pub async fn refresh_investment_prices(
             return Ok(summary);
         }
         let (_g, conn) = with_conn(&state)?;
+        // Prices were asked for in the home currency the run started with.
+        if queries::home_currency(&conn)? != home {
+            prices::fail(&mut summary, "", "the home currency changed while prices were being fetched; update them again");
+            return Ok(summary);
+        }
         let on = quote.store_date(today).format("%Y-%m-%d").to_string();
         match queries::set_security_price(&conn, &id, &on, price_micro, "fetched") {
             Ok(_) => summary.updated += 1,
@@ -2677,6 +2862,8 @@ pub fn create_sample_file(state: State<AppState>, path: String) -> Result<SeedSu
 /// "after" photograph names the new one. Undo recomputes every account
 /// either photograph names — this one, the old partner account and the new
 /// one — from their rows, so the money lands back where it was in all three.
+/// `other_amount_cents` is the amount on the other side, for a transfer
+/// between accounts kept in two currencies; None otherwise.
 #[tauri::command(rename_all = "camelCase")]
 pub fn update_transfer(
     state: State<AppState>,
@@ -2684,12 +2871,13 @@ pub fn update_transfer(
     date: String,
     other_account_id: String,
     amount_cents: i64,
+    other_amount_cents: Option<i64>,
     notes: Option<String>,
 ) -> Result<Transaction, String> {
     let (_g, conn) = with_conn(&state)?;
     let ids = undo::related_ids(&conn, &id)?;
     let (out, step) = undo::recording(&conn, "edit a transfer", &ids, || {
-        queries::update_transfer(&conn, &id, &date, &other_account_id, amount_cents, notes.as_deref())
+        queries::update_transfer_amounts(&conn, &id, &date, &other_account_id, amount_cents, other_amount_cents, notes.as_deref())
     })?;
     push_undo(&state, step)?;
     Ok(out)
@@ -2736,6 +2924,8 @@ pub fn list_splits(state: State<AppState>, transaction_id: String) -> Result<Vec
 
 /// Move money between accounts. Creates the two linked halves in one go;
 /// `amount_cents` is a magnitude, direction comes from the account arguments.
+/// `received_cents` is what arrives in the other account, in its currency,
+/// when the two are kept in different currencies; None otherwise.
 #[tauri::command(rename_all = "camelCase")]
 pub fn create_transfer(
     state: State<AppState>,
@@ -2743,17 +2933,14 @@ pub fn create_transfer(
     to_account_id: String,
     date: String,
     amount_cents: i64,
+    received_cents: Option<i64>,
     notes: Option<String>,
 ) -> Result<Transaction, String> {
     let (_g, conn) = with_conn(&state)?;
-    queries::create_transfer(
-        &conn,
-        &from_account_id,
-        &to_account_id,
-        &date,
-        amount_cents,
-        notes.as_deref(),
-    )
+    match received_cents {
+        Some(received) => queries::create_transfer_between(&conn, &from_account_id, &to_account_id, &date, amount_cents, received, notes.as_deref()),
+        None => queries::create_transfer(&conn, &from_account_id, &to_account_id, &date, amount_cents, notes.as_deref()),
+    }
 }
 
 /// The order the accounts are listed in, everywhere. `ids` is the

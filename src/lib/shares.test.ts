@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { allocateLots, cashEffect, formatPrice, formatShares, isLongTerm, mulDiv, parseMicro, priceFrom, valueCents } from "./shares";
+import { formatPriceInput } from "./shares";
+import { useFileFormat } from "./region";
 
 describe("shares and prices in millionths", () => {
   it("parses decimals exactly and refuses what it cannot keep", () => {
@@ -76,3 +78,32 @@ describe("valueCents rounding", () => {
   });
 });
 
+describe("in the file's region", () => {
+  it("writes and reads shares and prices the German way", () => {
+    useFileFormat.getState().setFormat({ home_currency: "EUR", region: "de-DE" });
+    expect(formatShares(12_345_000)).toBe("12,345");
+    expect(formatShares(100_000_000)).toBe("100");
+    expect(formatPrice(1_234_500_000)).toBe("1.234,50");
+    expect(formatPrice(34_567_800)).toBe("34,5678");
+    expect(formatPriceInput(1_234_500_000)).toBe("1234,50");
+    expect(parseMicro("12,345")).toBe(12_345_000);
+    expect(parseMicro("1.234,5")).toBe(1_234_500_000);
+    // A dot typed from habit is still a decimal point, unless it reads as
+    // a thousands mark.
+    expect(parseMicro("12.5")).toBe(12_500_000);
+    expect(parseMicro("1.234")).toBe(1_234_000_000);
+    expect(parseMicro("1,2345678")).toBeNull();
+  });
+
+  it("takes France's narrow-space thousands mark", () => {
+    useFileFormat.getState().setFormat({ home_currency: "EUR", region: "fr-FR" });
+    expect(formatPrice(1_234_500_000)).toBe("1\u202f234,50");
+    expect(parseMicro("1\u202f234,5")).toBe(1_234_500_000);
+    expect(parseMicro("1.5")).toBe(1_500_000);
+  });
+
+  it("leaves the US as it was", () => {
+    expect(formatPriceInput(1_234_500_000)).toBe("1234.50");
+    expect(parseMicro("1,234")).toBe(1_234_000_000);
+  });
+});

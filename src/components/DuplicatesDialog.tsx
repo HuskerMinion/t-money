@@ -15,11 +15,13 @@ import type { DuplicateGroup } from "../lib/types";
 interface Props {
   accountId: string;
   accountName: string;
+  /** The account's currency; omitted, the home currency. */
+  currency?: string;
   onDelete: (id: string) => Promise<void>;
   onClose: () => void;
 }
 
-export default function DuplicatesDialog({ accountId, accountName, onDelete, onClose }: Props) {
+export default function DuplicatesDialog({ accountId, accountName, currency, onDelete, onClose }: Props) {
   const [window, setWindow] = useState(0);
   const [groups, setGroups] = useState<DuplicateGroup[] | null>(null);
   const [busy, setBusy] = useState(false);
@@ -88,7 +90,7 @@ export default function DuplicatesDialog({ accountId, accountName, onDelete, onC
                 <thead>
                   <tr>
                     <th colSpan={7}>
-                      {g.payee} · <Money cents={g.amount_cents} />
+                      {g.payee} · <Money cents={g.amount_cents} currency={currency} />
                     </th>
                   </tr>
                   <tr>

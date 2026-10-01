@@ -6,6 +6,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@tauri-apps/api/core", () => import("../test/tauriMock"));
 
 import InvestmentsView from "./InvestmentsView";
+import { pctFromBps } from "./InvestmentsView";
+import { useFileFormat } from "../lib/region";
 import { invokeCalls, resetIpc, setIpcHandlers } from "../test/tauriMock";
 import type { Portfolio, Position, Security } from "../lib/types";
 
@@ -256,5 +258,13 @@ describe("Failures and slow answers on the Portfolio page", () => {
     await userEvent.click(within(form).getByRole("button", { name: "Add" }));
     expect(invokeCalls.filter((c) => c.cmd === "create_security")).toHaveLength(1);
     finish(fund);
+  });
+});
+
+describe("in the file's region", () => {
+  it("writes a return the German way", () => {
+    useFileFormat.getState().setFormat({ home_currency: "EUR", region: "de-DE" });
+    expect(pctFromBps(145)).toBe("1,5%");
+    expect(pctFromBps(-1234)).toBe("-12,3%");
   });
 });

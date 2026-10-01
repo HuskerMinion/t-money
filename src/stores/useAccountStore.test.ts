@@ -258,4 +258,12 @@ describe("editTransfer tells the undo menu", () => {
     await useAccountStore.getState().editTransfer("t-1", "2026-08-30", "acc-2", 500, null);
     await vi.waitFor(() => expect(invokeCalls.map((c) => c.cmd)).toContain("undo_status"));
   });
+
+  it("sends the other side's amount only when given one", async () => {
+    setIpcHandlers({ update_transfer: () => null, get_all_accounts: () => [checking] });
+    await useAccountStore.getState().editTransfer("t-1", "2026-08-30", "acc-2", 500, null);
+    await useAccountStore.getState().editTransfer("t-1", "2026-08-30", "acc-eu", -500, null, 460);
+    const sent = invokeCalls.filter((c) => c.cmd === "update_transfer").map((c) => c.args.otherAmountCents);
+    expect(sent).toEqual([null, 460]);
+  });
 });

@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { api } from "../lib/ipc";
 import { formatMoney } from "../lib/format";
 import { labelFor } from "../lib/accountTypes";
+import { currencyOf, homeCurrency } from "../lib/currency";
 import Notice from "./Notice";
 import type { Account, MergeSummary } from "../lib/types";
 
@@ -19,7 +20,10 @@ interface Props {
 }
 
 export default function MergeAccountsDialog({ from, accounts, onCancel, onMerged }: Props) {
-  const candidates = accounts.filter((a) => a.id !== from.id && !a.is_closed);
+  // Only an account in the same currency: amounts move as they are, and the
+  // backend refuses the rest.
+  const currency = currencyOf(from);
+  const candidates = accounts.filter((a) => a.id !== from.id && !a.is_closed && currencyOf(a) === currency);
   // Same type first, then same group name — the duplicate is usually a
   // second "Checking".
   const sorted = [...candidates].sort((a, b) => Number(b.type === from.type) - Number(a.type === from.type) || a.name.localeCompare(b.name));
@@ -69,14 +73,14 @@ export default function MergeAccountsDialog({ from, accounts, onCancel, onMerged
           Merge <strong>{from.name}</strong> into another account. Its transactions move there and <strong>{from.name}</strong> is deleted. Take a backup first if you are not sure.
         </p>
         {candidates.length === 0 ? (
-          <p>There is no other open account to merge into.</p>
+          <p>There is no other open account{currency === homeCurrency() ? "" : ` in ${currency}`} to merge into.</p>
         ) : (
           <label className="block">
             Keep
             <select className="aero-field w-full" aria-label="Merge into" value={intoId} onChange={(e) => setIntoId(e.target.value)}>
               {sorted.map((a) => (
                 <option key={a.id} value={a.id}>
-                  {a.name} — {labelFor(a.type)}, {formatMoney(a.balance_cents, { parens: true })}
+                  {a.name} — {labelFor(a.type)}, {formatMoney(a.balance_cents, { parens: true, currency })}
                 </option>
               ))}
             </select>
@@ -125,7 +129,7 @@ export default function MergeAccountsDialog({ from, accounts, onCancel, onMerged
               </div>
             )}
             <div className="pt-1">
-              {into.name} afterwards: <strong>{formatMoney(plan.balance_cents, { parens: true })}</strong>
+              {into.name} afterwards: <strong>{formatMoney(plan.balance_cents, { parens: true, currency })}</strong>
             </div>
           </div>
         )}

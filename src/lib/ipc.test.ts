@@ -49,6 +49,7 @@ describe("account commands", () => {
         accountType: "checking",
         openingBalanceCents: 150000,
         openedOn: null,
+        currency: null,
       },
     });
   });
@@ -222,6 +223,7 @@ describe("transfer commands", () => {
         date: "2026-09-01",
         otherAccountId: "acc-2",
         amountCents: -25000,
+        otherAmountCents: null,
         notes: null,
       },
     });
@@ -439,6 +441,7 @@ describe("module commands", () => {
         toAccountId: "acc-2",
         date: "2026-08-30",
         amountCents: 25000,
+        receivedCents: null,
         notes: null,
       },
     });
@@ -510,12 +513,39 @@ describe("coverage of the registered command set", () => {
   // convert_from_transfer, set_account_order — and set_splits
   // RETIRED when the lines started traveling in the create and
   // edit payloads and nothing called it any more. 159: get_performance. 164: the five attachment commands.
-  it("finds the 164 registered commands", () => {
-    expect(registered.length).toBe(164);
-    expect(new Set(registered).size).toBe(164);
+  // 170: account currencies and the five exchange-rate commands. 174: the
+  // home currency and region.
+  it("finds the 174 registered commands", () => {
+    expect(registered.length).toBe(174);
+    expect(new Set(registered).size).toBe(174);
   });
 
   it("ipc.ts wraps every registered command and nothing else", () => {
     expect(wrapped).toEqual(registered);
+  });
+});
+
+describe("currency commands", () => {
+  it("send their arguments camelCase, and a rate as text", async () => {
+    await api.createAccount("Euro", "checking", 0, "2026-01-01", "EUR");
+    expect(lastCall()).toMatchObject({ cmd: "create_account", args: { currency: "EUR" } });
+    await api.setAccountCurrency("a-1", "GBP");
+    expect(lastCall()).toEqual({ cmd: "set_account_currency", args: { id: "a-1", currency: "GBP" } });
+    await api.setExchangeRate("EUR", "2026-03-01", "1.0875");
+    expect(lastCall()).toEqual({ cmd: "set_exchange_rate", args: { currency: "EUR", date: "2026-03-01", rate: "1.0875" } });
+    await api.deleteExchangeRate("EUR", "2026-03-01");
+    expect(lastCall()).toEqual({ cmd: "delete_exchange_rate", args: { currency: "EUR", date: "2026-03-01" } });
+    await api.fetchExchangeRates(["EUR"]);
+    expect(lastCall()).toEqual({ cmd: "fetch_exchange_rates", args: { currencies: ["EUR"] } });
+    await api.createTransfer("a-1", "a-2", "2026-03-05", 12000, null, 10000);
+    expect(lastCall()).toMatchObject({ cmd: "create_transfer", args: { amountCents: 12000, receivedCents: 10000 } });
+    await api.updateTransfer("t-1", "2026-03-05", "a-2", -12000, null, 10000);
+    expect(lastCall()).toMatchObject({ cmd: "update_transfer", args: { amountCents: -12000, otherAmountCents: 10000 } });
+    await api.setHomeCurrency("EUR", true);
+    expect(lastCall()).toEqual({ cmd: "set_home_currency", args: { currency: "EUR", relabel: true } });
+    await api.setRegion("de-DE");
+    expect(lastCall()).toEqual({ cmd: "set_region", args: { region: "de-DE" } });
+    await api.getFileFormat();
+    expect(lastCall()).toEqual({ cmd: "get_file_format", args: {} });
   });
 });

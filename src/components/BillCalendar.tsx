@@ -3,9 +3,14 @@
 // is. Double-click a day to schedule something on that date; click an entry
 // to open its rule. The occurrences are the same ones the list shows, so
 // "Enter" in the list and a mark on the calendar never disagree.
+//
+// Each entry is in its account's currency. The month's in and out add
+// accounts together, so they are in the home currency at today's rate.
 import { useMemo } from "react";
 import { formatMoney } from "../lib/format";
-import type { Occurrence } from "../lib/types";
+import { currencyOf, homeCurrency, homeName, MICRO, rateOf, toHome } from "../lib/currency";
+import { useAccountStore } from "../stores/useAccountStore";
+import type { Account, Occurrence } from "../lib/types";
 import { describeStatus } from "../lib/bills";
 
 interface Props {
@@ -16,6 +21,8 @@ interface Props {
   onMonth: (month: string) => void;
   onDayDoubleClick: (date: string) => void;
   onPick: (o: Occurrence) => void;
+  /** For each entry's currency; absent, the app's loaded accounts. */
+  accounts?: readonly Account[];
 }
 
 const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -49,7 +56,7 @@ export function monthGrid(month: string): (string | null)[][] {
   return rows;
 }
 
-export default function BillCalendar({ month, occurrences, today, onMonth, onDayDoubleClick, onPick }: Props) {
+export default function BillCalendar({ month, occurrences, today, onMonth, onDayDoubleClick, onPick, accounts: given }: Props) {
   const rows = useMemo(() => monthGrid(month), [month]);
   const byDay = useMemo(() => {
     const map = new Map<string, Occurrence[]>();
@@ -62,8 +69,24 @@ export default function BillCalendar({ month, occurrences, today, onMonth, onDay
   }, [occurrences]);
   const [y, m] = month.split("-").map(Number);
   const title = new Date(y, m - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
-  const monthOut = occurrences.filter((o) => o.amount_cents < 0 && o.status !== "skipped").reduce((s, o) => s + (o.actual_amount_cents ?? o.amount_cents), 0);
-  const monthIn = occurrences.filter((o) => o.amount_cents > 0 && o.status !== "skipped").reduce((s, o) => s + (o.actual_amount_cents ?? o.amount_cents), 0);
+  const loaded = useAccountStore((s) => s.accounts);
+  const accounts = given ?? loaded;
+  const byId = useMemo(() => new Map(accounts.map((a) => [a.id, a])), [accounts]);
+  // An occurrence with no account, or one not loaded, reads as the home currency.
+  const kept = (o: Occurrence) => {
+    const a = o.account_id ? byId.get(o.account_id) : undefined;
+    return a ? { currency: currencyOf(a), rate: rateOf(a) } : { currency: homeCurrency(), rate: MICRO };
+  };
+  // A currency with no rate cannot be added in; it is named instead.
+  const counted = occurrences.filter((o) => o.status !== "skipped");
+  const unrated = [...new Set(counted.filter((o) => kept(o).rate === 0).map((o) => kept(o).currency))];
+  const inHome = (o: Occurrence) => {
+    const k = kept(o);
+    return k.rate === 0 ? 0 : toHome(o.actual_amount_cents ?? o.amount_cents, k.rate);
+  };
+  const monthOut = counted.filter((o) => o.amount_cents < 0).reduce((s, o) => s + inHome(o), 0);
+  const monthIn = counted.filter((o) => o.amount_cents > 0).reduce((s, o) => s + inHome(o), 0);
+  const anyForeign = counted.some((o) => kept(o).currency !== homeCurrency());
 
   return (
     <div className="tm-calendar" aria-label={`Bill calendar for ${title}`}>
@@ -106,16 +129,17 @@ export default function BillCalendar({ month, occurrences, today, onMonth, onDay
                     <div className="tm-cal-num">{Number(date.slice(8))}</div>
                     {items.map((o) => {
                       const s = describeStatus(o);
+                      const cur = kept(o).currency;
                       return (
                         <button
                           key={`${o.recurrence_id}:${o.due_date}`}
                           type="button"
                           className={`tm-cal-item ${s.tone}${o.amount_cents > 0 ? " tm-cal-in" : ""}`}
-                          title={`${o.payee} — ${formatMoney(o.actual_amount_cents ?? o.amount_cents)} · ${s.label}${o.account_name ? ` · ${o.account_name}${o.transfer_account_name ? ` → ${o.transfer_account_name}` : ""}` : ""}`}
+                          title={`${o.payee} — ${formatMoney(o.actual_amount_cents ?? o.amount_cents, { currency: cur })} · ${s.label}${o.account_name ? ` · ${o.account_name}${o.transfer_account_name ? ` → ${o.transfer_account_name}` : ""}` : ""}`}
                           onClick={() => onPick(o)}
                         >
                           <span className="tm-cal-payee">{o.payee}</span>
-                          <span className="tm-cal-amt">{formatMoney(Math.abs(o.actual_amount_cents ?? o.amount_cents))}</span>
+                          <span className="tm-cal-amt">{formatMoney(Math.abs(o.actual_amount_cents ?? o.amount_cents), { currency: cur })}</span>
                         </button>
                       );
                     })}
@@ -129,6 +153,7 @@ export default function BillCalendar({ month, occurrences, today, onMonth, onDay
       <div className="flex gap-4 pt-1 text-[11px] tm-text-muted">
         <span>Out this month: {formatMoney(-monthOut)}</span>
         <span>In: {formatMoney(monthIn)}</span>
+        {anyForeign && <span>({homeName()}, at today's rates{unrated.length > 0 ? `; leaves out ${unrated.join(", ")} — no rate` : ""})</span>}
         <span className="flex-1" />
         <span>Double-click a day to schedule a bill on it; click a bill to open its rule.</span>
       </div>

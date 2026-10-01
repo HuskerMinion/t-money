@@ -36,6 +36,8 @@ fn map_row(row: &Row) -> rusqlite::Result<Account> {
         website: row.get(14)?,
         address: row.get(15)?,
         account_notes: row.get(16)?,
+        currency: row.get(21)?,
+        home_rate_micro: 0,
     })
 }
 
@@ -44,7 +46,7 @@ pub fn get_favorite_accounts(conn: &Conn) -> Result<Vec<Account>, String> {
         .prepare("SELECT id, name, type, balance_cents, is_favorite, is_closed, updated_at,
                 institution, account_number, routing_number, opened_on,
                 credit_limit_cents, contact_phone, contact_email, website,
-                address, account_notes, tax_included, value_rounding, secured_by_account_id, sort_order
+                address, account_notes, tax_included, value_rounding, secured_by_account_id, sort_order, currency
                   FROM accounts WHERE is_favorite = 1 ORDER BY (sort_order IS NULL), sort_order, name")
         .map_err(|e| e.to_string())?;
     let out = stmt
@@ -60,7 +62,7 @@ pub fn get_all_accounts(conn: &Conn) -> Result<Vec<Account>, String> {
         .prepare("SELECT id, name, type, balance_cents, is_favorite, is_closed, updated_at,
                 institution, account_number, routing_number, opened_on,
                 credit_limit_cents, contact_phone, contact_email, website,
-                address, account_notes, tax_included, value_rounding, secured_by_account_id, sort_order
+                address, account_notes, tax_included, value_rounding, secured_by_account_id, sort_order, currency
                   FROM accounts ORDER BY (sort_order IS NULL), sort_order, name")
         .map_err(|e| e.to_string())?;
     let out = stmt
@@ -92,8 +94,20 @@ pub fn set_account_order(conn: &Conn, ids: &[String]) -> Result<usize, String> {
 }
 
 /// Stamp each investment account with the market value of what it holds
-/// today. Every other kind stays at zero; nothing is stored.
+/// today (every other kind stays at zero; nothing is stored), and every
+/// account with today's rate to the home currency.
 fn with_holdings(conn: &Connection, mut accounts: Vec<Account>) -> Result<Vec<Account>, String> {
+    let home = home_currency(conn)?;
+    if accounts.iter().all(|a| a.currency == home) {
+        for a in accounts.iter_mut() {
+            a.home_rate_micro = MICRO;
+        }
+    } else {
+        let rates = rates_today(conn)?;
+        for a in accounts.iter_mut() {
+            a.home_rate_micro = rates.get(&a.currency).copied().unwrap_or(0);
+        }
+    }
     if !accounts.iter().any(|a| matches!(a.r#type.as_str(), "investment" | "retirement")) {
         return Ok(accounts);
     }
@@ -114,6 +128,21 @@ pub fn create_account(
     // `None` is today. It is also stored as the account's `opened_on`.
     opened_on: Option<&str>,
 ) -> Result<Account, String> {
+    create_account_in(conn, name, account_type, opening_balance_cents, opened_on, &home_currency(conn)?)
+}
+
+/// `create_account` in a chosen currency. A currency other than dollars is
+/// refused for an investment account, and for one with no exchange rate yet:
+/// its money could not be converted for any total.
+pub fn create_account_in(
+    conn: &Connection,
+    name: &str,
+    account_type: &str,
+    opening_balance_cents: i64,
+    opened_on: Option<&str>,
+    currency: &str,
+) -> Result<Account, String> {
+    let currency = check_account_currency(conn, account_type, currency)?;
     let opened_on = match opened_on.map(str::trim).filter(|d| !d.is_empty()) {
         Some(d) => {
             parse_date(d)?;
@@ -125,9 +154,9 @@ pub fn create_account(
     let tx = conn.unchecked_transaction().map_err(|e| e.to_string())?;
     tx.execute(
         // Retirement accounts start out of the tax reports.
-        "INSERT INTO accounts (id, name, type, balance_cents, is_favorite, opened_on, tax_included)
-         VALUES (?1, ?2, ?3, 0, 0, ?4, ?5)",
-        params![id, name, account_type, opened_on, (account_type != "retirement") as i64],
+        "INSERT INTO accounts (id, name, type, balance_cents, is_favorite, opened_on, tax_included, currency)
+         VALUES (?1, ?2, ?3, 0, 0, ?4, ?5, ?6)",
+        params![id, name, account_type, opened_on, (account_type != "retirement") as i64, currency],
     )
     .map_err(|e| e.to_string())?;
     // The opening balance is a ROW, not a bare number on the account.
@@ -168,7 +197,7 @@ pub fn create_account(
         "SELECT id, name, type, balance_cents, is_favorite, is_closed, updated_at,
                 institution, account_number, routing_number, opened_on,
                 credit_limit_cents, contact_phone, contact_email, website,
-                address, account_notes, tax_included, value_rounding, secured_by_account_id, sort_order
+                address, account_notes, tax_included, value_rounding, secured_by_account_id, sort_order, currency
          FROM accounts WHERE id = ?1",
         params![id],
         map_row,
@@ -403,6 +432,13 @@ pub fn merge_accounts(
     }
     let into = get_account(conn, into_id)?;
     let from = get_account(conn, from_id)?;
+    // Moving rows between currencies would relabel every amount in them.
+    if into.currency != from.currency {
+        return Err(format!(
+            "{} is kept in {} and {} in {}. Accounts in different currencies cannot be merged.",
+            into.name, into.currency, from.name, from.currency
+        ));
+    }
     let tx = conn.unchecked_transaction().map_err(|e| e.to_string())?;
     let mut out = MergeSummary::default();
 
@@ -725,6 +761,18 @@ pub fn update_account(
     address: Option<&str>,
     account_notes: Option<&str>,
 ) -> Result<Account, String> {
+    let currency: Option<String> = conn
+        .query_row("SELECT currency FROM accounts WHERE id = ?1", params![id], |r| r.get(0))
+        .optional()
+        .map_err(|e| e.to_string())?;
+    let home = home_currency(conn)?;
+    if let Some(c) = currency.filter(|c| *c != home) {
+        if !crate::currency::type_allows_foreign(account_type) {
+            return Err(format!(
+                "This account is kept in {c}, and investment accounts are kept in the home currency ({home}). Change its currency to {home} first."
+            ));
+        }
+    }
     conn.execute(
         "UPDATE accounts SET
              name = ?2, type = ?3, is_closed = ?4,
@@ -752,6 +800,121 @@ pub fn update_account(
     )
     .map_err(|e| e.to_string())?;
     get_account(conn, id)
+}
+
+/// The currency an account of `account_type` may be kept in, checked: a
+/// supported code; the home currency for an investment account; and, for any
+/// other currency, one that already has an exchange rate.
+pub(crate) fn check_account_currency(conn: &Connection, account_type: &str, currency: &str) -> Result<&'static str, String> {
+    let code = crate::currency::validate(currency)?;
+    let home = home_currency(conn)?;
+    if code != home {
+        if !crate::currency::type_allows_foreign(account_type) {
+            return Err(format!("Investment accounts are kept in the home currency ({home})."));
+        }
+        if !has_rate(conn, code)? {
+            return Err(format!(
+                "There is no exchange rate for {code} yet. Enter one first, so this account's money can be counted in {home}."
+            ));
+        }
+    }
+    Ok(code)
+}
+
+/// The currencies of every account `id` is linked to — by a transfer, a
+/// split line that moves money, or a scheduled transfer — and whether any of
+/// its transfers moved different amounts on its two sides.
+fn currency_links(conn: &Connection, id: &str) -> Result<(Vec<String>, bool), String> {
+    let mut st = conn
+        .prepare(
+            "SELECT DISTINCT o.currency FROM (
+                 SELECT p.account_id AS other FROM transactions t JOIN transactions p ON p.id = t.transfer_id
+                  WHERE t.account_id = ?1
+                 UNION SELECT s.transfer_account_id FROM splits s JOIN transactions t ON t.id = s.transaction_id
+                  WHERE t.account_id = ?1 AND s.transfer_account_id IS NOT NULL
+                 UNION SELECT t.account_id FROM splits s JOIN transactions t ON t.id = s.transaction_id
+                  WHERE s.transfer_account_id = ?1
+                 UNION SELECT r.transfer_account_id FROM recurrences r
+                  WHERE r.account_id = ?1 AND r.transfer_account_id IS NOT NULL
+                 UNION SELECT r.account_id FROM recurrences r
+                  WHERE r.transfer_account_id = ?1 AND r.account_id IS NOT NULL
+             ) l JOIN accounts o ON o.id = l.other
+             ORDER BY o.currency",
+        )
+        .map_err(|e| e.to_string())?;
+    let currencies = st
+        .query_map(params![id], |r| r.get::<_, String>(0))
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+    let uneven: bool = conn
+        .query_row(
+            "SELECT EXISTS (SELECT 1 FROM transactions t JOIN transactions p ON p.id = t.transfer_id
+                             WHERE t.account_id = ?1 AND t.amount_cents <> -p.amount_cents)",
+            params![id],
+            |r| r.get(0),
+        )
+        .map_err(|e| e.to_string())?;
+    Ok((currencies, uneven))
+}
+
+/// Change the currency an account is kept in. Its amounts are NOT
+/// converted: this is for an account set up in the wrong currency, so the
+/// numbers already in it are taken to be in the new one.
+///
+/// Refused when it would leave a transfer meaning something else: while the
+/// account is linked to an account in another currency (a transfer, a split
+/// line or a scheduled transfer), or has a transfer that moved different
+/// amounts on its two sides.
+pub fn set_account_currency(conn: &Conn, id: &str, currency: &str) -> Result<Account, String> {
+    let (account_type, current): (String, String) = conn
+        .query_row("SELECT type, currency FROM accounts WHERE id = ?1", params![id], |r| Ok((r.get(0)?, r.get(1)?)))
+        .optional()
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| "That account is not in the file.".to_string())?;
+    let code = check_account_currency(conn, &account_type, currency)?;
+    if code == current {
+        return get_account(conn, id);
+    }
+    let (linked, uneven) = currency_links(conn, id)?;
+    if let Some(other) = linked.iter().find(|c| c.as_str() != code) {
+        return Err(format!(
+            "This account has transfers with an account kept in {other}, so its currency cannot change to {code}. The amounts on both sides would no longer match."
+        ));
+    }
+    if uneven {
+        return Err("This account has a transfer between two currencies, so its currency cannot change.".to_string());
+    }
+    conn.execute(
+        "UPDATE accounts SET currency = ?2, updated_at = datetime('now') WHERE id = ?1",
+        params![id, code],
+    )
+    .map_err(|e| e.to_string())?;
+    get_account(conn, id)
+}
+
+/// Refuse a link that has to move the same amount on both sides — a split
+/// line, a scheduled transfer, an investment's cash — between accounts kept
+/// in different currencies.
+pub(crate) fn require_same_currency(conn: &Connection, a: &str, b: &str, what: &str) -> Result<(), String> {
+    let rows: Vec<(String, String)> = {
+        let mut st = conn
+            .prepare("SELECT name, currency FROM accounts WHERE id IN (?1, ?2)")
+            .map_err(|e| e.to_string())?;
+        let v = st
+            .query_map(params![a, b], |r| Ok((r.get(0)?, r.get(1)?)))
+            .map_err(|e| e.to_string())?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| e.to_string())?;
+        v
+    };
+    if rows.len() == 2 && rows[0].1 != rows[1].1 {
+        return Err(format!(
+            "{} is kept in {} and {} in {}. {what} between two currencies is not supported; enter a transfer, which takes an amount for each side.",
+            rows[0].0, rows[0].1, rows[1].0, rows[1].1
+        ));
+    }
+    Ok(())
 }
 
 /// One account by id.
@@ -954,19 +1117,39 @@ pub fn set_account_security(conn: &Conn, liability_id: &str, asset_id: Option<&s
 pub fn debts_by_asset(conn: &Conn) -> Result<std::collections::HashMap<String, i64>, String> {
     let mut st = conn
         .prepare(
-            "SELECT secured_by_account_id, COALESCE(SUM(balance_cents), 0)
+            "SELECT secured_by_account_id, balance_cents, currency
                FROM accounts
-              WHERE secured_by_account_id IS NOT NULL
-              GROUP BY secured_by_account_id",
+              WHERE secured_by_account_id IS NOT NULL",
         )
         .map_err(|e| e.to_string())?;
     let rows = st
-        .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?)))
+        .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?, r.get::<_, String>(2)?)))
         .map_err(|e| e.to_string())?
         .collect::<Result<Vec<_>, _>>()
         .map_err(|e| e.to_string())?;
-    // A debt's balance is negative in its own register; owed is positive.
-    Ok(rows.into_iter().map(|(k, v)| (k, -v)).collect())
+    // In the home currency at today's rate: a house can carry debts in two
+    // currencies, and equity is set against the house's own worth in it.
+    let home = home_currency(conn)?;
+    let rates = if rows.iter().any(|r| r.2 != home) { rates_today(conn)? } else { Default::default() };
+    let mut out: std::collections::HashMap<String, i64> = std::collections::HashMap::new();
+    // An asset whose debt cannot be converted has no equity figure at all —
+    // left out, rather than shown without that debt. Other assets are not
+    // affected.
+    let mut unknown: std::collections::HashSet<String> = std::collections::HashSet::new();
+    for (asset, cents, currency) in rows {
+        let usd = if currency == home {
+            cents
+        } else if let Some(r) = rates.get(&currency) {
+            to_home(cents, *r)
+        } else {
+            unknown.insert(asset);
+            continue;
+        };
+        // A debt's balance is negative in its own register; owed is positive.
+        *out.entry(asset).or_insert(0) -= usd;
+    }
+    out.retain(|k, _| !unknown.contains(k));
+    Ok(out)
 }
 
 pub fn get_account(conn: &Conn, id: &str) -> Result<Account, String> {
@@ -974,7 +1157,7 @@ pub fn get_account(conn: &Conn, id: &str) -> Result<Account, String> {
         "SELECT id, name, type, balance_cents, is_favorite, is_closed, updated_at,
                 institution, account_number, routing_number, opened_on,
                 credit_limit_cents, contact_phone, contact_email, website,
-                address, account_notes, tax_included, value_rounding, secured_by_account_id, sort_order
+                address, account_notes, tax_included, value_rounding, secured_by_account_id, sort_order, currency
          FROM accounts WHERE id = ?1",
         params![id],
         map_row,

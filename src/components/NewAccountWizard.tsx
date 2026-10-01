@@ -3,8 +3,8 @@
 // Step 1 is a radio group of categories; step 2 is a list box filtered by that
 // choice, with a description pane on the right. Step 3 collects the name and
 // opening balance (Money asks for more — institution, account number — which
-// this app does not model yet).
-import { useState } from "react";
+// this app does not model yet), and the currency the account is kept in.
+import { useEffect, useState } from "react";
 import {
   ACCOUNT_CATEGORIES,
   isDebt,
@@ -12,16 +12,24 @@ import {
   type AccountCategory,
   type AccountTypeInfo,
 } from "../lib/accountTypes";
-import { parseMoneyToCents } from "../lib/format";
+import { formatAmountBare, formatDate, parseMoneyToCents } from "../lib/format";
+import { CURRENCY_NAMES, formatRate, homeCurrency, homeName, rateForBackend, symbolFor } from "../lib/currency";
+import { api } from "../lib/ipc";
 import Notice from "./Notice";
-import type { AccountType } from "../lib/types";
+import DateField from "./DateField";
+import type { AccountType, Currency, ExchangeRate } from "../lib/types";
+
+/** Types the backend keeps in the home currency: share prices are in it,
+ *  so holdings are too. */
+const HOME_ONLY: AccountType[] = ["investment", "retirement", "employee_stock_option", "watch"];
 
 interface Props {
   onCreate: (
     name: string,
     type: AccountType,
     openingBalanceCents: number,
-    openedOn: string
+    openedOn: string,
+    currency: string
   ) => Promise<void>;
   onCancel: () => void;
 }
@@ -40,13 +48,54 @@ export default function NewAccountWizard({ onCreate, onCancel }: Props) {
   const [name, setName] = useState("");
   const [opening, setOpening] = useState("");
   const [asOf, setAsOf] = useState(todayIso());
+  const home = homeCurrency();
+  const [currency, setCurrency] = useState(home);
+  // Typed "1 EUR = ____ <home>", for a currency with no rate yet.
+  const [rateText, setRateText] = useState("");
+  const [currencies, setCurrencies] = useState<Currency[]>([]);
+  const [rates, setRates] = useState<ExchangeRate[]>([]);
+  const [fetching, setFetching] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Without the list only the home currency is offered, which is still a working
+    // wizard; the refusal is said.
+    api.listCurrencies().then(setCurrencies, (e) => setError(String(e)));
+    api.listExchangeRates().then(setRates, () => {});
+  }, []);
 
   const choices = typesForCategory(category);
   const chosen = type && choices.some((c) => c.value === type.value) ? type : choices[0];
   // A mortgage, a loan or a card asks what you OWE, not what you have.
   const owed = !!chosen && isDebt(chosen.value);
+  const foreignAllowed = !!chosen && !HOME_ONLY.includes(chosen.value);
+  const code = foreignAllowed ? currency : home;
+  const foreign = code !== home;
+  // The newest rate on file for the chosen currency, if any.
+  const latest = rates
+    .filter((r) => r.currency === code)
+    .sort((a, b) => b.date.localeCompare(a.date))[0];
+  const needsRate = foreign && !latest;
+  const sym = foreign ? ` (${symbolFor(code)})` : "";
+
+  // Explicit only: nothing is fetched unless this is pressed.
+  async function fetchRate() {
+    setFetching(true);
+    setError(null);
+    try {
+      const s = await api.fetchExchangeRates([code]);
+      const got = await api.listExchangeRates();
+      setRates(got);
+      if (s.failures.length > 0 && !got.some((r) => r.currency === code)) {
+        setError(s.failures.map((f) => (f.symbol ? `${f.symbol}: ${f.reason}` : f.reason)).join(" · "));
+      }
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setFetching(false);
+    }
+  }
 
   async function finish() {
     if (!chosen) return;
@@ -72,13 +121,23 @@ export default function NewAccountWizard({ onCreate, onCancel }: Props) {
     // would take away from them.
     const cents = isDebt(chosen.value) ? -typed : typed;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(asOf)) {
-      setError("Enter the opening date as YYYY-MM-DD.");
+      setError(`Type an opening date the form can read, such as ${formatDate("2026-08-03")}.`);
+      return;
+    }
+    if (needsRate && !rateText.trim()) {
+      setError(`Enter what 1 ${code} is worth in ${homeName()}, or press Get today's rate.`);
       return;
     }
     setBusy(true);
     setError(null);
     try {
-      await onCreate(name.trim(), chosen.value, cents, asOf);
+      // The backend refuses an account in a currency with no rate, so the
+      // rate goes in first. The backend checks the number.
+      if (needsRate) {
+        await api.setExchangeRate(code, asOf, rateForBackend(rateText));
+        setRates(await api.listExchangeRates());
+      }
+      await onCreate(name.trim(), chosen.value, cents, asOf, code);
     } catch (e) {
       setError(String(e));
     } finally {
@@ -155,14 +214,64 @@ export default function NewAccountWizard({ onCreate, onCancel }: Props) {
                 autoFocus
               />
             </label>
+            {foreignAllowed && (
+              <label className="flex items-center gap-2">
+                <span style={{ width: 120 }}>Currency:</span>
+                <select
+                  className="aero-field"
+                  aria-label="Currency"
+                  value={code}
+                  onChange={(e) => {
+                    setCurrency(e.target.value);
+                    setRateText("");
+                  }}
+                >
+                  {(currencies.length ? currencies : [{ code: home, name: CURRENCY_NAMES[home] ?? home }]).map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.code} — {c.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {foreign && latest && (
+              <div className="tm-text-muted" style={{ paddingLeft: 128 }}>
+                1 {code} = {formatRate(latest.rate_micro)} {home} (rate of {formatDate(latest.date)}). Totals across
+                accounts are in {homeName()}. Rates are kept under Settings → Money → Currencies.
+              </div>
+            )}
+            {needsRate && (
+              <>
+                <div className="flex items-center gap-2">
+                  <span style={{ width: 120 }}>Exchange rate:</span>
+                  <span>1 {code} =</span>
+                  <input
+                    className="aero-field"
+                    style={{ width: 100 }}
+                    aria-label={`${home} per ${code}`}
+                    value={rateText}
+                    onChange={(e) => setRateText(e.target.value)}
+                    placeholder={formatRate(1_087_500)}
+                  />
+                  <span>{home}</span>
+                  <button className="aero-btn" type="button" onClick={() => void fetchRate()} disabled={fetching}>
+                    {fetching ? "Fetching…" : "Get today's rate"}
+                  </button>
+                </div>
+                <div className="tm-text-muted" style={{ paddingLeft: 128 }}>
+                  There is no rate for {code} yet. Totals across accounts are in {homeName()}, so one is
+                  needed. Get today's rate looks it up online; nothing else is sent.
+                </div>
+              </>
+            )}
             <label className="flex items-center gap-2">
-              <span style={{ width: 120 }}>{owed ? "Amount you owe:" : "Opening balance:"}</span>
+              <span style={{ width: 120 }}>{owed ? `Amount you owe${sym}:` : `Opening balance${sym}:`}</span>
               <input
                 className="aero-field flex-1"
                 aria-label={owed ? "Amount you owe" : "Opening balance"}
                 value={opening}
                 onChange={(e) => setOpening(e.target.value)}
-                placeholder="0.00"
+                placeholder={formatAmountBare(0)}
               />
             </label>
             {owed && (
@@ -173,13 +282,7 @@ export default function NewAccountWizard({ onCreate, onCancel }: Props) {
             )}
             <label className="flex items-center gap-2">
               <span style={{ width: 120 }}>As of:</span>
-              <input
-                className="aero-field"
-                type="date"
-                aria-label="Opening balance as of"
-                value={asOf}
-                onChange={(e) => setAsOf(e.target.value)}
-              />
+              <DateField label="Opening balance as of" value={asOf} onChange={setAsOf} width={130} />
             </label>
           </div>
         )}

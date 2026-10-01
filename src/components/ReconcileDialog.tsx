@@ -14,6 +14,7 @@ import { adjustmentForDifference } from "../lib/reconcile";
 import type { Category, Statement } from "../lib/types";
 import CategorySelect from "./CategorySelect";
 import Notice from "./Notice";
+import DateField from "./DateField";
 
 export type ReconcileStage = "resume" | "statement" | "clearing" | "unbalanced" | "balanced";
 
@@ -29,6 +30,8 @@ export interface StatementDraft {
 
 interface Props {
   accountName: string;
+  /** The ISO code of the account being balanced; omitted = the home currency. */
+  currency?: string | null;
   stage: ReconcileStage;
   categories: readonly Category[];
   /** Suggested defaults: last statement + 1 month, and its ending balance. */
@@ -131,6 +134,11 @@ function StatementStep({
   const [error, setError] = useState<string | null>(null);
 
   function next() {
+    // DateField sends "" for text it cannot read.
+    if (!date) {
+      setError(`Type a statement date the form can read, such as ${formatDateUS("2026-08-03")}.`);
+      return;
+    }
     const end = parseMoneyToCents(ending);
     if (end === null) {
       setError("Enter the ending balance from your statement.");
@@ -183,13 +191,7 @@ function StatementStep({
       </h2>
       {field(
         "Statement date:",
-        <input
-          className="aero-field"
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          style={{ width: 180 }}
-        />
+        <DateField label="Statement date" value={date} onChange={setDate} width={180} />
       )}
       {field(
         "Starting balance:",
@@ -279,7 +281,7 @@ function StatementStep({
   );
 }
 
-function Clearing({ differenceCents, onNextFromClearing, onPostpone }: Props) {
+function Clearing({ differenceCents, currency, onNextFromClearing, onPostpone }: Props) {
   const balanced = differenceCents === 0;
   return (
     <>
@@ -292,7 +294,7 @@ function Clearing({ differenceCents, onNextFromClearing, onPostpone }: Props) {
       </p>
       <p className="pb-1">The difference between your statement and register is:</p>
       <p className={`font-bold pb-2 ${balanced ? "money-pos" : "money-neg"}`} aria-live="polite">
-        {formatMoney(differenceCents)}
+        {formatMoney(differenceCents, { currency })}
       </p>
       <p className="pb-2" style={{ color: "var(--tm-ms-text-muted)" }}>
         When all transactions are cleared, the difference should be zero. If not, you can make
@@ -312,7 +314,7 @@ function Clearing({ differenceCents, onNextFromClearing, onPostpone }: Props) {
 
 /** The clearing stage as one strip: the difference, live, with Next and
  *  Postpone — the register below it is where the work happens. */
-function ClearingBar({ accountName, lastStatement, differenceCents, onNextFromClearing, onPostpone }: Props) {
+function ClearingBar({ accountName, currency, lastStatement, differenceCents, onNextFromClearing, onPostpone }: Props) {
   const balanced = differenceCents === 0;
   return (
     <>
@@ -321,13 +323,13 @@ function ClearingBar({ accountName, lastStatement, differenceCents, onNextFromCl
       </span>
       <span className="tm-text-muted">
         Click the <strong>C</strong> column (or press Ctrl+M) on each transaction that is on the statement
-        {lastStatement ? ` ending ${lastStatement.statement_date}` : ""}.
+        {lastStatement ? ` ending ${formatDateUS(lastStatement.statement_date)}` : ""}.
       </span>
       <span className="flex-1" />
       <span>
         Difference:{" "}
         <strong className={balanced ? "money-pos" : "money-neg"} aria-live="polite" aria-label="Difference">
-          {formatMoney(differenceCents)}
+          {formatMoney(differenceCents, { currency })}
         </strong>
       </span>
       <button className="aero-btn default !py-0" type="button" onClick={onNextFromClearing}>

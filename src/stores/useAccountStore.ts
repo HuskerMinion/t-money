@@ -38,7 +38,9 @@ interface AccountState {
     name: string,
     type: AccountType,
     openingBalanceCents: number,
-    openedOn?: string
+    openedOn?: string,
+    /** ISO code; omitted = the home currency. */
+    currency?: string
   ) => Promise<Account>;
   toggleFavorite: (accountId: string) => Promise<void>;
   /** Put the accounts in this order everywhere they are listed. */
@@ -53,7 +55,10 @@ interface AccountState {
     date: string,
     otherAccountId: string,
     amountCents: number,
-    notes: string | null
+    notes: string | null,
+    /** The other side's amount, in its currency, when the two accounts
+     *  are kept in different currencies; null otherwise. */
+    otherAmountCents?: number | null
   ) => Promise<void>;
   updateAccountDetails: (details: AccountDetails) => Promise<Account>;
   /** Bumped when something outside the register asks to start reconciling
@@ -181,8 +186,8 @@ export const useAccountStore = create<AccountState>((set, get) => ({
     await get().loadRegister(id);
   },
 
-  addAccount: async (name, type, openingBalanceCents, openedOn) => {
-    const account = await api.createAccount(name, type, openingBalanceCents, openedOn);
+  addAccount: async (name, type, openingBalanceCents, openedOn, currency) => {
+    const account = await api.createAccount(name, type, openingBalanceCents, openedOn, currency);
     set((s) => ({ accounts: [...s.accounts, account] }));
     return account;
   },
@@ -271,8 +276,8 @@ export const useAccountStore = create<AccountState>((set, get) => ({
     return created;
   },
 
-  editTransfer: async (id, date, otherAccountId, amountCents, notes) => {
-    await api.updateTransfer(id, date, otherAccountId, amountCents, notes);
+  editTransfer: async (id, date, otherAccountId, amountCents, notes, otherAmountCents = null) => {
+    await api.updateTransfer(id, date, otherAccountId, amountCents, notes, otherAmountCents);
     // The backend records "edit a transfer" like every other edit;
     // without this the Edit menu kept naming the step before it.
     noteChanged();

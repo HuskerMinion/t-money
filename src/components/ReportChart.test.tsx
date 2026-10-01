@@ -5,6 +5,8 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import ReportChart, { baseKind, CHART_STYLES, niceStep, shortMoney } from "./ReportChart";
+import { pctLabel } from "./ReportChart";
+import { useFileFormat } from "../lib/region";
 import type { ReportChart as ChartData } from "../lib/types";
 
 const one: ChartData = { kind: "bar", series: [{ label: "Total", points: [["Groceries", 16_000], ["Automobile", 7_000], ["Refund", -2_000]] }] };
@@ -137,5 +139,24 @@ describe("shortMoney", () => {
     expect(shortMoney(1_500_000)).toBe("15k");
     expect(shortMoney(150_000_000)).toBe("1.5M");
     expect(shortMoney(50_00)).toBe("50");
+  });
+});
+
+describe("in the file's region", () => {
+  it("writes axis ticks, shares and tooltips the German way", () => {
+    useFileFormat.getState().setFormat({ home_currency: "EUR", region: "de-DE" });
+    expect(shortMoney(150_000)).toBe("1,5k");
+    expect(shortMoney(250_000_000)).toBe("2,5M");
+    expect(shortMoney(2_000_000)).toBe("20k");
+    expect(pctLabel(0.125)).toBe("12,5%");
+    const { container } = render(<ReportChart chart={one} style="bar" />);
+    const ticks = Array.from(container.querySelectorAll("text")).map((t) => t.textContent);
+    expect(ticks).toContain("150");
+    expect(container.querySelector("title")?.textContent).toContain("160,00\u00a0€");
+  });
+
+  it("leaves the US as it was", () => {
+    expect(shortMoney(150_000)).toBe("1.5k");
+    expect(pctLabel(0.125)).toBe("12.5%");
   });
 });

@@ -7,6 +7,8 @@ vi.mock("@tauri-apps/api/core", () => import("../test/tauriMock"));
 
 import ReportViewer, { centsOrNull, drillFor, filtersOf, formatCell, hasLineFilters, savedFromSpec, specFromSaved, toCsv, type ReportSpec } from "./ReportViewer";
 import { niceStep } from "./ReportChart";
+import { centsText } from "./ReportViewer";
+import { useFileFormat } from "../lib/region";
 import { invokeCalls, resetIpc, setIpcHandlers } from "../test/tauriMock";
 import { useAccountStore } from "../stores/useAccountStore";
 import type { Report, SavedReport } from "../lib/types";
@@ -381,11 +383,14 @@ describe("the page", () => {
     const { onSpec } = setup();
     await screen.findByRole("heading", { name: "Spending by category" });
     const from = screen.getByLabelText("From");
-    // What a date box emits while the year is still being typed.
+    // 7/1/20 is a date (2020) on the way to 7/1/2026; nothing runs until
+    // the field is left.
     await userEvent.clear(from);
+    await userEvent.type(from, "7/1/2026");
     expect(onSpec).not.toHaveBeenCalled();
-    await userEvent.type(from, "2026-07-01");
-    await waitFor(() => expect(onSpec).toHaveBeenCalledWith(expect.objectContaining({ range: { from: "2026-07-01", to: "2026-08-31" } })));
+    await userEvent.tab();
+    expect(onSpec).toHaveBeenCalledTimes(1);
+    expect(onSpec).toHaveBeenCalledWith(expect.objectContaining({ range: { from: "2026-07-01", to: "2026-08-31" } }));
   });
 
   it("shows a refusal instead of a blank page", async () => {
@@ -507,5 +512,18 @@ describe("Customize, Save and Remove", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("the file is read-only");
     expect(onBack).not.toHaveBeenCalled();
     vi.restoreAllMocks();
+  });
+});
+
+describe("in the file's region", () => {
+  it("writes report cells and reads the amount filter the German way", () => {
+    useFileFormat.getState().setFormat({ home_currency: "EUR", region: "de-DE" });
+    expect(formatCell("money", 123456, null)).toBe("1.234,56");
+    expect(formatCell("money", -123456, null)).toBe("(1.234,56)");
+    expect(formatCell("percent", 4571, null)).toBe("45,7%");
+    expect(centsOrNull("12,50")).toBe(1250);
+    expect(centsOrNull("1.234,56 €")).toBe(123456);
+    expect(centsOrNull("-40")).toBe(4000);
+    expect(centsText(1250)).toBe("12,50");
   });
 });

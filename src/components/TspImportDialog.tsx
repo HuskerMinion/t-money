@@ -22,9 +22,17 @@ import { useEffect, useRef, useState } from "react";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import Money from "./Money";
 import Notice from "./Notice";
+import DateField from "./DateField";
 import { api } from "../lib/ipc";
 import { formatAmountBare, formatDateUS, parseMoneyToCents } from "../lib/format";
 import type { Account, ImportSummary, TspPaymentSplit, TspPlan } from "../lib/types";
+import { currentRegion, groupDigits } from "../lib/region";
+
+/** A decimal the backend wrote ("123.456789") with the region's decimal
+ *  mark. */
+function dec(s: string): string {
+  return s.replace(".", currentRegion().decimal);
+}
 
 /** The withholding category. NOT `Taxes:Federal Income Tax` — that one carries
  *  the W-2 tax line, and this withholding comes on a 1099-R, which is a
@@ -159,7 +167,8 @@ export default function TspImportDialog({ accounts, initialPath = null, onClose,
     (!needsCash || !!cashAccountId) &&
     plan.payments.every((p) => {
       const kept = keptBack(p.date, p.gross_cents);
-      return kept !== null && kept >= 0 && (kept === 0 || !!answers[p.date]?.category.trim());
+      // A posted date DateField could not read is "".
+      return kept !== null && kept >= 0 && !!answers[p.date]?.on && (kept === 0 || !!answers[p.date]?.category.trim());
     });
 
   async function run() {
@@ -223,7 +232,7 @@ export default function TspImportDialog({ accounts, initialPath = null, onClose,
                 <div className="aero-card-title">What the file contains</div>
                 <div className="p-3 text-[12px] space-y-1">
                   <div>
-                    {plan.rows.toLocaleString()} rows → <strong>{plan.transactions.toLocaleString()}</strong>{" "}
+                    {groupDigits(plan.rows)} rows → <strong>{groupDigits(plan.transactions)}</strong>{" "}
                     transactions, in {plan.funds.join(", ")}.
                     <span className="block" style={{ color: "var(--tm-ms-text-muted)" }}>
                       The plan splits every transaction across its money sources — Traditional, Match,
@@ -236,12 +245,12 @@ export default function TspImportDialog({ accounts, initialPath = null, onClose,
                       <ul className="pl-4">
                         {plan.opening.map((o) => (
                           <li key={o.fund}>
-                            {o.fund}: {o.units} units @ {o.nav} ={" "}
+                            {o.fund}: {dec(o.units)} units @ {dec(o.nav)} ={" "}
                             <Money cents={o.value_cents} tone="neutral" />
                             {o.rounding_sliver && (
                               <span style={{ color: "var(--tm-ms-text-muted)" }}>
                                 {" "}
-                                (+{o.rounding_sliver} to cover the plan's own rounding)
+                                (+{dec(o.rounding_sliver)} to cover the plan's own rounding)
                               </span>
                             )}
                             {/* What is already there is not written again. */}
@@ -249,7 +258,7 @@ export default function TspImportDialog({ accounts, initialPath = null, onClose,
                               <span className="block" style={{ color: "var(--tm-ms-text-muted)" }}>
                                 {o.to_add === "0.000000"
                                   ? "Already in the register on that date — nothing is added."
-                                  : `${o.already_held} already in the register; ${o.to_add} will be added.`}
+                                  : `${dec(o.already_held)} already in the register; ${dec(o.to_add)} will be added.`}
                               </span>
                             )}
                           </li>
@@ -368,13 +377,11 @@ export default function TspImportDialog({ accounts, initialPath = null, onClose,
                                 />
                               </td>
                               <td>
-                                <input
-                                  className="aero-field"
-                                  style={{ width: 116 }}
-                                  type="date"
-                                  aria-label={`Posted for ${p.date}`}
+                                <DateField
+                                  label={`Posted for ${p.date}`}
                                   value={a?.on ?? ""}
-                                  onChange={(e) => set(p.date, { on: e.target.value })}
+                                  onChange={(v) => set(p.date, { on: v })}
+                                  width={116}
                                 />
                               </td>
                               <td

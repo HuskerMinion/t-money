@@ -10,6 +10,7 @@ import RecordPaymentDialog from "./RecordPaymentDialog";
 import { invokeCalls, resetIpc, setIpcHandlers } from "../test/tauriMock";
 import { useAccountStore } from "../stores/useAccountStore";
 import type { Account, LoanTerms } from "../lib/types";
+import { useFileFormat } from "../lib/region";
 
 function acct(id: string, name: string, type: string, balance: number): Account {
   return {
@@ -241,5 +242,37 @@ describe("Record payment", () => {
     await waitFor(() => expect(onDone).toHaveBeenCalled());
     const cmds = invokeCalls.map((c) => c.cmd);
     expect(cmds.indexOf("undo_status")).toBeGreaterThan(cmds.indexOf("record_loan_payment"));
+  });
+});
+
+describe("Record payment in another currency", () => {
+  it("writes the totals in the loan's currency", async () => {
+    render(<RecordPaymentDialog account={{ ...mortgage, currency: "CAD" }} onDone={vi.fn()} onCancel={vi.fn()} />);
+    const dlg = screen.getByRole("dialog", { name: "Record payment" });
+    await waitFor(() => expect(within(dlg).getByText(/^Total payment/)).toBeInTheDocument());
+    expect(within(dlg).getByText("CA$1,539.00")).toBeInTheDocument();
+    expect(within(dlg).getByText("CA$150,000.00")).toBeInTheDocument();
+  });
+});
+
+describe("Record payment in a German file", () => {
+  it("proposes 944,27 and takes 1.234,56 typed over it", async () => {
+    useFileFormat.getState().setFormat({ home_currency: "EUR", region: "de-DE" });
+    render(<RecordPaymentDialog account={mortgage} onDone={vi.fn()} onCancel={vi.fn()} />);
+    const dlg = screen.getByRole("dialog", { name: "Record payment" });
+    await waitFor(() => expect(within(dlg).getByLabelText("Interest")).toHaveValue("944,27"));
+    expect(within(dlg).getByLabelText("Extra principal")).toHaveValue("0,00");
+
+    await userEvent.clear(within(dlg).getByLabelText("Escrow"));
+    await userEvent.type(within(dlg).getByLabelText("Escrow"), "1.234,56");
+    // 944,27 + 179,73 + 1.234,56.
+    expect(within(dlg).getByText("2.358,56 €")).toBeInTheDocument();
+    expect(within(dlg).getByText("149.820,27 €")).toBeInTheDocument();
+
+    await userEvent.click(within(dlg).getByRole("button", { name: "Record" }));
+    await waitFor(() => expect(invokeCalls.some((c) => c.cmd === "record_loan_payment")).toBe(true));
+    const call = invokeCalls.find((c) => c.cmd === "record_loan_payment")!;
+    expect(call.args.escrowCents).toBe(123_456);
+    expect(call.args.interestCents).toBe(94_427);
   });
 });

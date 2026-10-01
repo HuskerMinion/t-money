@@ -1,14 +1,32 @@
 // Shares and prices in millionths. The backend stores `shares_micro`
-// (shares x 1,000,000) and `price_micro` (dollars x 1,000,000) as i64; this
+// (shares x 1,000,000) and `price_micro` (currency units x 1,000,000) as i64; this
 // is the frontend's exact arithmetic on them — BigInt, never a float, so a
 // 401(k)'s 12.3456 shares at 34.5678 comes out to the cent the backend gets.
+//
+// Written and read with the file's region: "12,3456" shares at "1.234,50"
+// in Germany. Only the marks change; the arithmetic is the same.
+
+import { currentRegion, groupDigits } from "./region";
+import { normalizeNumber } from "./format";
 
 export const MICRO = 1_000_000;
 
+/** Typed text as a plain "1234.5": group marks gone, the decimal mark a dot.
+ *  In a comma region a lone dot is still a decimal point, unless the dot
+ *  is the region's group mark and exactly three digits follow it ("12.5" is twelve and a half, "1.234" is a
+ *  thousand and more), the way people type on either keyboard. */
+function normalizeTyped(input: string): string | null {
+  // The same reader as every money field: the region's marks, the other
+  // mark forgiven only where it can just be a decimal point.
+  return normalizeNumber(input, currentRegion(), 6);
+}
+
 /** "12.3456" → 12345600. Up to six decimals; more are refused (null), as is
- *  anything that is not a plain decimal number. */
+ *  anything that is not a plain decimal number. Read in the file's region:
+ *  "12,3456" in Germany. */
 export function parseMicro(input: string): number | null {
-  const s = input.trim().replace(/,/g, "");
+  const s = normalizeTyped(input);
+  if (s === null) return null;
   const m = /^(-)?(\d*)(?:\.(\d*))?$/.exec(s);
   if (!m || (m[2] === "" && (m[3] ?? "") === "")) return null;
   const frac = m[3] ?? "";
@@ -20,13 +38,14 @@ export function parseMicro(input: string): number | null {
   return Number.isSafeInteger(n) ? n : null;
 }
 
-/** 12345600 → "12.3456"; whole numbers print without a point. */
+/** 12345600 → "12.3456" ("12,3456" in a comma region); whole numbers print
+ *  without a point. */
 export function formatShares(micro: number): string {
   const neg = micro < 0;
   const a = Math.abs(micro);
   const whole = Math.floor(a / MICRO);
   const frac = a % MICRO;
-  let s = frac === 0 ? `${whole}` : `${whole}.${String(frac).padStart(6, "0").replace(/0+$/, "")}`;
+  let s = frac === 0 ? `${whole}` : `${whole}${currentRegion().decimal}${String(frac).padStart(6, "0").replace(/0+$/, "")}`;
   if (neg) s = `-${s}`;
   return s;
 }
@@ -34,15 +53,22 @@ export function formatShares(micro: number): string {
 /** A price to two places, or as many as it has up to six (a fund NAV at
  *  34.5678, a money-market unit at 1.000123) — every stored digit is
  *  shown, so an edit round-trips exactly. */
-export function formatPrice(micro: number | null | undefined): string {
+export function formatPrice(micro: number | null | undefined, grouped = true): string {
   if (micro === null || micro === undefined) return "";
+  const r = currentRegion();
   const neg = micro < 0;
   const a = Math.abs(micro);
   const whole = Math.floor(a / MICRO);
   let frac = String(a % MICRO).padStart(6, "0").replace(/0+$/, "");
   if (frac.length < 2) frac = frac.padEnd(2, "0");
-  const s = `${whole.toLocaleString("en-US")}.${frac}`;
+  const s = `${grouped ? groupDigits(whole, r) : whole}${r.decimal}${frac}`;
   return neg ? `-${s}` : s;
+}
+
+/** `formatPrice` without thousands marks, to put in a box: "1234.50",
+ *  "1234,50". */
+export function formatPriceInput(micro: number | null | undefined): string {
+  return formatPrice(micro, false);
 }
 
 /** a * b / c, rounded half away from zero — the backend's `mul_div`. */
@@ -71,7 +97,7 @@ export function valueCents(sharesMicro: number, priceMicro: number, rounding: "n
 /** The per-file setting key behind `valueCents`'s rounding (Settings → Holding values). */
 export const HOLDING_ROUNDING_KEY = "holding_rounding";
 
-/** cents / shares → price in micro-dollars; null when there are no shares. */
+/** cents / shares → price in micro-units of the currency; null when there are no shares. */
 export function priceFrom(grossCents: number, sharesMicro: number): number | null {
   if (sharesMicro <= 0) return null;
   return mulDiv(grossCents, 10_000_000_000, sharesMicro);

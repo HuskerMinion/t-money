@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { amortize, formatAprBp, monthAfter, monthInterest, parseAprBp, paymentFor, plan } from "./debt";
+import { useFileFormat } from "./region";
+import { amortize, formatAprBp, inHome, monthAfter, monthInterest, parseAprBp, paymentFor, plan } from "./debt";
 
 describe("the debt planner's arithmetic", () => {
   it("computes a month's interest in whole cents, half away from zero", () => {
@@ -83,5 +84,33 @@ describe("the debt planner's arithmetic", () => {
     expect(formatAprBp(2199)).toBe("21.99%");
     expect(formatAprBp(700)).toBe("7%");
     expect(monthAfter("2026-09-06", 11)).toBe("Aug 2027");
+  });
+
+  it("reads and writes rates with a comma where the region writes one", () => {
+    useFileFormat.getState().setFormat({ home_currency: "EUR", region: "de-DE" });
+    expect(parseAprBp("6,5")).toBe(650);
+    expect(parseAprBp("21,99 %")).toBe(2199);
+    // Typed with a dot anyway, it still means six and a half.
+    expect(parseAprBp("6.5")).toBe(650);
+    expect(parseAprBp("6,555")).toBeNull();
+    expect(formatAprBp(650)).toBe("6,5%");
+    expect(formatAprBp(700)).toBe("7%");
+  });
+});
+
+describe("debts in other currencies", () => {
+  it("brings each balance and minimum to the home currency, and leaves out one with no rate", () => {
+    const { debts, leftOut } = inHome([
+      { id: "usd", name: "Card", balance_cents: 50_000, apr_bp: 2000, min_payment_cents: 2_500, currency: "USD", rate_micro: 1_000_000 },
+      { id: "cad", name: "Loan", balance_cents: 100_000, apr_bp: 600, min_payment_cents: 10_000, currency: "CAD", rate_micro: 730_000 },
+      { id: "gbp", name: "Overdraft", balance_cents: 20_000, apr_bp: 1500, min_payment_cents: 1_000, currency: "GBP", rate_micro: 0 },
+    ]);
+    expect(debts).toEqual([
+      { id: "usd", name: "Card", balance_cents: 50_000, apr_bp: 2000, min_payment_cents: 2_500 },
+      { id: "cad", name: "Loan", balance_cents: 73_000, apr_bp: 600, min_payment_cents: 7_300 },
+    ]);
+    expect(leftOut.map((d) => d.id)).toEqual(["gbp"]);
+    // The plan adds what it was given: $500 + $730 owed, $25 + $73 minimums.
+    expect(plan(debts, 20_000, "highest_rate").minimums_cents).toBe(9_800);
   });
 });

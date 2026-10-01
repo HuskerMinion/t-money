@@ -18,13 +18,14 @@
 // does and what a receipt means.
 //
 // MONEY IS INTEGER CENTS at the boundary — `parseMoneyToCents` in,
-// `(cents/100).toFixed(2)` out. Inside, the arithmetic is done on a JS number,
+// `bare(cents)` out, both in the file's region ("12,50" in Germany). Inside, the arithmetic is done on a JS number,
 // because division does not stay in cents (a third of $10 is not a whole
 // number of cents) and pretending otherwise would round twice. The tape shows
 // exactly what each step produced, so nothing is hidden.
 import { useEffect, useRef, useState } from "react";
 import Notice from "./Notice";
 import { formatMoney, parseMoneyToCents } from "../lib/format";
+import { currentRegion } from "../lib/region";
 
 interface Props {
   onClose: () => void;
@@ -48,6 +49,14 @@ const KEYS: string[][] = [
   ["1", "2", "3", "−"],
   ["0", ".", "%", "+"],
 ];
+
+/** Cents as digits for a box or the clipboard: no symbol, no thousands
+ *  marks, the region's decimal mark ("-1234.50", "-1234,50"). */
+function bare(cents: number): string {
+  const a = Math.abs(cents);
+  const s = `${Math.floor(a / 100)}${currentRegion().decimal}${String(a % 100).padStart(2, "0")}`;
+  return cents < 0 ? `-${s}` : s;
+}
 
 /** Apply one step. Cents in, cents out; the intermediate is a number because
  *  division has to be. Division by zero never reaches here — `commit` refuses
@@ -140,7 +149,7 @@ export default function CalculatorDialog({ onClose }: Props) {
     const cents = parseMoneyToCents(draft.trim());
     if (cents === null || !started) return;
     const part = Math.round((total * cents) / 10_000);
-    setDraft((part / 100).toFixed(2));
+    setDraft(bare(part));
     inputRef.current?.focus();
   }
 
@@ -158,7 +167,9 @@ export default function CalculatorDialog({ onClose }: Props) {
   function key(k: string) {
     if (k === "%") return percent();
     if (k === "+" || k === "−" || k === "×" || k === "÷") return operator(k);
-    setDraft((d) => (k === "." && d.includes(".") ? d : d + k));
+    // The point key types the region's decimal mark.
+    const c = k === "." ? currentRegion().decimal : k;
+    setDraft((d) => (k === "." && d.includes(c) ? d : d + c));
     inputRef.current?.focus();
   }
 
@@ -229,7 +240,7 @@ export default function CalculatorDialog({ onClose }: Props) {
                 else onClose();
               }
             }}
-            placeholder="0.00"
+            placeholder={`0${currentRegion().decimal}00`}
           />
         </form>
 
@@ -242,7 +253,7 @@ export default function CalculatorDialog({ onClose }: Props) {
                 className={`aero-btn tm-calc-key${/[+−×÷%]/.test(k) ? " op" : ""}`}
                 onClick={() => key(k)}
               >
-                {k}
+                {k === "." ? currentRegion().decimal : k}
               </button>
             ))
           )}
@@ -272,7 +283,7 @@ export default function CalculatorDialog({ onClose }: Props) {
               // field, and a formatted string would have to be un-formatted
               // by whatever receives it.
               void navigator.clipboard
-                ?.writeText((total / 100).toFixed(2))
+                ?.writeText(bare(total))
                 .then(() => setCopied(true))
                 .catch(() => setCopied(false));
             }}

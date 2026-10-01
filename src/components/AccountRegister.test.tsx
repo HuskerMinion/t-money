@@ -20,6 +20,7 @@ import AccountRegister, {
 import RegisterGrid from "./RegisterGrid";
 import { runCommand } from "../lib/commands";
 import { useAccountStore } from "../stores/useAccountStore";
+import { useFileFormat } from "../lib/region";
 import { invokeCalls, resetIpc, setIpcHandlers } from "../test/tauriMock";
 import type { Account, Category, NewSplit, RegisterRow } from "../lib/types";
 
@@ -350,6 +351,15 @@ describe("<AccountRegister />", () => {
     render(<AccountRegister />);
     await screen.findByRole("table");
     expect(screen.getByText("Ending Balance: $1,457.50")).toBeInTheDocument();
+  });
+
+  it("shows a euro account's Ending Balance in euros", async () => {
+    setIpcHandlers({ get_register: () => rows, list_categories: () => [] });
+    const euros: Account = { ...checking, currency: "EUR", home_rate_micro: 1_080_000 };
+    useAccountStore.setState({ accounts: [euros], selectedAccountId: "acc-1" });
+    render(<AccountRegister />);
+    await screen.findByRole("table");
+    expect(screen.getByText("Ending Balance: €1,457.50")).toBeInTheDocument();
   });
 
   it("shows no per-column totals — Money's footer has none", async () => {
@@ -1938,6 +1948,71 @@ describe("transfers", () => {
     });
   });
 
+  it("a transfer in one currency sends no second amount", async () => {
+    render(<AccountRegister />);
+    await screen.findByRole("table");
+    await userEvent.click(screen.getByRole("button", { name: "New" }));
+    await pickCategory("Transfer : Everyday Savings 5678");
+    expect(screen.queryByLabelText(/^Amount in/)).not.toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText("Payment"), "250.00");
+    await userEvent.click(screen.getByRole("button", { name: "Enter" }));
+    const call = await waitFor(() => invokeCalls.find((c) => c.cmd === "create_transfer")!);
+    expect(call.args).toMatchObject({ amountCents: 25000, receivedCents: null });
+  });
+
+  it("a transfer to an account in euros asks for the euro amount and sends it", async () => {
+    const euros: Account = { ...checking, id: "acc-eu", name: "Paris Checking", currency: "EUR", home_rate_micro: 1_080_000 };
+    useAccountStore.setState({ accounts: [checking, savings, euros], selectedAccountId: "acc-1" });
+    render(<AccountRegister />);
+    await screen.findByRole("table");
+    await userEvent.click(screen.getByRole("button", { name: "New" }));
+    await pickCategory("Transfer : Paris Checking");
+    await userEvent.type(screen.getByLabelText("Payment"), "108.00");
+    // Without the euro side the form refuses, and sends nothing.
+    await userEvent.click(screen.getByRole("button", { name: "Enter" }));
+    expect(await screen.findByText(/Enter the amount in EUR as well/)).toBeInTheDocument();
+    expect(invokeCalls.some((c) => c.cmd === "create_transfer")).toBe(false);
+    await userEvent.type(screen.getByLabelText("Amount in EUR:"), "100.00");
+    await userEvent.click(screen.getByRole("button", { name: "Enter" }));
+    const call = await waitFor(() => invokeCalls.find((c) => c.cmd === "create_transfer")!);
+    expect(call.args).toMatchObject({ toAccountId: "acc-eu", amountCents: 10800, receivedCents: 10000 });
+  });
+
+  it("a transfer typed as a deposit comes from the other account", async () => {
+    render(<AccountRegister />);
+    await screen.findByRole("table");
+    await userEvent.click(screen.getByRole("button", { name: "New" }));
+    await pickCategory("Transfer : Everyday Savings 5678");
+    await userEvent.type(screen.getByLabelText("Deposit"), "250.00");
+    await userEvent.click(screen.getByRole("button", { name: "Enter" }));
+    const call = await waitFor(() => invokeCalls.find((c) => c.cmd === "create_transfer")!);
+    expect(call.args).toMatchObject({
+      fromAccountId: "acc-2",
+      toAccountId: "acc-1",
+      amountCents: 25000,
+      receivedCents: null,
+    });
+  });
+
+  it("a deposit from an account in euros sends the euros and receives the dollars", async () => {
+    const euros: Account = { ...checking, id: "acc-eu", name: "Paris Checking", currency: "EUR", home_rate_micro: 1_080_000 };
+    useAccountStore.setState({ accounts: [checking, savings, euros], selectedAccountId: "acc-1" });
+    render(<AccountRegister />);
+    await screen.findByRole("table");
+    await userEvent.click(screen.getByRole("button", { name: "New" }));
+    await pickCategory("Transfer : Paris Checking");
+    await userEvent.type(screen.getByLabelText("Deposit"), "108.00");
+    await userEvent.type(screen.getByLabelText("Amount in EUR:"), "100.00");
+    await userEvent.click(screen.getByRole("button", { name: "Enter" }));
+    const call = await waitFor(() => invokeCalls.find((c) => c.cmd === "create_transfer")!);
+    expect(call.args).toMatchObject({
+      fromAccountId: "acc-eu",
+      toAccountId: "acc-1",
+      amountCents: 10000,
+      receivedCents: 10800,
+    });
+  });
+
   // `cats` lives in the in-place-form describe and is NOT in scope here. The
   // IPC mock's handler is lazy, so referencing it threw inside the call and
   // loadCategories swallowed it — leaving the picker silently empty rather
@@ -2017,7 +2092,30 @@ describe("transfers", () => {
 
     const call = await waitFor(() => invokeCalls.find((c) => c.cmd === "update_transfer")!);
     // Negative: this side is the one paying out.
-    expect(call.args).toMatchObject({ amountCents: -40000, otherAccountId: "acc-2" });
+    expect(call.args).toMatchObject({ amountCents: -40000, otherAccountId: "acc-2", otherAmountCents: null });
+  });
+
+  it("opens a transfer to a euro account with its euro side, and sends it back", async () => {
+    setIpcHandlers({
+      get_register: () => [{ ...transferRow, transfer_amount_cents: 3_900 }],
+      list_categories: () => transferCats,
+      list_payees: () => [],
+      list_splits: () => [],
+      update_transfer: () => ({ id: "t-7" }),
+      get_all_accounts: () => [checking],
+    });
+    const euros: Account = { ...checking, id: "acc-2", name: "Everyday Savings 5678", currency: "EUR", home_rate_micro: 1_080_000 };
+    useAccountStore.setState({ accounts: [checking, euros], selectedAccountId: "acc-1" });
+    render(<AccountRegister />);
+    await screen.findByRole("table");
+    await userEvent.dblClick(dataRows()[0]);
+    const other = screen.getByLabelText("Amount in EUR:") as HTMLInputElement;
+    expect(other.value).toBe("39.00");
+    await userEvent.clear(other);
+    await userEvent.type(other, "40.00");
+    await userEvent.click(screen.getByRole("button", { name: "Enter" }));
+    const call = await waitFor(() => invokeCalls.find((c) => c.cmd === "update_transfer")!);
+    expect(call.args).toMatchObject({ amountCents: -4250, otherAccountId: "acc-2", otherAmountCents: 4000 });
   });
 
   // An earlier version refused both of these as "a different pair of rows". They
@@ -2536,9 +2634,9 @@ describe("everyday cleared marks (Ctrl+M / right-click)", () => {
     await userEvent.click(screen.getByRole("button", { name: "Mark reconciled through…" }));
     const dialog = screen.getByRole("dialog", { name: "Mark reconciled through a date" });
     // Defaults to the last statement date, else the newest R row's date (the fixture's deposit), else the newest row.
-    expect((within(dialog).getByLabelText("Reconcile through") as HTMLInputElement).value).toBe("2026-08-01");
+    expect(within(dialog).getByLabelText("Reconcile through")).toHaveValue("8/1/2026");
     await userEvent.clear(within(dialog).getByLabelText("Reconcile through"));
-    await userEvent.type(within(dialog).getByLabelText("Reconcile through"), "2026-08-30");
+    await userEvent.type(within(dialog).getByLabelText("Reconcile through"), "8/30/2026");
     await userEvent.click(within(dialog).getByRole("button", { name: "Count" }));
     await waitFor(() => expect(within(dialog).getByLabelText("Rows to mark")).toHaveTextContent("7 transactions would be marked"));
     expect(invokeCalls.filter((c) => c.cmd === "reconcile_through").pop()!.args).toEqual({ accountId: "acc-1", through: "2026-08-30", dryRun: true });
@@ -3434,5 +3532,50 @@ describe("The register's review fixes", () => {
     act(() => runCommand("fav.add"));
     await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Everyday Checking 1234 added to favorites."));
     expect(screen.queryByRole("button", { name: "Remember" })).not.toBeInTheDocument();
+  });
+});
+
+// A file kept in euros, written the German way.
+describe("a register in a German file", () => {
+  beforeEach(() => {
+    useFileFormat.getState().setFormat({ home_currency: "EUR", region: "de-DE" });
+  });
+
+  it("writes amounts, balances and dates the region's way", () => {
+    const overdrawn = { ...withdrawal, running_balance_cents: -40526 };
+    render(<RegisterGrid groups={[{ label: null, rows: [deposit, overdrawn] }]} />);
+    const [first, second] = dataRows();
+    expect(within(first).getAllByRole("cell")[3]).toHaveTextContent("01.08.2026");
+    expect(within(first).getAllByRole("cell")[7].textContent).toBe("1.500,00");
+    expect(within(first).getAllByRole("cell")[8]).toHaveTextContent("1.500,00");
+    expect(within(second).getAllByRole("cell")[6].textContent).toBe("42,50");
+    expect(within(second).getAllByRole("cell")[8]).toHaveTextContent("(405,26)");
+  });
+
+  it("shows the Ending Balance in the home currency, and reads a typed 1.234,56", async () => {
+    const euros: Account = { ...checking, currency: "EUR" };
+    setIpcHandlers({
+      get_register: () => rows,
+      list_categories: () => [],
+      list_payees: () => [],
+      list_splits: () => [],
+      list_common_transactions: () => [],
+      get_all_accounts: () => [euros],
+      update_transaction: () => ({ id: "t-2" }),
+    });
+    useAccountStore.setState({ accounts: [euros], selectedAccountId: "acc-1" });
+    render(<AccountRegister />);
+    await screen.findByRole("table");
+    expect(screen.getByText("Ending Balance: 1.457,50 €")).toBeInTheDocument();
+    // An existing row opens with its amount the region's way…
+    await userEvent.dblClick(dataRows()[1]);
+    const payment = (await screen.findByLabelText("Payment")) as HTMLInputElement;
+    expect(payment.value).toBe("42,50");
+    // …and a typed amount is read the region's way.
+    await userEvent.clear(payment);
+    await userEvent.type(payment, "1.234,56{Enter}");
+    await waitFor(() => expect(invokeCalls.some((c) => c.cmd === "update_transaction")).toBe(true));
+    const call = invokeCalls.find((c) => c.cmd === "update_transaction")!;
+    expect(JSON.stringify(call.args)).toContain('"amount_cents":-123456');
   });
 });

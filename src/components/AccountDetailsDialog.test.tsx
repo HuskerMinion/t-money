@@ -10,6 +10,7 @@ vi.mock("@tauri-apps/plugin-dialog", () => ({ open: dialog.open, save: dialog.sa
 
 import AccountDetailsDialog, { accountSubtitle, maskNumber } from "./AccountDetailsDialog";
 import { invokeCalls, resetIpc, setIpcHandlers } from "../test/tauriMock";
+import { useFileFormat } from "../lib/region";
 import type { Account, Attachment } from "../lib/types";
 
 const account: Account = {
@@ -202,5 +203,156 @@ describe("Every write happens before the dialog closes", () => {
     await userEvent.click(screen.getByRole("button", { name: "OK" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(/secured on a house/);
     expect(onSaved).not.toHaveBeenCalled();
+  });
+});
+
+// The currency an account is kept in. Changing it relabels; it converts
+// nothing, and the backend can refuse.
+describe("Currency", () => {
+  const CURRENCIES = [
+    { code: "USD", name: "US dollar", symbol: "$", decimals: 2 },
+    { code: "EUR", name: "Euro", symbol: "€", decimals: 2 },
+  ];
+
+  it("shows the account's currency and money in it", async () => {
+    resetIpc();
+    setIpcHandlers({ list_currencies: () => CURRENCIES });
+    const eur: Account = { ...account, type: "credit", currency: "EUR", credit_limit_cents: 500_000, balance_cents: -12_345 };
+    render(<AccountDetailsDialog account={eur} onSave={vi.fn()} onCancel={vi.fn()} />);
+    expect((screen.getByLabelText("Currency:") as HTMLSelectElement).value).toBe("EUR");
+    expect((screen.getByLabelText("Credit limit:") as HTMLInputElement).value).toBe("€5,000.00");
+    expect(screen.getByText(/Balance is \(€123.45\)/)).toBeInTheDocument();
+  });
+
+  it("a change goes through set_account_currency after the details, and says nothing is converted", async () => {
+    resetIpc();
+    const order: string[] = [];
+    setIpcHandlers({
+      list_currencies: () => CURRENCIES,
+      set_account_currency: async () => void order.push("currency"),
+    });
+    const onSave = vi.fn(async () => void order.push("details"));
+    const onSaved = vi.fn(() => void order.push("closed"));
+    render(<AccountDetailsDialog account={account} onSave={onSave} onSaved={onSaved} onCancel={vi.fn()} />);
+    await screen.findByRole("option", { name: "EUR — Euro" });
+    await userEvent.selectOptions(screen.getByLabelText("Currency:"), "EUR");
+    expect(screen.getByText(/Amounts are not converted/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "OK" }));
+    await vi.waitFor(() => expect(onSaved).toHaveBeenCalled());
+    expect(order).toEqual(["details", "currency", "closed"]);
+    expect(invokeCalls.find((c) => c.cmd === "set_account_currency")!.args).toEqual({ id: "acc-1", currency: "EUR" });
+  });
+
+  it("no change, no call", async () => {
+    resetIpc();
+    setIpcHandlers({ list_currencies: () => CURRENCIES });
+    const onSaved = vi.fn();
+    render(<AccountDetailsDialog account={account} onSave={vi.fn().mockResolvedValue(undefined)} onSaved={onSaved} onCancel={vi.fn()} />);
+    await userEvent.click(screen.getByRole("button", { name: "OK" }));
+    await vi.waitFor(() => expect(onSaved).toHaveBeenCalled());
+    expect(invokeCalls.some((c) => c.cmd === "set_account_currency")).toBe(false);
+  });
+
+  it("a refused change keeps the dialog open, with the reason", async () => {
+    resetIpc();
+    setIpcHandlers({
+      list_currencies: () => CURRENCIES,
+      set_account_currency: async () => {
+        throw "There is no exchange rate for EUR yet. Enter one first.";
+      },
+    });
+    const onSaved = vi.fn();
+    render(<AccountDetailsDialog account={account} onSave={vi.fn().mockResolvedValue(undefined)} onSaved={onSaved} onCancel={vi.fn()} />);
+    await screen.findByRole("option", { name: "EUR — Euro" });
+    await userEvent.selectOptions(screen.getByLabelText("Currency:"), "EUR");
+    await userEvent.click(screen.getByRole("button", { name: "OK" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(/no exchange rate for EUR/);
+    expect(onSaved).not.toHaveBeenCalled();
+  });
+
+  it("back to dollars with an investment type: currency first, then the details", async () => {
+    resetIpc();
+    const order: string[] = [];
+    setIpcHandlers({
+      list_currencies: () => CURRENCIES,
+      set_account_currency: async () => void order.push("currency"),
+    });
+    const onSave = vi.fn(async () => void order.push("details"));
+    const onSaved = vi.fn(() => void order.push("closed"));
+    const eur: Account = { ...account, currency: "EUR" };
+    render(<AccountDetailsDialog account={eur} onSave={onSave} onSaved={onSaved} onCancel={vi.fn()} />);
+    await userEvent.selectOptions(screen.getByLabelText("Type:"), "investment");
+    // The type pulls the currency to dollars.
+    expect((screen.getByLabelText("Currency:") as HTMLSelectElement).value).toBe("USD");
+    await userEvent.click(screen.getByRole("button", { name: "OK" }));
+    await vi.waitFor(() => expect(onSaved).toHaveBeenCalled());
+    expect(order).toEqual(["currency", "details", "closed"]);
+    expect(invokeCalls.find((c) => c.cmd === "set_account_currency")!.args).toEqual({ id: "acc-1", currency: "USD" });
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ account_type: "investment" }));
+  });
+
+  it("refuses a foreign currency on an investment type before any call", async () => {
+    resetIpc();
+    setIpcHandlers({ list_currencies: () => CURRENCIES });
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    const onSaved = vi.fn();
+    // Left that way by older data: the select is still open to fix it.
+    const odd: Account = { ...account, type: "investment", currency: "EUR" };
+    render(<AccountDetailsDialog account={odd} onSave={onSave} onSaved={onSaved} onCancel={vi.fn()} />);
+    await userEvent.click(screen.getByRole("button", { name: "OK" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(/kept in US dollars/);
+    expect(onSave).not.toHaveBeenCalled();
+    expect(onSaved).not.toHaveBeenCalled();
+    expect(invokeCalls.some((c) => c.cmd === "set_account_currency")).toBe(false);
+  });
+});
+
+// A file kept in euros: investment accounts are kept in euros, not dollars.
+describe("Currency in a euro file", () => {
+  const CURRENCIES = [
+    { code: "USD", name: "US dollar", symbol: "US$", decimals: 2 },
+    { code: "EUR", name: "Euro", symbol: "€", decimals: 2 },
+  ];
+
+  it("an investment type pulls a dollar account to the home currency, euros", async () => {
+    useFileFormat.getState().setFormat({ home_currency: "EUR", region: "de-DE" });
+    resetIpc();
+    const order: string[] = [];
+    setIpcHandlers({
+      list_currencies: () => CURRENCIES,
+      set_account_currency: async () => void order.push("currency"),
+    });
+    const onSave = vi.fn(async () => void order.push("details"));
+    const onSaved = vi.fn(() => void order.push("closed"));
+    const usd: Account = { ...account, currency: "USD" };
+    render(<AccountDetailsDialog account={usd} onSave={onSave} onSaved={onSaved} onCancel={vi.fn()} />);
+    await userEvent.selectOptions(screen.getByLabelText("Type:"), "investment");
+    expect((screen.getByLabelText("Currency:") as HTMLSelectElement).value).toBe("EUR");
+    await userEvent.click(screen.getByRole("button", { name: "OK" }));
+    await vi.waitFor(() => expect(onSaved).toHaveBeenCalled());
+    expect(order).toEqual(["currency", "details", "closed"]);
+    expect(invokeCalls.find((c) => c.cmd === "set_account_currency")!.args).toEqual({ id: "acc-1", currency: "EUR" });
+  });
+
+  it("refuses a dollar investment account, naming euros", async () => {
+    useFileFormat.getState().setFormat({ home_currency: "EUR", region: "de-DE" });
+    resetIpc();
+    setIpcHandlers({ list_currencies: () => CURRENCIES });
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    const odd: Account = { ...account, type: "investment", currency: "USD" };
+    render(<AccountDetailsDialog account={odd} onSave={onSave} onCancel={vi.fn()} />);
+    await userEvent.click(screen.getByRole("button", { name: "OK" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("kept in euros. Set the currency to EUR.");
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it("an account with no currency is in the home one, and a credit limit is written the region's way", async () => {
+    useFileFormat.getState().setFormat({ home_currency: "EUR", region: "de-DE" });
+    resetIpc();
+    setIpcHandlers({ list_currencies: () => CURRENCIES });
+    const card: Account = { ...account, type: "credit", credit_limit_cents: 500_000 };
+    render(<AccountDetailsDialog account={card} onSave={vi.fn()} onCancel={vi.fn()} />);
+    expect((screen.getByLabelText("Currency:") as HTMLSelectElement).value).toBe("EUR");
+    expect((screen.getByLabelText("Credit limit:") as HTMLInputElement).value).toBe("5.000,00 €");
   });
 });

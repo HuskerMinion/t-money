@@ -118,3 +118,11 @@ describe("FindInRegisterDialog", () => {
     expect(onPick).not.toHaveBeenCalled();
   });
 });
+
+describe("FindInRegisterDialog in another currency", () => {
+  it("writes the amounts in the account's currency", async () => {
+    render(<FindInRegisterDialog accountName="Paris" currency="EUR" rows={rows} selectedId={null} onPick={vi.fn()} onClose={vi.fn()} />);
+    await userEvent.type(screen.getByLabelText("Find:"), "payroll");
+    expect(within(screen.getByRole("table", { name: "Matches" })).getByText("€3,400.00")).toBeInTheDocument();
+  });
+});

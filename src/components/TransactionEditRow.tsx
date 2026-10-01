@@ -20,6 +20,7 @@ import DateField from "./DateField";
 import AttachmentsPanel from "./AttachmentsPanel";
 import Notice from "./Notice";
 import { formatAmountBare, parseMoneyToCents, today } from "../lib/format";
+import { currencyOf, homeCurrency } from "../lib/currency";
 import ClassPicker, { picksToSend } from "./ClassPicker";
 import type {
   ClassPick,
@@ -47,6 +48,10 @@ export interface TransactionDraft {
   /** Set when the user picked "Transfer : <Account>" — the save becomes a
    *  create_transfer instead of an ordinary transaction. */
   transfer_to_account_id: string | null;
+  /** What arrives in (or leaves) the transfer's other account, in ITS
+   *  currency, as a magnitude. Set only when the two accounts are kept in
+   *  different currencies; null otherwise. */
+  transfer_amount_cents?: number | null;
   /** An EXISTING row whose transfer-ness the edit changes: a plain
    *  row given "Transfer : <Account>" becomes one (the partner row is
    *  written), or a transfer given a category stops being one (the partner
@@ -70,6 +75,9 @@ interface Props {
   initialSplits?: readonly NewSplit[];
   /** Other accounts, offered as "Transfer : <Account>" categories. */
   transferTargets?: readonly Account[];
+  /** The ISO code of the account this form is in; omitted = the home currency. A
+   *  transfer to an account in another currency asks for both amounts. */
+  currency?: string | null;
   /** Known payees, for name completion and category recall. */
   payees?: readonly Payee[];
   /** Create a category mid-entry. Resolves to the id to select. Omit to hide
@@ -189,6 +197,7 @@ export default function TransactionEditRow({
   busy = false,
   initialSplits = [],
   transferTargets = [],
+  currency = null,
   payees = [],
   onCreateCategory,
   commonTransactions = [],
@@ -326,6 +335,23 @@ export default function TransactionEditRow({
   const transferToAccountId = categoryId.startsWith(TRANSFER_PREFIX)
     ? categoryId.slice(TRANSFER_PREFIX.length)
     : null;
+  // A transfer between two currencies has an amount on each side; the
+  // backend cannot work one out from the other. An account not in the list
+  // is taken as this one's currency, which is what the backend checks anyway.
+  const ownCurrency = currency || homeCurrency();
+  const currencyOfTarget = (id: string | null): string | null => {
+    const a = id === null ? undefined : transferTargets.find((t) => t.id === id);
+    return a ? currencyOf(a) : null;
+  };
+  const otherCurrency = currencyOfTarget(transferToAccountId);
+  const crossCurrency = !isSplit && otherCurrency !== null && otherCurrency !== ownCurrency;
+  // An existing transfer across currencies opens with its other side.
+  const [otherAmount, setOtherAmount] = useState(() => {
+    const was = currencyOfTarget(row?.transfer_account_id ?? null);
+    return was !== null && was !== ownCurrency && row?.transfer_amount_cents != null
+      ? formatAmountBare(row.transfer_amount_cents)
+      : "";
+  });
 
   /** Money offers a known payee's last category when you re-enter it.
    *  Only ever fills a category the user has not chosen, and only on a NEW
@@ -399,6 +425,21 @@ export default function TransactionEditRow({
       setError("Enter a payee.");
       return false;
     }
+    let transferAmount: number | null = null;
+    if (crossCurrency) {
+      if (row && row.transfer_account_id === null) {
+        setError(
+          "This account and the other are kept in different currencies, so this transaction can't be turned into a transfer. Delete it and enter a transfer, which takes an amount for each side."
+        );
+        return false;
+      }
+      const other = otherAmount.trim() ? parseMoneyToCents(otherAmount) : null;
+      if (other === null || other === 0) {
+        setError(`Enter the amount in ${otherCurrency} as well: the two accounts are kept in different currencies.`);
+        return false;
+      }
+      transferAmount = Math.abs(other);
+    }
     // The split lines ARE the amount. `set_splits` refuses lines that do not
     // sum to the parent, and it runs AFTER the parent is written — so a
     // mismatch used to leave the transaction saved at one amount and the
@@ -443,6 +484,7 @@ export default function TransactionEditRow({
         check_number: checkNumber.trim() === "" ? null : checkNumber.trim(),
         splits,
         transfer_to_account_id: transferToAccountId,
+        transfer_amount_cents: transferAmount,
         convert,
         goal_id: goals.length > 0 ? (goalId || null) : undefined,
         // Every axis is sent, so clearing one clears it rather than leaving
@@ -458,7 +500,7 @@ export default function TransactionEditRow({
 
   // What the form looked like when it opened, to know whether leaving
   // it should save. A new form with nothing typed is not worth saving.
-  const snapshot = () => JSON.stringify([checkNumber, date, payee, payment, deposit, categoryId, notes, goalId, splits, [...classes].sort((a, b) => a.classification_id.localeCompare(b.classification_id)).map((c) => `${c.classification_id}:${c.value_id}`)]);
+  const snapshot = () => JSON.stringify([checkNumber, date, payee, payment, deposit, categoryId, otherAmount, notes, goalId, splits, [...classes].sort((a, b) => a.classification_id.localeCompare(b.classification_id)).map((c) => `${c.classification_id}:${c.value_id}`)]);
   const opened = useRef<string | null>(null);
   if (opened.current === null) opened.current = snapshot();
   const dirty = snapshot() !== opened.current || (row === null && (payee.trim() !== "" || payment.trim() !== "" || deposit.trim() !== ""));
@@ -709,6 +751,10 @@ export default function TransactionEditRow({
                 style={{ minWidth: 260 }}
                 disabled={farRow}
                 onChange={(next) => {
+                  // An amount typed in one currency is not an amount in
+                  // another; a move to an account in a different one clears it.
+                  const nextId = next.startsWith(TRANSFER_PREFIX) ? next.slice(TRANSFER_PREFIX.length) : null;
+                  if (currencyOfTarget(nextId) !== otherCurrency) setOtherAmount("");
                   setCategoryId(next);
                   if (next.startsWith(TRANSFER_PREFIX) && !payee.trim()) {
                     setPayee("Transfer Money");
@@ -723,6 +769,21 @@ export default function TransactionEditRow({
                     : undefined
                 }
               />
+            )}
+            {crossCurrency && (
+              <>
+                <label htmlFor="txn-other-amount">Amount in {otherCurrency}:</label>
+                <input
+                  id="txn-other-amount"
+                  className="aero-field text-right"
+                  style={{ width: 110 }}
+                  autoComplete="off"
+                  value={otherAmount}
+                  onChange={(e) => setOtherAmount(e.target.value)}
+                  readOnly={farRow}
+                  title={`What arrives in or leaves the other account, in ${otherCurrency}`}
+                />
+              </>
             )}
           </div>
           <div className="flex items-center gap-2 pb-1">
@@ -1024,6 +1085,7 @@ export default function TransactionEditRow({
               // split line can be a transfer exactly as a whole transaction
               // can. `transferTargets` already excludes this account.
               transferTargets={transferTargets}
+              currency={currency}
               parentAmountCents={resolveAmountCents()}
               reconciled={row?.is_reconciled ?? false}
               initialSplits={splits ?? []}

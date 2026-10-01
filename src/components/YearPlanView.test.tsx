@@ -24,6 +24,7 @@ import YearPlanView, {
   spreadLabel,
   varianceNote,
 } from "./YearPlanView";
+import { useFileFormat } from "../lib/region";
 import { invokeCalls, resetIpc, setIpcHandlers } from "../test/tauriMock";
 import type { PlanLine, PlanTotals, YearPlan } from "../lib/types";
 
@@ -858,5 +859,18 @@ describe("A year's figures stay under that year", () => {
     await userEvent.tab();
     expect(await screen.findByRole("alert")).toHaveTextContent('"abc" is not an amount');
     expect(invokeCalls.some((c) => c.cmd === "set_budget_plan")).toBe(false);
+  });
+});
+
+describe("in the file's region", () => {
+  it("reads a typed figure with the German decimal comma", async () => {
+    useFileFormat.getState().setFormat({ home_currency: "EUR", region: "de-DE" });
+    render(<YearPlanView />);
+    const box = await screen.findByLabelText("Annual plan for Heating oil");
+    await userEvent.clear(box);
+    await userEvent.type(box, "1.500,50");
+    await userEvent.tab();
+    await waitFor(() => expect(invokeCalls.some((c) => c.cmd === "set_budget_plan")).toBe(true));
+    expect(invokeCalls.find((c) => c.cmd === "set_budget_plan")!.args.annualCents).toBe(150_050);
   });
 });

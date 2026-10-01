@@ -12,8 +12,9 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "../lib/ipc";
 import { noteChanged } from "../lib/undo";
 import Notice from "./Notice";
-import { formatMoney, parseMoneyToCents, today } from "../lib/format";
-import { formatPrice, formatShares, parseMicro } from "../lib/shares";
+import DateField from "./DateField";
+import { formatDate, formatMoney, parseMoneyToCents, today } from "../lib/format";
+import { formatPriceInput, formatShares, parseMicro } from "../lib/shares";
 import type { Account, HoldingChange, Position, Security, StatementHolding } from "../lib/types";
 
 interface Props {
@@ -53,6 +54,8 @@ export default function UpdateHoldingsDialog({ account, securities, onCancel, on
   // price pre-filled with the latest known so a shares-only statement is a
   // single column of typing.
   useEffect(() => {
+    // DateField sends "" for text it cannot read; wait for a date.
+    if (!date) return;
     let canceled = false;
     api
       .getPortfolio(account.id, date)
@@ -61,7 +64,7 @@ export default function UpdateHoldingsDialog({ account, securities, onCancel, on
         setPositions(p.positions);
         setLines((old) => {
           const kept = new Map(old.map((l) => [l.security_id, l]));
-          const next = p.positions.map((pos) => kept.get(pos.security_id) ?? { security_id: pos.security_id, shares: "", price: pos.price_micro ? formatPrice(pos.price_micro).replace(/,/g, "") : "", value: "" });
+          const next = p.positions.map((pos) => kept.get(pos.security_id) ?? { security_id: pos.security_id, shares: "", price: pos.price_micro ? formatPriceInput(pos.price_micro) : "", value: "" });
           for (const l of old) if (!p.positions.some((pos) => pos.security_id === l.security_id)) next.push(l);
           return next;
         });
@@ -78,7 +81,7 @@ export default function UpdateHoldingsDialog({ account, securities, onCancel, on
   const bad = lines.find((l) => (l.shares.trim() && parseMicro(l.shares) === null) || (l.price.trim() && parseMicro(l.price) === null) || (l.value.trim() && parseMoneyToCents(l.value) === null));
 
   useEffect(() => {
-    if (request.length === 0 || bad) {
+    if (request.length === 0 || bad || !date) {
       setPlan(null);
       return;
     }
@@ -114,6 +117,10 @@ export default function UpdateHoldingsDialog({ account, securities, onCancel, on
   const problems = plan?.filter((c) => c.problem).length ?? 0;
 
   async function apply() {
+    if (!date) {
+      setError(`Type a statement date the form can read, such as ${formatDate("2026-08-03")}.`);
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -135,7 +142,7 @@ export default function UpdateHoldingsDialog({ account, securities, onCancel, on
         </p>
         <label className="inline-flex items-center gap-1">
           Statement date
-          <input className="aero-field" type="date" aria-label="Statement date" value={date} onChange={(e) => setDate(e.target.value)} />
+          <DateField label="Statement date" value={date} onChange={setDate} width={120} />
         </label>
         <table className="tm-report-table w-full" aria-label="Statement holdings">
           <thead>
@@ -199,7 +206,7 @@ export default function UpdateHoldingsDialog({ account, securities, onCancel, on
             + Another investment on the statement
           </button>
         )}
-        {bad && <div className="money-neg">Shares and prices take up to six decimals; values are dollars and cents.</div>}
+        {bad && <div className="money-neg">Shares and prices take up to six decimals; values up to two.</div>}
         {error && (
           <Notice tone="error" boxed>
             {error}

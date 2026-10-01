@@ -65,6 +65,13 @@ fn manager_for(path: &Path, key: &str) -> SqliteConnectionManager {
 /// `key` is the AES-256 passphrase. It is never written to disk — only the
 /// encrypted database file is.
 pub fn init_pool(path: &Path, key: &str) -> Result<DbPool, String> {
+    // OpenSSL, initialized by us and first, WITHOUT its cleanup at process
+    // exit. Left to SQLCipher, OpenSSL registers that cleanup, and it ran
+    // while the pool's own threads — which open connections, so they use
+    // OpenSSL too — were still winding down: the process crashed on its
+    // way out after everything had finished. The OS frees the memory
+    // anyway. `init` is idempotent and safe to call from any thread.
+    openssl_sys::init();
     // Ensure the parent directory exists.
     if let Some(parent) = path.parent() {
         if !parent.as_os_str().is_empty() {
@@ -74,9 +81,19 @@ pub fn init_pool(path: &Path, key: &str) -> Result<DbPool, String> {
     }
 
     let manager = manager_for(path, key);
+    // Connections are opened only when a command asks for one, and are never
+    // closed for age. The pool opens them on its own threads, and each one
+    // derives the SQLCipher key — deliberately slow. Keeping a spare
+    // connection ready (`min_idle`) or retiring old ones (the default
+    // `idle_timeout` / `max_lifetime`) made the pool start an open nobody
+    // was waiting for, and a process that exited during one crashed on its
+    // way out. A desktop app holds at most eight; they stay open with the
+    // file.
     let pool = Pool::builder()
         .max_size(8)
-        .min_idle(Some(1))
+        .min_idle(Some(0))
+        .idle_timeout(None)
+        .max_lifetime(None)
         .build(manager)
         .map_err(|e| format!("failed to build DB pool: {e}"))?;
 
@@ -174,8 +191,7 @@ mod tests {
     fn every_connection_waits_for_a_lock_instead_of_failing_on_it() {
         let dir = tmp_dir("busy");
         let pool = init_pool(&dir.join("busy.db"), "test-key").expect("init_pool");
-        // Not just the first connection — `min_idle` means one is opened
-        // eagerly and the rest lazily, and they all need it.
+        // Not just the first connection — every one the pool opens needs it.
         for _ in 0..3 {
             let conn = pool.get().expect("conn");
             let ms: i64 = conn

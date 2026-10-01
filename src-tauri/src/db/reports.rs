@@ -28,7 +28,7 @@
 //! `spending_by_category` etc. are the same names Money uses in the gallery,
 //! so the frontend's gallery is a table of `(group, label, kind)`.
 
-use crate::db::queries::Conn;
+use crate::db::queries::{self, Conn};
 use crate::db::lots;
 use crate::models::{Report, ReportCell, ReportChart, ReportColumn, ReportRequest, ReportLine, ReportSeries};
 use chrono::{Datelike, NaiveDate};
@@ -153,6 +153,10 @@ pub fn run_report(conn: &Conn, req: &ReportRequest) -> Result<Report, String> {
         return Err("the date range ends before it starts".to_string());
     }
     let scope = Scope::from_request(conn, req)?;
+    // Every report is in dollars. A currency with no rate at all cannot be
+    // converted, and a report that quietly left its accounts out would be
+    // wrong without saying so.
+    queries::require_rates(conn)?;
     let mut report = match req.kind.as_str() {
         "spending_by_category" => spending_by_category(conn, &scope, from, to)?,
         "spending_by_payee" => spending_by_payee(conn, &scope, from, to)?,
@@ -273,12 +277,23 @@ struct LineCols<'a> {
     txn_id: &'a str,
     memo: &'a str,
     split_id: Option<&'a str>,
+    /// The amount in dollars, which is what an amount filter is typed in.
+    amount: &'a str,
 }
 
 /// The `lines` CTE's columns.
-const L: LineCols<'static> = LineCols { alias: "l", txn_id: "l.txn_id", memo: "l.memo", split_id: Some("l.split_id") };
-/// A bare `transactions t` row.
-const T: LineCols<'static> = LineCols { alias: "t", txn_id: "t.id", memo: "t.notes", split_id: None };
+const L: LineCols<'static> = LineCols { alias: "l", txn_id: "l.txn_id", memo: "l.memo", split_id: Some("l.split_id"), amount: "l.amount_cents" };
+/// A bare `transactions t` row in an investment account — always dollars.
+const T: LineCols<'static> = LineCols { alias: "t", txn_id: "t.id", memo: "t.notes", split_id: None, amount: "t.amount_cents" };
+/// A bare `transactions t` row joined to its account as `a`, in any currency.
+const TA: LineCols<'static> = LineCols { alias: "t", txn_id: "t.id", memo: "t.notes", split_id: None, amount: T_HOME };
+
+/// `t.amount_cents` in the home currency, for a row joined to its account as `a`.
+const T_HOME: &str = concat!(
+    "(CASE WHEN a.currency = ", crate::home_sql!(), " THEN t.amount_cents ELSE ",
+    crate::to_home_at_sql!("t.amount_cents", "a.currency", "t.date"),
+    " END)"
+);
 
 impl Scope {
     fn from_request(conn: &Conn, req: &ReportRequest) -> Result<Self, String> {
@@ -530,11 +545,11 @@ impl Scope {
         // sorts above it — the CAST is not optional.
         if let Some(min) = self.min_cents {
             binds.push(min.to_string());
-            out.push_str(&format!(" AND abs({a}.amount_cents) >= CAST(? AS INTEGER)"));
+            out.push_str(&format!(" AND abs({}) >= CAST(? AS INTEGER)", cols.amount));
         }
         if let Some(max) = self.max_cents {
             binds.push(max.to_string());
-            out.push_str(&format!(" AND abs({a}.amount_cents) <= CAST(? AS INTEGER)"));
+            out.push_str(&format!(" AND abs({}) <= CAST(? AS INTEGER)", cols.amount));
         }
         if let Some(states) = &self.cleared {
             let marks = states.iter().map(|_| "?").collect::<Vec<_>>().join(",");
@@ -616,9 +631,7 @@ impl Scope {
 }
 
 fn cents_label(c: i64) -> String {
-    let neg = c < 0;
-    let c = c.abs();
-    format!("{}${}.{:02}", if neg { "-" } else { "" }, c / 100, c % 100)
+    crate::region::money(c)
 }
 
 // ---------------------------------------------------------------------------
@@ -627,8 +640,13 @@ fn cents_label(c: i64) -> String {
 
 /// Every non-void, non-transfer transaction expanded into its split lines,
 /// carrying what every category/payee report needs. Bound: none.
-const LINES: &str = r#"
-    WITH lines AS (
+///
+/// `amount_cents` is in DOLLARS: a line in an account kept in another
+/// currency is converted at the rate in force on its day, so every report
+/// built on `lines` adds like with like. `native_cents` keeps what the
+/// account itself holds.
+const LINES: &str = concat!(r#"
+    WITH raw_lines AS (
         SELECT t.id                                     AS txn_id,
                s.id                                     AS split_id,
                t.cleared_state                          AS cleared_state,
@@ -642,7 +660,7 @@ const LINES: &str = r#"
                t.tax_line                               AS tax_override,
                COALESCE(s.amount_cents,
                         CASE WHEN t.activity LIKE 'reinvest_%' THEN t.gross_cents ELSE t.amount_cents END)
-                                                        AS amount_cents
+                                                        AS native_cents
           FROM transactions t
           LEFT JOIN splits s ON s.transaction_id = t.id
          WHERE t.is_void = 0 AND t.transfer_id IS NULL
@@ -664,8 +682,24 @@ const LINES: &str = r#"
            AND (t.activity IS NULL OR t.activity IN
                 ('dividend','interest','ltcg_dist','stcg_dist',
                  'reinvest_dividend','reinvest_interest','reinvest_ltcg','reinvest_stcg'))
+    ), lines AS (
+        SELECT txn_id, split_id, cleared_state, account_id, date, payee, payee_id, check_number,
+               memo, category_id, tax_override, native_cents,
+               CASE WHEN rl.account_id NOT IN (SELECT id FROM accounts WHERE currency <> "#,
+    crate::home_sql!(),
+    r#")
+                    THEN rl.native_cents ELSE "#,
+    // No join to accounts: an account kept in another currency is looked up
+    // only for its own rows. A per-row join here lets SQLite's planner, once
+    // the file has statistics, walk every account's rows by index instead —
+    // several times slower — and costs every all-dollar file a lookup per row.
+    // Qualified: inside the rate lookup a bare `currency` or `date` would
+    // name the exchange_rates row's own column and match every rate.
+    crate::to_home_at_sql!("rl.native_cents", "(SELECT fa.currency FROM accounts fa WHERE fa.id = rl.account_id)", "rl.date"),
+    r#" END AS amount_cents
+          FROM raw_lines rl
     )
-"#;
+"#);
 
 // ---------------------------------------------------------------------------
 // Small builders
@@ -743,8 +777,9 @@ fn parse_date(s: &str) -> Result<NaiveDate, String> {
 fn iso(d: NaiveDate) -> String {
     d.format("%Y-%m-%d").to_string()
 }
+/// A date the file's region's way (named for when that was always the US).
 fn us(d: NaiveDate) -> String {
-    format!("{}/{}/{}", d.month(), d.day(), d.year())
+    crate::region::date(d)
 }
 /// Money's subtitle: `1/1/2025 through 12/31/2025`.
 pub fn range_label(from: NaiveDate, to: NaiveDate) -> String {
@@ -757,10 +792,15 @@ fn month_label(ym: &str) -> String {
     format!("{} {}", M[(mi.clamp(1, 12)) - 1], y)
 }
 /// Money's column header for a month: `8/2026`.
+/// "10/2026" — or "10.2026", "2026-10", as the file's region writes dates.
 fn money_month_label(ym: &str) -> String {
     let (y, m) = ym.split_at(4);
     let mi: u32 = m.trim_start_matches('-').parse().unwrap_or(1);
-    format!("{mi}/{y}")
+    let r = crate::region::display().region;
+    match r.date_order {
+        crate::region::DateOrder::Ymd => format!("{y}{}{mi:02}", r.date_sep),
+        _ => format!("{mi}{}{y}", r.date_sep),
+    }
 }
 /// `YYYY-MM` for every month touching the range, oldest first.
 pub fn months_in(from: NaiveDate, to: NaiveDate) -> Vec<String> {
@@ -1455,14 +1495,14 @@ fn transactions_grouped(conn: &Conn, scope: &Scope, from: NaiveDate, to: NaiveDa
                 "{}{}{}",
                 scope.account_sql("t", &mut binds),
                 scope.category_sql("t.category_id", &mut binds),
-                scope.line_sql(&T, &mut binds)
+                scope.line_sql(&TA, &mut binds)
             );
             (format!(
                 "SELECT a.id, a.name, t.id, t.date, t.check_number, t.payee,
                         COALESCE(CASE WHEN p.name IS NULL THEN c.name ELSE p.name || ' : ' || c.name END,
                                  CASE WHEN t.transfer_id IS NOT NULL THEN 'Transfer' END,
                                  CASE WHEN EXISTS (SELECT 1 FROM splits s WHERE s.transaction_id = t.id) THEN 'Split' END, ''),
-                        t.notes, t.amount_cents, t.cleared_state
+                        t.notes, {T_HOME}, t.cleared_state
                    FROM transactions t
                    JOIN accounts a ON a.id = t.account_id
                    LEFT JOIN categories c ON c.id = t.category_id
@@ -1580,6 +1620,7 @@ fn transactions_grouped(conn: &Conn, scope: &Scope, from: NaiveDate, to: NaiveDa
 // Balances, net worth
 // ---------------------------------------------------------------------------
 
+#[derive(Default)]
 struct AcctBal {
     id: String,
     name: String,
@@ -1590,31 +1631,100 @@ struct AcctBal {
 
 /// Every account's balance as of the end of `asof`.
 fn balances_asof(conn: &Conn, scope: &Scope, asof: NaiveDate) -> Result<Vec<AcctBal>, String> {
-    let mut binds = vec![iso(asof)];
+    Ok(balances_asof_many(conn, scope, &[asof])?.pop().unwrap_or_default())
+}
+
+/// `balances_asof` for many dates — one list per date, in the order given.
+///
+/// One pass over the transactions, not one per date: the money each account
+/// moved on each day after the earliest date is read once, and a date's
+/// balance is the stored balance less what moved after it — a running total
+/// from the newest day back. Asking the database for that sum per account and
+/// per month made "Net worth over time" re-add every later transaction for
+/// every month: seconds on a file of a few years.
+fn balances_asof_many(conn: &Conn, scope: &Scope, dates: &[NaiveDate]) -> Result<Vec<Vec<AcctBal>>, String> {
+    let Some(earliest) = dates.iter().min().copied() else { return Ok(Vec::new()) };
+    let mut binds = Vec::new();
     let acct = scope.account_sql("a", &mut binds).replace("a.account_id", "a.id");
     let sql = format!(
-        "SELECT a.id, a.name, a.type, a.is_closed,
-                a.balance_cents - COALESCE((SELECT SUM(t.amount_cents) FROM transactions t
-                                             WHERE t.account_id = a.id AND t.is_void = 0 AND t.date > ?1), 0)
+        "SELECT a.id, a.name, a.type, a.is_closed, a.balance_cents, a.currency
            FROM accounts a
           WHERE 1 = 1{acct}
           ORDER BY a.name COLLATE NOCASE"
     );
-    let mut bals = query_rows(conn, &sql, &binds, |r| {
-        Ok(AcctBal { id: r.get(0)?, name: r.get(1)?, kind: r.get(2)?, is_closed: r.get::<_, i64>(3)? != 0, cents: r.get(4)? })
+    let accounts = query_rows(conn, &sql, &binds, |r| {
+        Ok((AcctBal { id: r.get(0)?, name: r.get(1)?, kind: r.get(2)?, is_closed: r.get::<_, i64>(3)? != 0, cents: r.get(4)? }, r.get::<_, String>(5)?))
     })?;
-    // An investment account is worth its cash plus what it holds, at the
-    // prices of the day. Lots are replayed to the date, so a share
-    // bought later is not counted earlier.
-    if bals.iter().any(|b| matches!(b.kind.as_str(), "investment" | "retirement")) {
-        let held = lots::holdings_by_account(conn, &iso(asof))?;
-        for b in bals.iter_mut() {
-            if let Some(v) = held.get(&b.id) {
-                b.cents += v;
-            }
+
+    // Per account, the days after `earliest` with what moved on each, oldest
+    // first, and beside each day what moved on it and every day after it.
+    let mut moved: std::collections::HashMap<String, (Vec<String>, Vec<i64>)> = std::collections::HashMap::new();
+    for (account, day, cents) in query_rows(
+        conn,
+        "SELECT account_id, date, SUM(amount_cents) FROM transactions
+          WHERE is_void = 0 AND date > ?1
+          GROUP BY account_id, date
+          ORDER BY account_id, date",
+        &[iso(earliest)],
+        |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?, r.get::<_, i64>(2)?)),
+    )? {
+        let e = moved.entry(account).or_default();
+        e.0.push(day);
+        e.1.push(cents);
+    }
+    for (_, sums) in moved.values_mut() {
+        for i in (0..sums.len().saturating_sub(1)).rev() {
+            sums[i] += sums[i + 1];
         }
     }
-    Ok(bals)
+
+    let home = queries::home_currency(conn)?;
+    let any_invest = accounts.iter().any(|(b, _)| matches!(b.kind.as_str(), "investment" | "retirement"));
+    let mut rates: BTreeMap<(String, NaiveDate), i64> = BTreeMap::new();
+    let mut out = Vec::with_capacity(dates.len());
+    for &asof in dates {
+        let day = iso(asof);
+        let mut bals = Vec::with_capacity(accounts.len());
+        for (b, currency) in &accounts {
+            let mut b = AcctBal { id: b.id.clone(), name: b.name.clone(), kind: b.kind.clone(), is_closed: b.is_closed, cents: b.cents };
+            if let Some((days, after)) = moved.get(&b.id) {
+                // The first day after `asof`; everything from it on is undone.
+                let i = days.partition_point(|d| d.as_str() <= day.as_str());
+                if i < after.len() {
+                    b.cents -= after[i];
+                }
+            }
+            // In the home currency, at the rate on the day: these balances
+            // are added together in every report that uses them.
+            if *currency != home {
+                let key = (currency.clone(), asof);
+                let rate = match rates.get(&key) {
+                    Some(r) => *r,
+                    None => {
+                        let r = queries::rate_on_in(conn, &home, currency, &day)?
+                            .ok_or_else(|| format!("There is no exchange rate for {currency}, so {} cannot be counted in {home}.", b.name))?;
+                        rates.insert(key, r);
+                        r
+                    }
+                };
+                b.cents = queries::to_home(b.cents, rate);
+            }
+            bals.push(b);
+        }
+        // An investment account is worth its cash plus what it holds, at the
+        // prices of the day. Lots are replayed to the date, so a share
+        // bought later is not counted earlier.
+        if any_invest {
+            let held = lots::holdings_by_account(conn, &day)?;
+            for b in bals.iter_mut() {
+                if let Some(v) = held.get(&b.id) {
+                    b.cents += v;
+                }
+            }
+        }
+        out.push(bals);
+    }
+    Ok(out)
 }
 
 /// Money's grouping of the account taxonomy for net worth.
@@ -1698,11 +1808,25 @@ fn net_worth(conn: &Conn, scope: &Scope, asof: NaiveDate, detail: &str) -> Resul
 fn account_balances(conn: &Conn, scope: &Scope, asof: NaiveDate, details: bool) -> Result<Report, String> {
     let bals = balances_asof(conn, scope, asof)?;
     let detail: BTreeMap<String, (Option<String>, Option<String>, Option<String>, Option<i64>)> = if details {
-        query_rows(conn, "SELECT id, institution, account_number, opened_on, credit_limit_cents FROM accounts", &[], |r| {
-            Ok((r.get::<_, String>(0)?, (r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?)))
-        })?
-        .into_iter()
-        .collect()
+        let rows = query_rows(conn, "SELECT id, institution, account_number, opened_on, credit_limit_cents, currency FROM accounts", &[], |r| {
+            Ok((r.get::<_, String>(0)?, (r.get::<_, Option<String>>(1)?, r.get::<_, Option<String>>(2)?, r.get::<_, Option<String>>(3)?, r.get::<_, Option<i64>>(4)?), r.get::<_, String>(5)?))
+        })?;
+        // The limit sits in a column of home money beside the balance, so it is
+        // converted the same way: at the rate on the report's date.
+        let mut out = BTreeMap::new();
+        let home = queries::home_currency(conn)?;
+        for (id, (inst, num, opened, limit), currency) in rows {
+            let limit = match limit {
+                Some(l) if currency != home => {
+                    let rate = queries::rate_on(conn, &currency, &iso(asof))?
+                        .ok_or_else(|| format!("There is no exchange rate for {currency}."))?;
+                    Some(queries::to_home(l, rate))
+                }
+                other => other,
+            };
+            out.insert(id, (inst, num, opened, limit));
+        }
+        out
     } else {
         BTreeMap::new()
     };
@@ -1761,10 +1885,8 @@ fn account_balances(conn: &Conn, scope: &Scope, asof: NaiveDate, details: bool) 
 /// Month-end balance per account, months across.
 fn account_balance_history(conn: &Conn, scope: &Scope, from: NaiveDate, to: NaiveDate) -> Result<Report, String> {
     let months = months_in(from, to);
-    let mut per_month: Vec<Vec<AcctBal>> = Vec::new();
-    for m in &months {
-        per_month.push(balances_asof(conn, scope, month_end(m).min(to))?);
-    }
+    let ends: Vec<NaiveDate> = months.iter().map(|m| month_end(m).min(to)).collect();
+    let per_month: Vec<Vec<AcctBal>> = balances_asof_many(conn, scope, &ends)?;
     let mut columns = vec![col("Account", "text")];
     for m in &months {
         columns.push(col(&month_label(m), "money"));
@@ -1999,8 +2121,9 @@ fn net_worth_over_time(conn: &Conn, scope: &Scope, from: NaiveDate, to: NaiveDat
     let mut s_liab = Vec::new();
     let mut s_net = Vec::new();
     let mut prev: Option<i64> = None;
-    for m in &months {
-        let bals = balances_asof(conn, scope, month_end(m).min(to))?;
+    let ends: Vec<NaiveDate> = months.iter().map(|m| month_end(m).min(to)).collect();
+    let all = balances_asof_many(conn, scope, &ends)?;
+    for (m, bals) in months.iter().zip(all) {
         let assets: i64 = bals.iter().filter(|b| asset_group(&b.kind).0 == "asset").map(|b| b.cents).sum::<i64>();
         let liab: i64 = -bals.iter().filter(|b| asset_group(&b.kind).0 == "liability").map(|b| b.cents).sum::<i64>();
         let net = assets - liab;
@@ -2030,11 +2153,10 @@ fn credit_card_debt(conn: &Conn, scope: &Scope, from: NaiveDate, to: NaiveDate) 
     for m in &months {
         columns.push(col(&month_label(m), "money"));
     }
-    let mut per_month: Vec<Vec<AcctBal>> = Vec::new();
-    for m in &months {
-        let mut b = balances_asof(conn, scope, month_end(m).min(to))?;
+    let ends: Vec<NaiveDate> = months.iter().map(|m| month_end(m).min(to)).collect();
+    let mut per_month: Vec<Vec<AcctBal>> = balances_asof_many(conn, scope, &ends)?;
+    for b in per_month.iter_mut() {
         b.retain(|a| matches!(a.kind.as_str(), "credit" | "line_of_credit"));
-        per_month.push(b);
     }
     let cards: Vec<(String, String)> = per_month.first().map(|v| v.iter().map(|a| (a.id.clone(), a.name.clone())).collect()).unwrap_or_default();
     let mut rows = Vec::new();
@@ -2071,18 +2193,30 @@ fn credit_card_debt(conn: &Conn, scope: &Scope, from: NaiveDate, to: NaiveDate) 
 fn scheduled_bills(conn: &Conn, from: NaiveDate, to: NaiveDate, upcoming_only: bool) -> Result<Report, String> {
     let today = chrono::Local::now().date_naive();
     let occ = crate::db::queries::occurrences_between(conn, from, to, today)?;
-    let names: BTreeMap<String, String> = query_rows(conn, "SELECT id, name FROM accounts", &[], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))?.into_iter().collect();
+    let names: BTreeMap<String, (String, String)> = query_rows(conn, "SELECT id, name, currency FROM accounts", &[], |r| {
+        Ok((r.get::<_, String>(0)?, (r.get::<_, String>(1)?, r.get::<_, String>(2)?)))
+    })?
+    .into_iter()
+    .collect();
+    // Bills in several accounts are added together, so in dollars — at
+    // today's rate, since they have not happened yet.
+    let rates = queries::rates_today(conn)?;
     let mut rows = Vec::new();
     let (mut t_in, mut t_out) = (0i64, 0i64);
     for o in occ.iter().filter(|o| !upcoming_only || o.status == "due" || o.status == "overdue") {
-        let acct = o.account_id.as_ref().and_then(|a| names.get(a)).cloned().unwrap_or_default();
+        let (acct, currency) = o.account_id.as_ref().and_then(|a| names.get(a)).cloned().unwrap_or_default();
+        let cents = match rates.get(currency.as_str()) {
+            Some(r) => queries::to_home(o.amount_cents, *r),
+            None if currency.is_empty() => o.amount_cents,
+            None => return Err(format!("There is no exchange rate for {currency}.")),
+        };
         rows.push(keyed(&parse_date(&o.due_date).map(us).unwrap_or_else(|_| o.due_date.clone()), "recurrence", &o.recurrence_id, 0, vec![
             text(o.payee.clone()),
             text(acct),
-            money(o.amount_cents),
+            money(cents),
             text(o.status.clone()),
         ]));
-        if o.amount_cents > 0 { t_in += o.amount_cents } else { t_out += o.amount_cents }
+        if cents > 0 { t_in += cents } else { t_out += cents }
     }
     rows.push(styled("Deposits", "subtotal", vec![blank(), blank(), money(t_in), blank()]));
     rows.push(styled("Bills", "subtotal", vec![blank(), blank(), money(t_out), blank()]));
@@ -2111,7 +2245,7 @@ fn price_cell(micro: Option<i64>) -> ReportCell {
             while frac.len() < 2 {
                 frac.push('0');
             }
-            text(format!("{dollars}.{frac}"))
+            text(format!("{dollars}{}{frac}", crate::region::display().region.decimal))
         }
         None => blank(),
     }
@@ -3411,10 +3545,12 @@ fn subscriptions(conn: &Conn, scope: &Scope, from: NaiveDate, to: NaiveDate) -> 
     if scope.accounts.is_none() {
         acct.push_str(" AND t.account_id IN (SELECT id FROM accounts WHERE type IN ('checking','savings','cash','credit'))");
     }
-    acct.push_str(&scope.line_sql(&T, &mut binds));
+    acct.push_str(&scope.line_sql(&TA, &mut binds));
+    // In dollars: one payee can charge cards in two currencies.
     let sql = format!(
-        "SELECT lower(trim(t.payee)), t.payee, t.payee_id, t.date, -t.amount_cents
+        "SELECT lower(trim(t.payee)), t.payee, t.payee_id, t.date, -{T_HOME}
            FROM transactions t
+           JOIN accounts a ON a.id = t.account_id
           WHERE t.is_void = 0 AND t.transfer_id IS NULL AND t.activity IS NULL
             AND t.is_revaluation = 0 AND t.is_split_transfer = 0
             AND t.amount_cents < 0 AND trim(t.payee) <> ''
@@ -4561,6 +4697,46 @@ mod asset_tests {
             let pts = &s.points;
             if pts.len() >= 2 && (pts[0].1 != 0 || pts[1].1 != 0) {
                 assert!(pts[0].1.abs() <= pts[1].1.abs(), "{}: months stay in calendar order: {pts:?}", s.label);
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod balances_many_tests {
+    use super::*;
+    use crate::db::test_db::TestDb;
+
+    /// The one-pass balances agree with the old way of asking — stored
+    /// balance less every later transaction — on every account, on every
+    /// date tried, including before the first transaction and after the last.
+    #[test]
+    fn one_pass_balances_match_the_per_date_sum() {
+        let db = TestDb::new("balances-many");
+        let c = db.conn();
+        crate::db::demo::seed(&c).unwrap();
+        let req = ReportRequest { kind: "net_worth".into(), from: "2020-01-01".into(), to: "2030-01-01".into(), ..Default::default() };
+        let scope = Scope::from_request(&c, &req).unwrap();
+        let today = chrono::Local::now().date_naive();
+        let dates: Vec<NaiveDate> = (0..60).map(|i| today - chrono::Duration::days(i * 23 - 200)).collect();
+        let many = balances_asof_many(&c, &scope, &dates).unwrap();
+        for (asof, bals) in dates.iter().zip(&many) {
+            for b in bals {
+                let old: i64 = c
+                    .query_row(
+                        "SELECT a.balance_cents - COALESCE((SELECT SUM(t.amount_cents) FROM transactions t
+                                 WHERE t.account_id = a.id AND t.is_void = 0 AND t.date > ?2), 0)
+                           FROM accounts a WHERE a.id = ?1",
+                        rusqlite::params![b.id, iso(*asof)],
+                        |r| r.get(0),
+                    )
+                    .unwrap();
+                let held = if matches!(b.kind.as_str(), "investment" | "retirement") {
+                    lots::holdings_by_account(&c, &iso(*asof)).unwrap().get(&b.id).copied().unwrap_or(0)
+                } else {
+                    0
+                };
+                assert_eq!(b.cents, old + held, "{} on {asof}", b.name);
             }
         }
     }

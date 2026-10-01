@@ -76,6 +76,8 @@ The **File** menu treats your money as a document, because that is what it is.
 
 Out of the box, in T-Money's own folder under AppData\\Roaming. That is a perfectly good place for it — but it is not the only one, and File → **New T-Money file…** lets you put a file anywhere and call it anything: Household.tmny, Rentals.tmny, Rental property.tmny. Each file has its **own master key** in the Windows credential store, so one file's key never opens another.
 
+A new file asks two more things once you have picked where it goes: its **home currency** — the one totals, budgets and reports are in — and its **region**, which decides how numbers and dates are written (1,234.56 and 8/30/2026 in the United States, 1.234,56 € and 30.08.2026 in Germany). Both are kept in the file and can be changed later under Settings → Money → **Home currency and region**. The sample file is in US dollars, United States.
+
 **Open a T-Money file…** (Ctrl+O) switches to another one, and **Recent files** lists the last eight. A file that has gone missing is shown marked rather than quietly dropped — a database that has vanished is the most useful thing that list can tell you. "Remove the missing ones from this list" clears them once you have looked.
 
 **Close file** closes it. No file is then open: the window shows a start screen offering the file you just closed, **Open a file…**, **New file…** and your recent ones, and the title bar says "no file open". Nothing has been changed or lost — the file is on disk exactly as you left it, and closing it also releases the lock on it, which is what lets you move, copy or back up the file while T-Money is still running.
@@ -103,7 +105,7 @@ A file you opened once can never stop the program starting. That is deliberate: 
     body: `
 Type in the box at the top right and press Enter. Search looks through every account's transactions for the words you typed in the payee, memo, category, check number and amount, and lists the hits with their account and date. Click a hit to open that account's register with the row selected and scrolled into view.
 
-> Searching for an amount works with or without the dollar sign: \`45.33\` finds a $45.33 payment or deposit.
+> Searching for an amount works with or without the currency symbol: \`45.33\` finds a $45.33 payment or deposit.
 `,
   },
   {
@@ -177,6 +179,49 @@ If the same account was created twice (a common result of importing), **Merge** 
 # Tax information
 
 Whether an account's activity feeds the tax reports is set on the [[taxes|Taxes tab]] ("Accounts included in tax information").
+
+An account can be kept in a currency other than the file's home currency — see [[currencies|Accounts in other currencies]].
+`,
+  },
+  {
+    id: "currencies",
+    group: "Banking",
+    title: "Accounts in other currencies",
+    blurb: "The home currency and region; accounts kept in another currency; exchange rates.",
+    body: `
+Each file has a **home currency**, chosen when the file is made: US dollars (US$), Canadian dollars (CA$), euros (€), pounds (£), Mexican pesos (MX$) or Australian dollars (A$). An account can be kept in the home currency (the default for a new account) or in any of the others. Everything in that account — its register, its balance, what you type into it — is in its own currency, written with its own symbol.
+
+# Totals are in the home currency
+
+Anything that adds accounts together is in the home currency: group totals in the account list, equity under a house, net worth, the reports, budgets, the debt planner, and the month's in and out on the bill calendar. A balance is converted at today's rate; a transaction is converted at the rate in effect on its date.
+
+# Exchange rates
+
+Rates are kept in Settings → Money → **Currencies**, as home-currency units per one unit of the other currency (1 GBP = 1.17 EUR in a file kept in euros), each from a date on. Type one in, or fetch today's rates — nothing is fetched unless you ask. A currency with no rate is not guessed at: a total that needs it says it was left out, and a report or budget that needs it says which rate is missing.
+
+# Home currency and region
+
+Settings → Money → **Home currency and region** changes both.
+
+The **region** decides how numbers and dates are written and read: the thousands mark, the decimal mark, which side of the amount the symbol goes, and the order of a date. It changes nothing in the file but how it looks, and amounts are typed the region's way (\`1234,56\` in Germany).
+
+Changing the **home currency** asks what the accounts in the old one really are:
+
+- **Already in the new currency** — the file was set up in the wrong one. They are relabeled; no amount is converted. Refused if an account is already kept in the new currency.
+- **Kept in the old currency** — they stay as they are and become foreign accounts, converted at a rate. Refused while an investment account is among them, because those must be in the home currency.
+
+Rates are quoted in the home currency, so after a change each other currency in use needs a rate in the new one. Settings says which are missing; add them or press **Get today's rates** on the Currencies pane.
+
+# Transfers between currencies
+
+A transfer between two accounts in different currencies takes two amounts — what left one account and what arrived in the other — because that is what the two statements show. See [[splits-transfers|Splits, transfers and goals]].
+
+# What is refused
+
+- Investment and retirement accounts stay in the home currency.
+- A split line cannot transfer to an account in another currency.
+- A scheduled transfer must be between two accounts in the same currency; the "Transfer to" list only offers those. A goal's contributions come from accounts in its currency.
+- Two accounts in different currencies cannot be merged.
 `,
   },
   {
@@ -194,9 +239,9 @@ Open an account from the rail or the Account List. The register lists transactio
 Click the **entry line** at the bottom (today's date, "Click here to enter a transaction"), click **New**, or click any empty row. The form opens in place:
 
 - **Num** — a check number, or a marker like ATM or EFT. Free text. Type **+** to fill in the next check number (one past the highest in this account). After you enter a check, the next new transaction offers the following number automatically; delete it if the next one is a card swipe, and the offer stops until you write another check.
-- **Date** — where the caret starts on a new transaction, because it is the one field that arrives as a guess. Type it: \`8/3\`, \`8/3/26\` or \`8/3/2026\` all work; **+** and **−** step a day, **T** is today, and the small ▾ opens a calendar. A new transaction starts on the date of the last one you entered, so a stack of receipts goes in without retyping the date — Tab straight past it when it is already right. Opening a transaction that already exists starts in the Payee instead.
+- **Date** — where the caret starts on a new transaction, because it is the one field that arrives as a guess. Type it: \`8/3\`, \`8/3/26\` or \`8/3/2026\` all work (in the order the file's region writes dates); **+** and **−** step a day, **T** is today, and the small ▾ opens a calendar. A new transaction starts on the date of the last one you entered, so a stack of receipts goes in without retyping the date — Tab straight past it when it is already right. Opening a transaction that already exists starts in the Payee instead.
 - **Payee** — offers the payees you have used before. A new name is added to the payee list when you save.
-- **Payment / Deposit** — dollars and cents in one or the other.
+- **Payment / Deposit** — the amount in one or the other, typed the way the file's region writes numbers.
 - **Category** — type any part of a name to filter: \`fuel\` finds "Automobile : Fuel". Type **Parent : Child** to reach a subcategory directly; the spaces around the colon and the capitals do not matter, so \`loan:heloc\` finds "Loan : HELOC" and Tab takes it rather than offering to add a second one. If what you typed does not exist, choose **+ Add …** and the new category is created without leaving the transaction; typing an existing parent and a new child ("Other Income : Garage Sale") adds the subcategory straight under that parent. To move money to another account choose **Transfer : (account)** in the same list — see [[splits-transfers|Splits, transfers and goals]].
 - **Memo** — notes; shown as the row's tooltip.
 - **Split** — divide the amount across several categories. See [[splits-transfers|Splits, transfers and goals]].

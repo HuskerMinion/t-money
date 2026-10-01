@@ -16,7 +16,17 @@ use super::amount::parse_amount_cents as parse_plain_cents;
 
 /// A CSV amount cell → cents: "$1,234.56", "(150.00)", "150.00-", "-$42.50",
 /// "42.50 CR" (credit → positive), "42.50 DR" (debit → negative), "USD 12".
+/// A dot is the decimal mark; `parse_amount_cents_in` reads a file that uses
+/// a comma.
 pub fn parse_amount_cents(s: &str) -> Option<i64> {
+    parse_amount_cents_in(s, false)
+}
+
+/// `parse_amount_cents` for a file whose decimal mark is a comma
+/// ("1.234,56") when `decimal_comma`. Decided once for the whole file
+/// (`guess_mapping`), never cell by cell: "0.125" in a US file is
+/// twelve-and-a-half cents rounded, not a hundred and twenty-five dollars.
+pub fn parse_amount_cents_in(s: &str, decimal_comma: bool) -> Option<i64> {
     let mut t = s.trim().to_string();
     if t.is_empty() {
         return None;
@@ -44,11 +54,45 @@ pub fn parse_amount_cents(s: &str) -> Option<i64> {
         t.remove(0);
     }
     let cleaned: String = t.chars().filter(|c| c.is_ascii_digit() || *c == '.' || *c == '-' || *c == ',').collect();
+    // Commas are thousands marks to the shared parser; in a comma file the
+    // dots are, and the comma is the decimal mark.
+    let cleaned = if decimal_comma { cleaned.replace('.', "").replace(',', ".") } else { cleaned };
     if cleaned.starts_with('-') {
         // "$-42.50"
         return parse_plain_cents(&cleaned).map(|c| c * sign);
     }
     parse_plain_cents(&cleaned).map(|c| c * sign)
+}
+
+/// Set `m.decimal_comma` from every row's amount cells under `m`'s columns
+/// — after the user has chosen the columns, so a file whose headers named
+/// nothing is still read right. Called by the preview and by the import
+/// itself; the value the dialog sends back is never trusted over the file.
+pub fn settle_decimal_mark(m: &mut CsvMapping, rows: &[Vec<String>]) {
+    let cells: Vec<&str> = [m.amount, m.debit, m.credit]
+        .into_iter()
+        .flatten()
+        .flat_map(|i| rows.iter().filter_map(move |r| r.get(i).map(String::as_str)))
+        .collect();
+    m.decimal_comma = sample_decimal_comma(&cells);
+}
+
+/// Whether the amount cells of a sample use a comma for the decimal mark:
+/// some cell ends in a comma and one or two digits, and none ends in a dot
+/// and one or two digits. A file that never says either way is read the US
+/// way, as it always was.
+fn sample_decimal_comma(cells: &[&str]) -> bool {
+    let tail = |c: &str, mark: char| -> bool {
+        let t: String = c.chars().filter(|ch| ch.is_ascii_digit() || *ch == '.' || *ch == ',').collect();
+        match t.rfind(mark) {
+            Some(p) => {
+                let after = &t[p + 1..];
+                (1..=2).contains(&after.len()) && !after.contains(['.', ','])
+            }
+            None => false,
+        }
+    };
+    cells.iter().any(|c| tail(c, ',')) && !cells.iter().any(|c| tail(c, '.'))
 }
 
 /// Which column (0-based) holds what. `None` = not in this file.
@@ -75,6 +119,10 @@ pub struct CsvMapping {
     /// The first line is column names (else columns are numbered).
     #[serde(default = "default_true")]
     pub has_header: bool,
+    /// The amounts use a comma for the decimal mark ("1.234,56"), as banks
+    /// in much of Europe write them. Guessed from the sample.
+    #[serde(default)]
+    pub decimal_comma: bool,
 }
 
 fn default_date_order() -> String {
@@ -347,12 +395,12 @@ pub fn row_to_txn(row: &[String], m: &CsvMapping) -> Result<CsvRow, String> {
     let date = parse_csv_date(&date_cell, &m.date_order).ok_or_else(|| format!("no date in \"{date_cell}\""))?;
     let amount_cents = if let Some(a) = m.amount {
         let v = cell(Some(a));
-        parse_amount_cents(&v).ok_or_else(|| format!("no amount in \"{v}\""))?
+        parse_amount_cents_in(&v, m.decimal_comma).ok_or_else(|| format!("no amount in \"{v}\""))?
     } else {
         let d = cell(m.debit);
         let c = cell(m.credit);
-        let debit = if d.is_empty() { 0 } else { parse_amount_cents(&d).ok_or_else(|| format!("no amount in \"{d}\""))?.abs() };
-        let credit = if c.is_empty() { 0 } else { parse_amount_cents(&c).ok_or_else(|| format!("no amount in \"{c}\""))?.abs() };
+        let debit = if d.is_empty() { 0 } else { parse_amount_cents_in(&d, m.decimal_comma).ok_or_else(|| format!("no amount in \"{d}\""))?.abs() };
+        let credit = if c.is_empty() { 0 } else { parse_amount_cents_in(&c, m.decimal_comma).ok_or_else(|| format!("no amount in \"{c}\""))?.abs() };
         if d.is_empty() && c.is_empty() {
             return Err("neither a debit nor a credit".to_string());
         }
@@ -410,10 +458,11 @@ pub fn preview(text: &str, n: usize, has_header: Option<bool>, given: Option<&Cs
             mapping.payee = (0..width).filter(|i| Some(*i) != mapping.date && Some(*i) != mapping.amount).max_by_key(|i| sample.iter().filter_map(|r| r.get(*i)).map(|v| v.len()).sum::<usize>());
         }
     }
-    let mapping = match given {
+    let mut mapping = match given {
         Some(g) => CsvMapping { has_header, ..g.clone() },
         None => mapping,
     };
+    settle_decimal_mark(&mut mapping, &data);
     let parsed = if mapping.date.is_some() && (mapping.amount.is_some() || mapping.debit.is_some() || mapping.credit.is_some()) {
         parse_sample(&sample, &mapping)
     } else {
@@ -570,5 +619,48 @@ mod tests {
         let p = preview("Date,Description,Amount\n9/3/2026,Kroger,42.50\n", 10, None, Some(&given)).unwrap();
         assert_eq!(p.parsed[0].amount_cents, Some(-4250));
         assert!(p.mapping.has_header);
+    }
+}
+
+#[cfg(test)]
+mod decimal_comma_tests {
+    use super::{parse_amount_cents, parse_amount_cents_in, preview};
+
+    #[test]
+    fn a_comma_file_is_read_with_a_comma_and_a_dot_file_as_it_always_was() {
+        assert_eq!(parse_amount_cents_in("1.234,56", true), Some(123_456));
+        assert_eq!(parse_amount_cents_in("-42,50", true), Some(-4_250));
+        assert_eq!(parse_amount_cents_in("12,5", true), Some(1_250));
+        assert_eq!(parse_amount_cents_in("1.234", true), Some(123_400));
+        assert_eq!(parse_amount_cents_in("1 234,56 €", true), Some(123_456));
+        // A dot file: three decimals round, they never become thousands.
+        assert_eq!(parse_amount_cents("1,234.56"), Some(123_456));
+        assert_eq!(parse_amount_cents("0.125"), Some(13));
+        assert_eq!(parse_amount_cents("1.234"), Some(123));
+        assert_eq!(parse_amount_cents("$42.50"), Some(4_250));
+    }
+
+    #[test]
+    fn the_files_amounts_settle_its_decimal_mark() {
+        let german = "Date;Description;Amount\n01.10.2026;Lidl;-42,50\n02.10.2026;Gehalt;1.234,56\n";
+        let p = preview(german, 10, None, None).unwrap();
+        assert!(p.mapping.decimal_comma, "{:?}", p.mapping);
+        assert_eq!(p.parsed.iter().filter_map(|r| r.amount_cents).collect::<Vec<_>>(), vec![-4_250, 123_456]);
+        let us = "Date,Description,Amount\n10/1/2026,Shell,-0.125\n10/2/2026,Pay,\"1,234.56\"\n";
+        assert!(!preview(us, 10, None, None).unwrap().mapping.decimal_comma);
+        // Nothing to tell by: the US reading, as before.
+        let whole = "Date,Description,Amount\n10/1/2026,Rent,-1500\n10/2/2026,Pay,2000\n";
+        assert!(!preview(whole, 10, None, None).unwrap().mapping.decimal_comma);
+        // Columns the user chose by hand: the mark comes from the file, not
+        // from what the dialog sent back.
+        let unnamed = "Datum;Empfänger;Betrag\n01.10.2026;Lidl;-42,50\n";
+        let mut chosen = preview(unnamed, 10, None, None).unwrap().mapping;
+        chosen.date = Some(0);
+        chosen.payee = Some(1);
+        chosen.amount = Some(2);
+        chosen.decimal_comma = false;
+        let p = preview(unnamed, 10, None, Some(&chosen)).unwrap();
+        assert!(p.mapping.decimal_comma);
+        assert_eq!(p.parsed[0].amount_cents, Some(-4_250));
     }
 }

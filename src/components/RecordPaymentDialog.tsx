@@ -16,9 +16,10 @@
 import { useEffect, useMemo, useState } from "react";
 import DateField from "./DateField";
 import Money from "./Money";
+import { currencyOf } from "../lib/currency";
 import { api } from "../lib/ipc";
 import { noteChanged } from "../lib/undo";
-import { formatAmountBare, parseMoneyToCents, today } from "../lib/format";
+import { formatAmountBare, formatDate, parseMoneyToCents, today } from "../lib/format";
 import { useAccountStore } from "../stores/useAccountStore";
 import type { Account } from "../lib/types";
 
@@ -37,10 +38,10 @@ export default function RecordPaymentDialog({ account, onDone, onCancel }: Props
   const [fromAccountId, setFromAccountId] = useState("");
   const [payee, setPayee] = useState(account.name);
   const [checkNumber, setCheckNumber] = useState("");
-  const [interest, setInterest] = useState("0.00");
-  const [principal, setPrincipal] = useState("0.00");
-  const [escrow, setEscrow] = useState("0.00");
-  const [extra, setExtra] = useState("0.00");
+  const [interest, setInterest] = useState(() => formatAmountBare(0));
+  const [principal, setPrincipal] = useState(() => formatAmountBare(0));
+  const [escrow, setEscrow] = useState(() => formatAmountBare(0));
+  const [extra, setExtra] = useState(() => formatAmountBare(0));
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -103,7 +104,7 @@ export default function RecordPaymentDialog({ account, onDone, onCancel }: Props
     // DateField sends "" for text it cannot read; say so here rather
     // than let the backend answer with a raw parse error.
     if (!date) {
-      setError("Type a date the form can read, such as 8/3/2026.");
+      setError(`Type a date the form can read, such as ${formatDate("2026-08-03")}.`);
       return;
     }
     if (!complete || total === null) {
@@ -216,8 +217,8 @@ export default function RecordPaymentDialog({ account, onDone, onCancel }: Props
               "Type each part as it appears on the statement."
             ) : (
               <>
-                Total payment <Money cents={total} tone="neutral" /> — one row in the register, for the amount the bank
-                shows. Owed now <Money cents={owed} tone="neutral" />, and <Money cents={owed - offTheLoan} tone="neutral" />{" "}
+                Total payment <Money cents={total} tone="neutral" currency={currencyOf(account)} /> — one row in the register, for the amount the bank
+                shows. Owed now <Money cents={owed} tone="neutral" currency={currencyOf(account)} />, and <Money cents={owed - offTheLoan} tone="neutral" currency={currencyOf(account)} />{" "}
                 after this payment.
               </>
             )}

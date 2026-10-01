@@ -6,6 +6,8 @@
 // which failed to compile at all. Anything added here goes BELOW the demo
 // lines, or gets its own line above this comment.
 pub mod classes;
+#[cfg(test)]
+mod currency_tests;
 
 // Demo data. This used to be gated: it was `#[cfg(debug_assertions)]`, compiled
 // out of release entirely, so that a personal-finance app could not ship a

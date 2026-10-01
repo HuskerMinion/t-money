@@ -14,7 +14,7 @@
 // deposit and not $1,340.00; a date matches the way it is shown (7/4/2026)
 // or as typed (2026-07-04).
 import { useEffect, useRef, useState } from "react";
-import { formatDateUS, formatMoney, parseMoneyToCents } from "../lib/format";
+import { formatDateUS, formatMoney, formatScaled, parseMoneyToCents } from "../lib/format";
 import type { RegisterRow } from "../lib/types";
 
 export type FindField = "any" | "payee" | "category" | "memo" | "num" | "amount" | "date";
@@ -70,6 +70,8 @@ export function findInRegister(rows: readonly RegisterRow[], query: string, fiel
 
 interface Props {
   accountName: string;
+  /** The account's currency; omitted, the home currency. */
+  currency?: string;
   /** The register as shown, so a hit is always a row that can be reached. */
   rows: readonly RegisterRow[];
   /** The row the register currently has selected, if any — shown as the
@@ -80,7 +82,7 @@ interface Props {
   onClose: () => void;
 }
 
-export default function FindInRegisterDialog({ accountName, rows, selectedId, onPick, onClose }: Props) {
+export default function FindInRegisterDialog({ accountName, currency, rows, selectedId, onPick, onClose }: Props) {
   const [query, setQuery] = useState("");
   const [field, setField] = useState<FindField>("any");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -148,10 +150,10 @@ export default function FindInRegisterDialog({ accountName, rows, selectedId, on
           </button>
           <span className="tm-text-muted" aria-live="polite">
             {query.trim() === ""
-              ? `${rows.length.toLocaleString("en-US")} rows shown`
+              ? `${formatScaled(rows.length, 0)} rows shown`
               : matches.length === 0
                 ? "No match"
-                : `${matches.length.toLocaleString("en-US")} ${matches.length === 1 ? "match" : "matches"}${at >= 0 ? ` — on ${at + 1}` : ""}`}
+                : `${formatScaled(matches.length, 0)} ${matches.length === 1 ? "match" : "matches"}${at >= 0 ? ` — on ${at + 1}` : ""}`}
           </span>
         </div>
         {matches.length > 0 && (
@@ -192,7 +194,7 @@ export default function FindInRegisterDialog({ accountName, rows, selectedId, on
                     <td>{r.payee}</td>
                     <td>{categoryText(r)}</td>
                     <td className="tm-text-muted">{r.notes ?? ""}</td>
-                    <td className={`num${r.amount_cents < 0 ? " money-neg" : ""}`}>{formatMoney(r.amount_cents)}</td>
+                    <td className={`num${r.amount_cents < 0 ? " money-neg" : ""}`}>{formatMoney(r.amount_cents, { currency })}</td>
                   </tr>
                 ))}
               </tbody>

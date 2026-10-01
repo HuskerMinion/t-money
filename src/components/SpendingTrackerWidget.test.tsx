@@ -6,6 +6,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@tauri-apps/api/core", () => import("../test/tauriMock"));
 
 import SpendingTrackerWidget from "./SpendingTrackerWidget";
+import { formatTarget } from "./SpendingTrackerWidget";
+import { useFileFormat } from "../lib/region";
 import { useBudgetStore } from "../stores/useBudgetStore";
 
 beforeEach(() => {
@@ -23,5 +25,16 @@ describe("The Spending Tracker says when it could not load", () => {
   it("an empty month with no error still says so plainly", () => {
     render(<SpendingTrackerWidget onOpenReport={vi.fn()} />);
     expect(screen.getByText("No spending recorded for September 2026.")).toBeInTheDocument();
+  });
+});
+
+describe("in the file's region", () => {
+  it("writes a budget's size in the home currency the German way", () => {
+    useFileFormat.getState().setFormat({ home_currency: "EUR", region: "de-DE" });
+    expect(formatTarget(-123_456)).toBe("1.234,56\u00a0€");
+  });
+
+  it("leaves the US as it was", () => {
+    expect(formatTarget(123_456)).toBe("$1,234.56");
   });
 });

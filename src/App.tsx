@@ -3,6 +3,7 @@
 // quick-add transaction form. All data flows through Tauri IPC.
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { accountWorth } from "./lib/accountTypes";
+import { currencyOf } from "./lib/currency";
 import AeroHeader, { type Tab } from "./components/AeroHeader";
 import MenuBar, { useMenuAccelerators } from "./components/MenuBar";
 import { buildMenus } from "./lib/menus";
@@ -10,6 +11,8 @@ import { useCommand } from "./lib/useCommand";
 import { runCommand } from "./lib/commands";
 import { forgetUndo, onUndoChange, redoLast, refreshUndo, undoLast, undoStatus } from "./lib/undo";
 import KeyPromptDialog from "./components/KeyPromptDialog";
+import NewFileFormatDialog from "./components/NewFileFormatDialog";
+import { useFileFormat } from "./lib/region";
 import { fileNameOf, keyProblem } from "./lib/keyError";
 import AeroSidebar from "./components/AeroSidebar";
 import { clampRail, loadRailWidth, RAIL_DEFAULT, RAIL_MAX, RAIL_MIN, saveRailWidth } from "./lib/railWidth";
@@ -501,9 +504,28 @@ export default function App() {
     };
   }, [fileOpen, filePath]);
 
+  // The open file's home currency and region. Every formatter reads them
+  // when it runs, so they are in place before the screens draw, and <main> is
+  // keyed on them so a change redraws what is already up.
+  const format = useFileFormat((s) => `${s.home}|${s.region.code}`);
+  const loadFormat = async (open: boolean) => {
+    if (!open) {
+      useFileFormat.getState().reset();
+      return;
+    }
+    try {
+      useFileFormat.getState().setFormat(await api.getFileFormat());
+    } catch (e) {
+      // Shown, not swallowed: a euro file drawn in dollars would mislead.
+      useFileFormat.getState().reset();
+      setFileError(`This file's currency and region could not be read, so amounts show in US dollars: ${String(e)}`);
+    }
+  };
+
   const refreshFiles = async () => {
     try {
       const [cur, list] = await Promise.all([api.currentFile(), api.listRecentFiles()]);
+      await loadFormat(cur.isOpen !== false);
       setFileName(cur.name);
       setFilePath(cur.path);
       setFileIsDefault(cur.isDefault);
@@ -622,6 +644,7 @@ export default function App() {
 
   /** Step 3: load whatever is now open. Everything here lives IN the file. */
   async function loadFile() {
+    await loadFormat(true);
     await useAccountStore.getState().reloadAll();
     await useBudgetStore.getState().loadSummary();
     try {
@@ -633,7 +656,7 @@ export default function App() {
     await refreshFiles();
   }
 
-  async function switchTo(path: string, create: boolean, key?: string) {
+  async function switchTo(path: string, create: boolean, key?: string, init?: () => Promise<void>) {
     setFileError(null);
     leaveFile();
 
@@ -670,6 +693,14 @@ export default function App() {
     // The backend cleared its undo stack when it swapped the file; drop the
     // label that went with the old one.
     forgetUndo();
+    // A new file takes its home currency and region before anything is read.
+    if (init) {
+      try {
+        await init();
+      } catch (e) {
+        setFileError(String(e));
+      }
+    }
 
     // 3) Load the new file. Anything that fails is reported, never thrown at
     //    a render — a fresh file with nothing in it must open cleanly.
@@ -764,8 +795,33 @@ export default function App() {
       defaultPath: "My Money.tmny",
       filters: [{ name: "T-Money file", extensions: ["tmny"] }],
     });
-    if (typeof picked === "string") await switchTo(picked, true);
+    if (typeof picked === "string") setNewFile(picked);
   });
+  /** The path File → New picked, waiting on its currency and region. */
+  const [newFile, setNewFile] = useState<string | null>(null);
+  const [newBusy, setNewBusy] = useState(false);
+  const createNewFile = async (path: string, f: { home_currency: string; region: string }) => {
+    setNewBusy(true);
+    try {
+      await switchTo(path, true, undefined, async () => {
+        // An empty file has no accounts to relabel or keep.
+        const now = await api.getFileFormat();
+        if (now.home_currency !== f.home_currency) await api.setHomeCurrency(f.home_currency, false);
+        if (now.region !== f.region) await api.setRegion(f.region);
+      });
+    } finally {
+      setNewBusy(false);
+      setNewFile(null);
+    }
+  };
+  const newFileDialog = newFile && (
+    <NewFileFormatDialog
+      fileName={fileNameOf(newFile)}
+      busy={newBusy}
+      onCancel={() => setNewFile(null)}
+      onSubmit={(f) => void createNewFile(newFile, f)}
+    />
+  );
   // A file to look at. Same shape as New, and it lands on a file with
   // three years in it rather than an empty register.
   useCommand("file.sample", makeSample);
@@ -904,6 +960,7 @@ export default function App() {
             onSubmit={(k) => void submitKey(keyPrompt.path, k)}
           />
         )}
+        {newFileDialog}
       </div>
     );
   }
@@ -1024,7 +1081,7 @@ export default function App() {
             onSelect={openAccountRegister}
           />
         )}
-        <main key={tabEpoch} className="flex-1 overflow-y-auto p-4" style={{ background: "var(--tm-ms-content-bg)" }}>
+        <main key={`${tabEpoch}|${format}`} className="flex-1 overflow-y-auto p-4" style={{ background: "var(--tm-ms-content-bg)" }}>
           {tab === "Home" && (
             <Dashboard
               onOpenAccount={openAccountRegister}
@@ -1154,6 +1211,7 @@ export default function App() {
           onSubmit={(k) => void submitKey(keyPrompt.path, k)}
         />
       )}
+      {newFileDialog}
 
       {calcOpen && (
         <>
@@ -1329,7 +1387,7 @@ function BankingView({
                     {selected.is_favorite ? "★" : "☆"}
                   </button>
                   <span className="tabular-nums font-bold">
-                    <Money cents={accountWorth(selected)} />
+                    <Money cents={accountWorth(selected)} currency={currencyOf(selected)} />
                   </span>
                 </>
               )}
@@ -1527,8 +1585,8 @@ function BankingView({
           <div className="tm-dialog-backdrop" onClick={() => setShowNewAccount(false)} />
           <NewAccountWizard
             onCancel={() => setShowNewAccount(false)}
-            onCreate={async (name, type, cents, openedOn) => {
-              await useAccountStore.getState().addAccount(name, type, cents, openedOn);
+            onCreate={async (name, type, cents, openedOn, currency) => {
+              await useAccountStore.getState().addAccount(name, type, cents, openedOn, currency);
               setShowNewAccount(false);
               setMsg("Account created.");
             }}

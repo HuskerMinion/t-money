@@ -9,6 +9,7 @@
 // types.ts.)
 
 import { invoke } from "@tauri-apps/api/core";
+import type { Region } from "./region";
 import type {
   Account,
   Attachment,
@@ -70,6 +71,9 @@ import type {
   UsedText,
   PriceRefreshSummary,
   PriceStatus,
+  Currency,
+  ExchangeRate,
+  FileFormat,
   ClassPick,
   Classification,
   ClassificationValue,
@@ -98,18 +102,46 @@ export const api = {
   getFavoriteAccounts: () => invoke<Account[]>("get_favorite_accounts"),
   getAllAccounts: () => invoke<Account[]>("get_all_accounts"),
   /** `openedOn` (YYYY-MM-DD) dates the Opening Balance row; omitted = today. */
+  /** `currency` (ISO code) is the one the account is kept in; omitted = dollars. */
   createAccount: (
     name: string,
     type: AccountType,
     openingBalanceCents: number,
-    openedOn?: string
+    openedOn?: string,
+    currency?: string
   ) =>
     invoke<Account>("create_account", {
       name,
       accountType: type,
       openingBalanceCents,
       openedOn: openedOn ?? null,
+      currency: currency ?? null,
     }),
+  /** Relabel the currency an account is kept in; amounts are not converted. */
+  setAccountCurrency: (id: string, currency: string) =>
+    invoke<Account>("set_account_currency", { id, currency }),
+
+  // Currencies and exchange rates. A rate is home-currency units per unit.
+  listCurrencies: () => invoke<Currency[]>("list_currencies"),
+  /** The regions a file can write its numbers and dates for. */
+  listRegions: () => invoke<Region[]>("list_regions"),
+  /** The open file's home currency and region. */
+  getFileFormat: () => invoke<FileFormat>("get_file_format"),
+  setRegion: (region: string) => invoke<FileFormat>("set_region", { region }),
+  /** `relabel`: the accounts in the old home currency were really in the new
+   *  one, so they are relabeled, amounts untouched. */
+  setHomeCurrency: (currency: string, relabel: boolean) =>
+    invoke<FileFormat>("set_home_currency", { currency, relabel }),
+  listExchangeRates: () => invoke<ExchangeRate[]>("list_exchange_rates"),
+  /** `rate` is typed text ("1.0875"), read as a decimal by the backend. */
+  setExchangeRate: (currency: string, date: string, rate: string) =>
+    invoke<void>("set_exchange_rate", { currency, date, rate }),
+  deleteExchangeRate: (currency: string, date: string) =>
+    invoke<void>("delete_exchange_rate", { currency, date }),
+  /** Fetch today's rates over the network — only when the user asks. No
+   *  currencies named = every currency an account is kept in. */
+  fetchExchangeRates: (currencies: string[] | null = null) =>
+    invoke<PriceRefreshSummary>("fetch_exchange_rates", { currencies }),
   deleteAccount: (id: string) => invoke<void>("delete_account", { id }),
   /** Merge `fromId` into `intoId`. `dryRun` reports without changing. */
   mergeAccounts: (intoId: string, fromId: string, afterLast: boolean, dryRun: boolean) =>
@@ -418,18 +450,22 @@ export const api = {
 
   // Transfers — one action, two linked rows. amountCents is a magnitude;
   // direction comes from the two account ids.
+  // `receivedCents` is what arrives in the other account, in ITS currency,
+  // when the two are kept in different currencies; null otherwise.
   createTransfer: (
     fromAccountId: string,
     toAccountId: string,
     date: string,
     amountCents: number,
-    notes: string | null
+    notes: string | null,
+    receivedCents: number | null = null
   ) =>
     invoke<Transaction>("create_transfer", {
       fromAccountId,
       toAccountId,
       date,
       amountCents,
+      receivedCents,
       notes,
     }),
 
@@ -458,13 +494,17 @@ export const api = {
     date: string,
     otherAccountId: string,
     amountCents: number,
-    notes: string | null
+    notes: string | null,
+    /** The other side's amount (a magnitude, in its currency) when the two
+     *  accounts are kept in different currencies; null otherwise. */
+    otherAmountCents: number | null = null
   ) =>
     invoke<Transaction>("update_transfer", {
       id,
       date,
       otherAccountId,
       amountCents,
+      otherAmountCents,
       notes,
     }),
 

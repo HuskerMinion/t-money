@@ -230,6 +230,31 @@ describe("SplitDialog", () => {
     ]);
     expect(screen.getByLabelText("Category 1")).toHaveValue("Transfer : Everyday Savings 5678");
   });
+
+  it("offers only accounts kept in the transaction's currency", async () => {
+    // A line has one amount; a transfer between currencies needs two.
+    render(
+      <SplitDialog
+        categories={categories}
+        transferTargets={[...accounts, { ...account("a-eu", "Paris Checking"), currency: "EUR" }]}
+        parentAmountCents={-10_000}
+        onDone={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    );
+    const user = userEvent.setup();
+    await user.click(screen.getByLabelText("Category 1"));
+    const list = await screen.findByRole("listbox");
+    expect(within(list).getByText("Transfer : Everyday Savings 5678")).toBeInTheDocument();
+    expect(within(list).queryByText("Transfer : Paris Checking")).not.toBeInTheDocument();
+  });
+
+  it("shows the totals in the transaction's currency", () => {
+    render(
+      <SplitDialog categories={categories} currency="EUR" parentAmountCents={-10_000} onDone={vi.fn()} onCancel={vi.fn()} />
+    );
+    expect(screen.getByLabelText("Transaction amount")).toHaveTextContent("€100.00");
+  });
 });
 
 // What a morning of real entry asked of this dialog.

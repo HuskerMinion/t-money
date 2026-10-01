@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -10,6 +10,7 @@ import DebtPlannerView from "./DebtPlannerView";
 import { invokeCalls, resetIpc, setIpcHandlers } from "../test/tauriMock";
 import { useAccountStore } from "../stores/useAccountStore";
 import type { Account } from "../lib/types";
+import { useFileFormat } from "../lib/region";
 
 function acct(id: string, name: string, type: Account["type"], balance_cents: number): Account {
   return {
@@ -113,5 +114,63 @@ describe("A save that fails", () => {
     await userEvent.type(screen.getByLabelText("Monthly budget"), "3");
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Could not save the rates and budget with this file: database is locked");
+  });
+});
+
+describe("debts in other currencies", () => {
+  it("shows each in its own currency, plans in the home currency, and leaves out one with no rate", async () => {
+    const mixed = [
+      acct("a-visa", "Visa", "credit", -50_000),
+      { ...acct("a-cad", "Canada loan", "loan", -100_000), currency: "CAD", home_rate_micro: 730_000 },
+      { ...acct("a-gbp", "UK card", "credit", -20_000), currency: "GBP", home_rate_micro: 0 },
+    ];
+    setIpcHandlers({ get_all_accounts: () => mixed, get_ui_setting: () => null, set_ui_setting: () => null });
+    useAccountStore.setState({ accounts: mixed });
+    render(<DebtPlannerView />);
+    const table = await screen.findByRole("table", { name: "Debts" });
+    expect(table).toHaveTextContent("CA$1,000.00");
+    expect(table).toHaveTextContent("≈ $730.00");
+    expect(table).toHaveTextContent("£200.00");
+    // The plan's interest sums to dollars; the column says so beside a foreign debt.
+    expect(within(table).getByRole("columnheader", { name: "Interest (US dollars)" })).toBeInTheDocument();
+    expect(screen.getByText(/Left out of the plan: UK card \(no GBP rate\)/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Payoff for UK card")).toHaveTextContent("not planned");
+    // Minimums in each debt's currency: $25 and CA$100 (= $73) is $98 a month.
+    await userEvent.type(screen.getByLabelText("Minimum payment for Visa"), "25");
+    await userEvent.type(screen.getByLabelText("Minimum payment for Canada loan"), "100");
+    await userEvent.type(screen.getByLabelText("Monthly budget"), "50");
+    expect(screen.getByLabelText("Plan result")).toHaveTextContent("below the minimum payments ($98.00 a month)");
+    // The one-debt planner stays in the debt's own currency.
+    await userEvent.selectOptions(screen.getByLabelText("Debt"), "a-cad");
+    await userEvent.type(screen.getByLabelText("Monthly payment"), "100");
+    expect(screen.getByLabelText("Mini plan result")).toHaveTextContent("CA$0.00 in interest, CA$1,000.00 in all");
+  });
+});
+
+describe("a file in euros, written the German way", () => {
+  it("plans in euros and reads and writes 1.234,56", async () => {
+    useFileFormat.getState().setFormat({ home_currency: "EUR", region: "de-DE" });
+    const mixed = [acct("a-visa", "Visa", "credit", -123_456), { ...acct("a-usd", "US loan", "loan", -100_000), currency: "USD", home_rate_micro: 900_000 }];
+    setIpcHandlers({ get_all_accounts: () => mixed, get_ui_setting: () => null, set_ui_setting: () => null });
+    useAccountStore.setState({ accounts: mixed });
+    render(<DebtPlannerView />);
+    const table = await screen.findByRole("table", { name: "Debts" });
+    expect(table).toHaveTextContent("1.234,56 €");
+    expect(table).toHaveTextContent("1.000,00 US$");
+    expect(table).toHaveTextContent("≈ 900,00 €");
+    expect(within(table).getByRole("columnheader", { name: "Interest (euros)" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Monthly budget")).toHaveAttribute("placeholder", "0,00");
+    expect(screen.getByLabelText("Rate for Visa")).toHaveAttribute("placeholder", "6,5");
+    // 25 € and US$100 (= 90 €) is 115 € a month.
+    await userEvent.type(screen.getByLabelText("Rate for Visa"), "12,5");
+    await userEvent.type(screen.getByLabelText("Minimum payment for Visa"), "25");
+    await userEvent.type(screen.getByLabelText("Minimum payment for US loan"), "100");
+    expect(screen.getByLabelText("Rate for Visa")).not.toHaveClass("money-neg");
+    await userEvent.type(screen.getByLabelText("Monthly budget"), "50");
+    expect(screen.getByLabelText("Plan result")).toHaveTextContent("below the minimum payments (115,00 € a month)");
+    await userEvent.clear(screen.getByLabelText("Monthly budget"));
+    await userEvent.type(screen.getByLabelText("Monthly budget"), "1.234,56");
+    expect(screen.getByLabelText("Plan result")).toHaveTextContent(/Debt-free in \d+ months .* [\d.]+,\d\d € in interest\./);
+    expect(screen.getByLabelText("Debt")).toHaveTextContent("Visa — 1.234,56 € at 12,5%");
   });
 });

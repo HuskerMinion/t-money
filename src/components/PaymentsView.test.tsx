@@ -13,6 +13,7 @@ vi.mock("@tauri-apps/api/core", () => import("../test/tauriMock"));
 import PaymentsView, { describeRule, describeStatus, isOpen } from "./PaymentsView";
 import { resetIpc, setIpcHandlers } from "../test/tauriMock";
 import type { Account, Occurrence, Recurrence } from "../lib/types";
+import { useFileFormat } from "../lib/region";
 
 function occ(over: Partial<Occurrence> = {}): Occurrence {
   return {
@@ -309,6 +310,26 @@ describe("Editing a schedule from the upcoming list", () => {
     expect((updates[0].payload as Record<string, unknown>).payee).toBe("Netflix Premium");
   });
 
+  it("in a German file, opens the amount as 1450,00 and takes 1.234,56", async () => {
+    useFileFormat.getState().setFormat({ home_currency: "EUR", region: "de-DE" });
+    Element.prototype.scrollIntoView = vi.fn();
+    onTestFinished(() => {
+      delete (Element.prototype as Partial<Element>).scrollIntoView;
+    });
+    render(<PaymentsView />);
+    const rent = await rowOf("Anytown Properties");
+    expect(rent).toHaveTextContent("(1.450,00 €)");
+    await userEvent.click(within(rent).getByRole("button", { name: "Edit the schedule for Anytown Properties" }));
+    const amount = screen.getByLabelText("Amount");
+    expect(amount).toHaveValue("1450,00");
+    expect(amount).toHaveAttribute("placeholder", "0,00");
+    await userEvent.clear(amount);
+    await userEvent.type(amount, "1.234,56");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(updates.length).toBe(1));
+    expect((updates[0].payload as Record<string, unknown>).amount_cents).toBe(-123_456);
+  });
+
   it("opens a row's schedule on a double-click, but not from a double-click on its buttons", async () => {
     render(<PaymentsView />);
     const rent = await rowOf("Anytown Properties");
@@ -321,5 +342,52 @@ describe("Editing a schedule from the upcoming list", () => {
     expect(screen.getByText("Edit scheduled item: Anytown Properties")).toBeInTheDocument();
     expect(screen.getByLabelText("Payee")).toHaveValue("Anytown Properties");
     expect(screen.getByLabelText("Amount")).toHaveValue("1450.00");
+  });
+});
+
+describe("Scheduled transfers and other currencies", () => {
+  const acct = (id: string, name: string, currency = "USD"): Account => ({
+    id, name, type: "checking", balance_cents: 0, holdings_value_cents: 0, tax_included: true,
+    is_favorite: false, is_closed: false, updated_at: "", institution: null, account_number: null,
+    routing_number: null, opened_on: null, credit_limit_cents: null, contact_phone: null,
+    contact_email: null, website: null, address: null, account_notes: null,
+    currency, home_rate_micro: currency === "USD" ? 1_000_000 : 1_100_000,
+  });
+  const sweep: Recurrence = {
+    id: "r-sweep", payee: "Sweep", amount_cents: -5_000, account_id: "a-eur", account_name: "Euro checking",
+    category_id: null, category_name: null, freq: "monthly", interval_n: 1, start_date: "2026-01-01",
+    end_date: null, second_day: null, weekend_rule: "none", notes: null, is_active: true, updated_at: "",
+    transfer_account_id: "a-eur2", transfer_account_name: "Euro savings",
+  };
+
+  beforeEach(() => {
+    resetIpc();
+    setIpcHandlers({
+      list_recurrences: () => [sweep],
+      get_upcoming: () => [occ({ recurrence_id: "r-sweep", payee: "Sweep", amount_cents: -5_000, account_id: "a-eur", account_name: "Euro checking" })],
+      get_all_accounts: () => [acct("a-chk", "Demo Checking"), acct("a-eur", "Euro checking", "EUR"), acct("a-eur2", "Euro savings", "EUR")],
+      list_categories: () => [],
+      list_goals: () => [],
+      get_ui_setting: () => null,
+      get_cash_forecast: () => null,
+    });
+  });
+
+  it("offers only accounts in the same currency to transfer to", async () => {
+    render(<PaymentsView />);
+    await userEvent.click(await screen.findByRole("button", { name: "Edit" }));
+    const to = await screen.findByLabelText("Transfer to");
+    expect(to).toHaveValue("Euro savings");
+    await userEvent.clear(to);
+    await userEvent.click(to);
+    const options = within(screen.getByRole("listbox", { name: "Transfer to options" })).getAllByRole("option").map((o) => o.textContent);
+    expect(options.some((t) => t?.includes("Euro savings"))).toBe(true);
+    expect(options.some((t) => t?.includes("Demo Checking"))).toBe(false);
+  });
+
+  it("shows an upcoming bill in its account's currency", async () => {
+    render(<PaymentsView />);
+    const row = (await screen.findByRole("cell", { name: "Euro checking" })).closest("tr")!;
+    expect(row).toHaveTextContent("(€50.00)");
   });
 });

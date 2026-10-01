@@ -23,14 +23,18 @@ pub type Conn = PooledConnection<SqliteConnectionManager>;
 /// `pub(crate)` so `db::plan` can read the same lines the budget
 /// screen does. One definition of "what counts as money against a category",
 /// or the year plan and the month screen would disagree about a split.
-pub(crate) const CATEGORY_LINES: &str = r#"
-    WITH lines AS (
+///
+/// `amount_cents` is in dollars, converted at the rate on the line's day for
+/// an account kept in another currency — budgets are in dollars.
+pub(crate) const CATEGORY_LINES: &str = concat!(r#"
+    WITH raw_lines AS (
         SELECT t.id                                   AS txn_id,
                t.date                                 AS date,
                COALESCE(s.category_id, t.category_id) AS category_id,
                COALESCE(s.amount_cents,
                         CASE WHEN t.activity LIKE 'reinvest_%' THEN t.gross_cents ELSE t.amount_cents END)
-                                                      AS amount_cents
+                                                      AS native_cents,
+               t.account_id                           AS account_id
         FROM transactions t
         LEFT JOIN splits s ON s.transaction_id = t.id
         WHERE t.is_void = 0 AND t.transfer_id IS NULL
@@ -41,8 +45,23 @@ pub(crate) const CATEGORY_LINES: &str = r#"
           AND (t.activity IS NULL OR t.activity IN
                ('dividend','interest','ltcg_dist','stcg_dist',
                 'reinvest_dividend','reinvest_interest','reinvest_ltcg','reinvest_stcg'))
+    ), lines AS (
+        SELECT txn_id, date, category_id,
+               CASE WHEN rl.account_id NOT IN (SELECT id FROM accounts WHERE currency <> "#,
+    crate::home_sql!(),
+    r#")
+                    THEN rl.native_cents ELSE "#,
+    // No join to accounts: an account kept in another currency is looked up
+    // only for its own rows. A per-row join here lets SQLite's planner, once
+    // the file has statistics, walk every account's rows by index instead —
+    // several times slower — and costs every all-dollar file a lookup per row.
+    // Qualified: inside the rate lookup a bare `currency` or `date` would
+    // name the exchange_rates row's own column and match every rate.
+    crate::to_home_at_sql!("rl.native_cents", "(SELECT fa.currency FROM accounts fa WHERE fa.id = rl.account_id)", "rl.date"),
+    r#" END AS amount_cents
+          FROM raw_lines rl
     )
-"#;
+"#);
 
 pub(super) fn map_txn(row: &Row) -> rusqlite::Result<Transaction> {
     Ok(Transaction {

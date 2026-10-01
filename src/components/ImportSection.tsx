@@ -8,6 +8,7 @@ import Notice from "./Notice";
 import TmIcon from "./TmIcon";
 import { api } from "../lib/ipc";
 import { useAccountStore } from "../stores/useAccountStore";
+import { currencyOf } from "../lib/currency";
 import { refreshUndo } from "../lib/undo";
 import type { Category, CsvMapping, ImportMatchPreview, ImportSummary, MemoRule } from "../lib/types";
 import CsvImportDialog from "./CsvImportDialog";
@@ -28,6 +29,11 @@ export default function ImportSection() {
   const [filePath, setFilePath] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<ImportSummary | null>(null);
+  /** The currency an account is kept in; one not on file reads as the home currency. */
+  const currencyFor = (id: string | null | undefined) => {
+    const a = id ? accounts.find((x) => x.id === id) : undefined;
+    return a ? currencyOf(a) : undefined;
+  };
   const [error, setError] = useState<string | null>(null);
   // A CSV goes through the mapping dialog instead of straight in.
   const [csvPath, setCsvPath] = useState<string | null>(null);
@@ -291,7 +297,7 @@ export default function ImportSection() {
               <span className="text-right">{result.skipped}</span>
               <span className="font-bold">Balance change</span>
               <span className="text-right">
-                <Money cents={result.balance_delta_cents} />
+                <Money cents={result.balance_delta_cents} currency={currencyFor(result.account_id)} />
               </span>
             </div>
             {(result.notes ?? []).length > 0 && (
@@ -314,6 +320,7 @@ export default function ImportSection() {
         path={csvPath}
         accountId={accountId}
         accountName={accounts.find((a) => a.id === accountId)?.name ?? ""}
+        currency={currencyFor(accountId)}
         onCancel={() => setCsvPath(null)}
         onImported={(summary) => {
           setCsvPath(null);
@@ -340,6 +347,7 @@ export default function ImportSection() {
       <ImportMatchDialog
         path={filePath}
         accountId={accountId}
+        currency={currencyFor(accountId)}
         mapping={mapping}
         memoRules={memoRules}
         preview={preview}

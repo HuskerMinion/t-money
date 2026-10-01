@@ -106,3 +106,24 @@ describe("Contribute… for one goal, then another", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Enter a name, target, and saved amount.");
   });
 });
+
+describe("a goal that watches an account in another currency", () => {
+  it("shows its amounts in that currency and takes contributions only from the same currency", async () => {
+    useAccountStore.setState({
+      accounts: [
+        { id: "a-chk", name: "Checking", is_closed: false, currency: "USD" },
+        { id: "a-eur", name: "Euro checking", is_closed: false, currency: "EUR", home_rate_micro: 1_100_000 },
+        { id: "a-sav", name: "Savings", is_closed: false, currency: "EUR", home_rate_micro: 1_100_000 },
+      ] as never,
+    });
+    setIpcHandlers({ list_goals: () => [roof], get_all_accounts: () => useAccountStore.getState().accounts });
+    render(<GoalsView />);
+    const row = (await screen.findByText("New Roof")).closest("tr")!;
+    expect(row).toHaveTextContent("€7,000.00");
+    expect(row).toHaveTextContent("€18,000.00");
+    await userEvent.click(within(row).getByRole("button", { name: "Contribute…" }));
+    const from = screen.getByLabelText("From account");
+    const names = within(from).getAllByRole("option").map((o) => o.textContent);
+    expect(names).toEqual(["(choose)", "Euro checking"]);
+  });
+});

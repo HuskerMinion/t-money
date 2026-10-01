@@ -211,6 +211,9 @@ pub(crate) fn set_splits_in(
                 if exists == 0 {
                     return Err(format!("account {other} not found"));
                 }
+                // The far row is the line's exact negation, which is only
+                // right in one currency.
+                require_same_currency(tx, &account_id, other, "A split line that moves money")?;
                 let far = Uuid::new_v4().to_string();
                 tx.execute(
                     "INSERT INTO transactions
@@ -309,7 +312,7 @@ mod tests {
             .unwrap();
         assert_ne!(principal_now, principal, "re-splitting wrote a new row");
         let err = set_void(&c, &principal_now, true).unwrap_err();
-        assert!(err.contains("belongs to a split in Checking (Summit Home Loans, 03/01/2026)"), "{err}");
+        assert!(err.contains("belongs to a split in Checking (Summit Home Loans, 3/1/2026)"), "{err}");
         assert_eq!(balance(&c, &loan), 70_000, "nothing was voided");
         assert_consistent(&c);
     }

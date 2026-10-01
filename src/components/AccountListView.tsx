@@ -7,6 +7,7 @@ import { Fragment, useEffect, useState } from "react";
 import Money from "./Money";
 import { ACCOUNT_GROUPS, accountWorth, groupFor, isValuedAsset, labelFor, placedFirst, type AccountGroup } from "../lib/accountTypes";
 import { maskNumber } from "./AccountDetailsDialog";
+import { currencyOf, homeName, isForeign, rateOf, worthHome } from "../lib/currency";
 import { api } from "../lib/ipc";
 import type { Account } from "../lib/types";
 
@@ -38,7 +39,8 @@ export default function AccountListView({
   // box says how many are hidden, so a list that looks short explains itself.
   const [showClosed, setShowClosed] = useState(false);
   const closedCount = accounts.filter((a) => a.is_closed).length;
-  // What is owed against each asset, for the equity line under it.
+  // What is owed against each asset, for the equity line under it. In
+  // the home currency: the backend converts each loan at today's rate.
   const [debts, setDebts] = useState<Record<string, number>>({});
   useEffect(() => {
     let live = true;
@@ -128,15 +130,27 @@ export default function AccountListView({
                           .join(" · ")}
                       </td>
                       <td className="num">
-                        <Money cents={accountWorth(a)} />
+                        <Money cents={accountWorth(a)} currency={currencyOf(a)} />
                         {/* A house with a mortgage on it is worth the
                             difference to you. Both accounts are already in net
                             worth, so this is a reading of them, not a third
-                            number. */}
+                            number. What is owed comes in the home currency
+                            (the loans need not be in the house's currency), so
+                            equity is in it too. */}
                         {isValuedAsset(a.type) && (debts[a.id] ?? 0) !== 0 && (
                           <div className="tm-text-muted" style={{ fontSize: "0.9em" }}>
-                            less <Money cents={debts[a.id]} tone="neutral" /> owed ={" "}
-                            <Money cents={accountWorth(a) - debts[a.id]} tone="neutral" /> equity
+                            {rateOf(a) === 0 ? (
+                              <>
+                                less <Money cents={debts[a.id]} tone="neutral" /> owed — no {currencyOf(a)} rate, so
+                                no equity (Settings → Currencies)
+                              </>
+                            ) : (
+                              <>
+                                less <Money cents={debts[a.id]} tone="neutral" /> owed ={" "}
+                                <Money cents={worthHome(a) - debts[a.id]} tone="neutral" /> equity
+                                {isForeign(a) && ` in ${homeName()}`}
+                              </>
+                            )}
                           </div>
                         )}
                       </td>

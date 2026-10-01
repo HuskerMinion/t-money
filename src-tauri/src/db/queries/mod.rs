@@ -20,6 +20,7 @@ mod recurrences;
 mod search;
 mod settings;
 mod verify;
+mod fx;
 
 #[cfg(test)]
 mod test_support;
@@ -40,3 +41,4 @@ pub use recurrences::*;
 pub use search::*;
 pub use settings::*;
 pub use verify::*;
+pub use fx::*;

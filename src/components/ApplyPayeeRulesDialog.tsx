@@ -189,7 +189,7 @@ export default function ApplyPayeeRulesDialog({ onClose, onApplied }: Props) {
                                 {c.payee}
                               </td>
                               <td className="text-right tabular-nums">
-                                <Money cents={c.amount_cents} />
+                                <Money cents={c.amount_cents} currency={c.currency} />
                               </td>
                               <td className="truncate">
                                 {filing ? (

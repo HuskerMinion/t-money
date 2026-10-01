@@ -77,4 +77,20 @@ describe("Merge accounts", () => {
     await userEvent.selectOptions(screen.getByLabelText("Merge into"), "a-sav");
     expect(screen.getByText(/is a checking account and Savings is savings/)).toBeInTheDocument();
   });
+
+  it("offers only accounts in the same currency, and shows money in it", async () => {
+    const eur = (a: Account): Account => ({ ...a, currency: "EUR", home_rate_micro: 1_080_000 });
+    const list = [...accounts, eur(acct("e-1", "Paris Checking", "checking", 30_000)), eur(acct("e-2", "Paris Checking (2)", "checking", 1_000))];
+    render(<MergeAccountsDialog from={list[4]} accounts={list} onCancel={() => {}} onMerged={() => {}} />);
+    const into = screen.getByLabelText("Merge into") as HTMLSelectElement;
+    expect([...into.options].map((o) => o.value)).toEqual(["e-1"]);
+    expect(into.options[0].textContent).toContain("€300.00");
+    await waitFor(() => expect(screen.getByText("(€20.00)")).toBeInTheDocument());
+  });
+
+  it("with no other account in that currency, says so", () => {
+    const lone: Account = { ...acct("e-1", "Paris Checking", "checking", 30_000), currency: "EUR" };
+    render(<MergeAccountsDialog from={lone} accounts={[...accounts, lone]} onCancel={() => {}} onMerged={() => {}} />);
+    expect(screen.getByText("There is no other open account in EUR to merge into.")).toBeInTheDocument();
+  });
 });

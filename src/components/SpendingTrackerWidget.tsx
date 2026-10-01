@@ -9,7 +9,7 @@ import Money from "./Money";
 import TmIcon from "./TmIcon";
 import Notice from "./Notice";
 import { useBudgetStore } from "../stores/useBudgetStore";
-import { currentMonth } from "../lib/format";
+import { currentMonth, formatMoney } from "../lib/format";
 import { monthRange, shiftMonth } from "./BillCalendar";
 import type { ReportOpen } from "./ReportsView";
 
@@ -149,7 +149,7 @@ export default function SpendingTrackerWidget({ onOpenReport }: Props) {
   );
 }
 
-function formatTarget(cents: number): string {
-  const abs = Math.abs(cents);
-  return `$${Math.floor(abs / 100).toLocaleString("en-US")}.${(abs % 100).toString().padStart(2, "0")}`;
+/** A budget's size in the home currency, never negative: "$1,234.56". */
+export function formatTarget(cents: number): string {
+  return formatMoney(Math.abs(cents));
 }

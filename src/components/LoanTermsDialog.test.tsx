@@ -11,6 +11,7 @@ import LoanTermsDialog from "./LoanTermsDialog";
 import { invokeCalls, resetIpc, setIpcHandlers } from "../test/tauriMock";
 import { useAccountStore } from "../stores/useAccountStore";
 import type { Account, LoanPeriod, LoanTerms } from "../lib/types";
+import { useFileFormat } from "../lib/region";
 
 function acct(id: string, name: string, type: string, balance: number): Account {
   return {
@@ -185,5 +186,37 @@ describe("Loan terms", () => {
     await userEvent.type(within(dlg).getByLabelText("Payment (P&I)"), "100.00");
 
     expect(await within(dlg).findByText(/does not cover the interest/, undefined, { timeout: 3000 })).toBeInTheDocument();
+  });
+});
+
+describe("Loan terms in another currency", () => {
+  it("says what is owed in the loan's currency", async () => {
+    setIpcHandlers({ get_loan_terms: () => null, loan_schedule: () => [] });
+    render(<LoanTermsDialog account={{ ...mortgage, currency: "CAD" }} onDone={vi.fn()} onCancel={vi.fn()} />);
+    expect(await screen.findByText("CA$150,000.00")).toBeInTheDocument();
+  });
+});
+
+describe("Loan terms in a German file", () => {
+  it("takes 6,5 and 1.124,00 and writes the schedule the German way", async () => {
+    useFileFormat.getState().setFormat({ home_currency: "EUR", region: "de-DE" });
+    setIpcHandlers({ get_loan_terms: () => null, loan_schedule: () => [period()] });
+    render(<LoanTermsDialog account={mortgage} onDone={vi.fn()} onCancel={vi.fn()} />);
+    const dlg = screen.getByRole("dialog", { name: "Loan terms" });
+    expect(within(dlg).getByLabelText("Interest rate %")).toHaveAttribute("placeholder", "6,5");
+    expect(within(dlg).getByLabelText("Payment (P&I)")).toHaveAttribute("placeholder", "1.124,00");
+    expect(within(dlg).getByLabelText("Escrow each month")).toHaveValue("0,00");
+    expect(within(dlg).getByText("150.000,00 €")).toBeInTheDocument();
+
+    await userEvent.type(within(dlg).getByLabelText("Interest rate %"), "6,5");
+    await userEvent.type(within(dlg).getByLabelText("Payment (P&I)"), "1.124,00");
+    const table = await within(dlg).findByRole("table", { name: "Amortization schedule" }, { timeout: 3000 });
+    expect(within(table).getByText("01.10.2026")).toBeInTheDocument();
+    expect(within(table).getByText("944,27")).toBeInTheDocument();
+    expect(within(table).getByText("149.820,27")).toBeInTheDocument();
+    const previews = invokeCalls.filter((c) => c.cmd === "loan_schedule");
+    const terms = previews[previews.length - 1].args.terms as LoanTerms;
+    expect(terms.apr_micro).toBe(6_500_000);
+    expect(terms.payment_cents).toBe(112_400);
   });
 });

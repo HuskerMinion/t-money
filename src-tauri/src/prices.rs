@@ -163,8 +163,16 @@ pub fn quote_symbol_encoded(symbol: &str) -> String {
 /// ```json
 /// {"chart":{"result":null,"error":{"code":"Not Found","description":"No data found…"}}}
 /// ```
+/// `parse_quote_json_in` for a dollar file — what the tests read quotes as.
+#[cfg(test)]
 pub fn parse_quote_json(body: &str, today: NaiveDate) -> Result<Quote, String> {
-    let (price, meta_time) = parse_price_and_time(body)?;
+    parse_quote_json_in(body, today, crate::currency::DEFAULT_HOME)
+}
+
+/// `parse_quote_json` for a file whose home currency is `currency`: a quote
+/// in any other currency is refused.
+pub fn parse_quote_json_in(body: &str, today: NaiveDate, currency: &str) -> Result<Quote, String> {
+    let (price, meta_time) = parse_price_and_time(body, currency)?;
     let date = match meta_time {
         Some((secs, offset)) => Some(
             chrono::DateTime::from_timestamp(secs.saturating_add(offset), 0)
@@ -177,7 +185,7 @@ pub fn parse_quote_json(body: &str, today: NaiveDate) -> Result<Quote, String> {
         if (today - d).num_days() > MAX_QUOTE_AGE_DAYS {
             return Err(format!(
                 "the price source's latest quote is from {}",
-                d.format("%m/%d/%Y")
+                crate::region::date(d)
             ));
         }
     }
@@ -187,7 +195,7 @@ pub fn parse_quote_json(body: &str, today: NaiveDate) -> Result<Quote, String> {
 /// The price, and `(regularMarketTime, gmtoffset)` when the reply has a
 /// timestamp. A missing `gmtoffset` is read as UTC: the date can then be a
 /// day off near midnight, which is still nearer than "today" was.
-fn parse_price_and_time(body: &str) -> Result<(Decimal, Option<(i64, i64)>), String> {
+fn parse_price_and_time(body: &str, currency: &str) -> Result<(Decimal, Option<(i64, i64)>), String> {
     let v: serde_json::Value =
         serde_json::from_str(body).map_err(|_| "the price source did not return JSON".to_string())?;
 
@@ -208,7 +216,7 @@ fn parse_price_and_time(body: &str) -> Result<(Decimal, Option<(i64, i64)>), Str
     // written into the same i64 as everything else is not a small error, it is
     // a silently wrong portfolio — so refuse rather than convert.
     match meta["currency"].as_str() {
-        Some("USD") => {}
+        Some(c) if c == currency => {}
         Some(other) => {
             return Err(format!(
                 "priced in {other}; this app stores one currency and will not convert"
@@ -369,19 +377,11 @@ pub fn status_error(code: u16, status_text: &str, body: &str, url: &str) -> Quot
 
 /// A quote for one symbol, with its trading day and a `QuoteError` that says
 /// whether the failure was this symbol or the source. `today` is the
-/// user's local date, for the staleness check.
-pub fn quote_dated(symbol: &str, today: NaiveDate) -> Result<Quote, QuoteError> {
+/// user's local date, for the staleness check. Only a quote in `currency` —
+/// the file's home currency — is taken.
+pub fn quote_dated_in(symbol: &str, today: NaiveDate, currency: &str) -> Result<Quote, QuoteError> {
     let body = fetch_body(symbol)?;
-    parse_quote_json(&body, today).map_err(QuoteError::Symbol)
-}
-
-/// A quote for one symbol: the network call plus parsing. The price only —
-/// kept for the refresh command as it stands; `quote_dated` has the date the
-/// row belongs under and the kind of failure. A quote older than
-/// `MAX_QUOTE_AGE_DAYS` is refused here too.
-pub fn quote(symbol: &str) -> Result<Decimal, String> {
-    let today = chrono::Local::now().date_naive();
-    quote_dated(symbol, today).map(|q| q.price).map_err(String::from)
+    parse_quote_json_in(&body, today, currency).map_err(QuoteError::Symbol)
 }
 
 /// An empty summary, so callers can build one up.
@@ -487,7 +487,7 @@ mod tests {
         // 28 August is seventeen days before the 14th: a halted or
         // delisted symbol, whose last price must not be written as today's.
         let err = parse_quote_json(&timed_json("50", 1_787_947_200, -14_400), today()).unwrap_err();
-        assert_eq!(err, "the price source's latest quote is from 08/28/2026");
+        assert_eq!(err, "the price source's latest quote is from 8/28/2026");
         // Exactly a week is still a price — a holiday week is not stale.
         let week = NaiveDate::from_ymd_opt(2026, 9, 18).unwrap();
         assert!(parse_quote_json(&timed_json("50", 1_789_156_800, -14_400), week).is_ok());

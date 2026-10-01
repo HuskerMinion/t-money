@@ -60,6 +60,40 @@ export interface Account {
   website: string | null;
   address: string | null;
   account_notes: string | null;
+  /** The currency the account is kept in (ISO code). Its amounts are
+   *  hundredths of THIS currency; totals across accounts are in dollars.
+   *  The backend always sends it; absent (as in a test's hand-built account)
+   *  reads as dollars — see `lib/currency.ts`. */
+  currency?: string;
+  /** Dollars per unit of `currency` today, in millionths: 1,000,000 for
+   *  dollars, 0 when the currency has no rate. Absent reads as dollars. */
+  home_rate_micro?: number;
+}
+
+/** A currency an account can be kept in. */
+export interface Currency {
+  code: string;
+  name: string;
+  /** The symbol that cannot be mistaken for another: "US$", "CA$", "€". */
+  symbol: string;
+  /** The symbol used at home: "$" for the Canadian dollar in Canada. */
+  local_symbol?: string;
+  decimals: number;
+}
+
+/** The open file's home currency (ISO code) and region (a `REGIONS` tag). */
+export interface FileFormat {
+  home_currency: string;
+  region: string;
+}
+
+/** Home-currency units per one unit of `currency`, in millionths, from
+ *  `date` on. */
+export interface ExchangeRate {
+  currency: string;
+  date: string;
+  rate_micro: number;
+  source: "manual" | "fetched";
 }
 
 /** Asset id to what is owed against it, positive. Named rather than
@@ -382,6 +416,9 @@ export interface RegisterRow {
    *  silent about — the value they agree on, or "N values" with an empty
    *  `value_id` when they differ. */
   line_classes?: ClassPick[];
+  /** For a transfer, the OTHER row's amount, in that account's currency —
+   *  what an edit across two currencies starts from. */
+  transfer_amount_cents?: number | null;
 }
 
 export interface Budget {
@@ -1317,6 +1354,8 @@ export interface BackupConfig {
 export interface PayeeRuleChange {
   transaction_id: string;
   account_name: string;
+  /** The account's currency, which `amount_cents` is in; absent = dollars. */
+  currency?: string;
   date: string;
   amount_cents: number;
   payee: string;

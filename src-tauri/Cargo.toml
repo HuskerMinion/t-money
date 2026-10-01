@@ -1,6 +1,6 @@
 [package]
 name = "t-money"
-version = "1.0.1"
+version = "1.1.0"
 description = "T-Money — local-first, encrypted personal finance desktop app"
 authors = ["T-Money contributors"]
 license = "GPL-3.0-or-later"
@@ -38,6 +38,9 @@ serde_json = "1"
 # compiler). This is the safe choice on a machine with no system OpenSSL.
 rusqlite = { version = "0.40", features = ["bundled-sqlcipher-vendored-openssl"] }
 r2d2 = "0.8"
+# Already built for SQLCipher; named here only so the app can initialize
+# OpenSSL itself before SQLCipher does (see `db::pool::init_pool`).
+openssl-sys = "0.9"
 # r2d2_sqlite 0.35 depends on rusqlite 0.40 and re-exports it, so the
 # Connection type unifies with our direct rusqlite dependency.
 r2d2_sqlite = { version = "0.35", features = ["bundled-sqlcipher-vendored-openssl"] }

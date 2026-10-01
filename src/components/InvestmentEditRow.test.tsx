@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@tauri-apps/api/core", () => import("../test/tauriMock"));
 
 import InvestmentEditRow, { type ShareTransferDraft } from "./InvestmentEditRow";
+import { useFileFormat } from "../lib/region";
 import type { LeaveResult } from "./TransactionEditRow";
 import { resetIpc, setIpcHandlers } from "../test/tauriMock";
 import type { Lot, NewInvestmentTransaction, Security } from "../lib/types";
@@ -427,5 +428,23 @@ describe("saving once, and lot picks that follow the security", () => {
     });
     expect(result).toBe("saved");
     expect(onCommit).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("in the file's region", () => {
+  it("derives and reads quantity, price and total the German way", async () => {
+    useFileFormat.getState().setFormat({ home_currency: "EUR", region: "de-DE" });
+    const { onCommit } = setup();
+    await userEvent.click(screen.getByRole("combobox", { name: "Investment" }));
+    await userEvent.click(await screen.findByText("Total Market (VTSAX)"));
+    await userEvent.type(screen.getByLabelText("Quantity"), "12,3456");
+    await userEvent.type(screen.getByLabelText("Price"), "34,5678");
+    expect(screen.getByLabelText("Total")).toHaveValue("426,76");
+    expect(screen.getByLabelText("Commission:")).toHaveAttribute("placeholder", "0,00");
+    await userEvent.type(screen.getByLabelText("Commission:"), "4,95");
+    expect(screen.getByTitle("What this does to the account's cash")).toHaveTextContent(/\(431,71\s€\)/);
+    await userEvent.selectOptions(screen.getByLabelText("Pay from:"), "a-chk");
+    await userEvent.click(screen.getByRole("button", { name: "Enter" }));
+    expect(onCommit).toHaveBeenCalledWith(null, expect.objectContaining({ shares_micro: 12_345_600, price_micro: 34_567_800, gross_cents: 42_676, commission_cents: 495 }));
   });
 });

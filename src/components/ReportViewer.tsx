@@ -9,10 +9,13 @@ import ReportChart, { baseKind, CHART_STYLES } from "./ReportChart";
 import PickList from "./PickList";
 import TmIcon from "./TmIcon";
 import Notice from "./Notice";
+import DateField from "./DateField";
 import { api } from "../lib/ipc";
 import { useCommand } from "../lib/useCommand";
 import { save } from "@tauri-apps/plugin-dialog";
-import { formatAccountingBare, today } from "../lib/format";
+import { formatAccountingBare, parseMoneyToCents, today } from "../lib/format";
+import { homeName } from "../lib/currency";
+import { currentRegion } from "../lib/region";
 import { RANGE_OPTIONS, resolveRange, type DateRange } from "../lib/reportRanges";
 import { useAccountStore } from "../stores/useAccountStore";
 import { chartFor, chartStyleFor, DEFAULT_OPTIONS, isDefaultOptions, normalizeOptions, shapeReport, type ReportOptions } from "../lib/reportShape";
@@ -156,28 +159,34 @@ interface Props {
   onDeleteSaved?: (id: string) => Promise<void>;
 }
 
-/** A typed amount as cents, or null when the box is empty. Signs are
- *  dropped: the filter is on the SIZE of a line, in or out. */
-/** Cents as the amount boxes show them once left: "50.00", or blank. */
+/** Cents as the amount boxes show them once left: "50.00" ("50,00" in a
+ *  comma region), or blank. */
 export function centsText(cents: number | null | undefined): string {
-  return cents == null ? "" : (cents / 100).toFixed(2);
+  if (cents == null) return "";
+  const a = Math.abs(cents);
+  const s = `${Math.floor(a / 100)}${currentRegion().decimal}${String(a % 100).padStart(2, "0")}`;
+  return cents < 0 ? `-${s}` : s;
 }
 
+/** A typed amount as cents, or null when the box is empty. Signs are
+ *  dropped: the filter is on the SIZE of a line, in or out. Read in the
+ *  file's region: "1.234,56" in Germany. */
 export function centsOrNull(v: string): number | null {
-  const t = v.trim().replace(/[$,]/g, "");
-  if (t === "") return null;
-  const n = Number(t);
-  return Number.isFinite(n) ? Math.round(Math.abs(n) * 100) : null;
+  if (v.trim() === "") return null;
+  const n = parseMoneyToCents(v);
+  return n === null ? null : Math.abs(n);
 }
 
 /** Is this a whole date the report can be run for?
  *
- *  A `<input type="date">` reports "" while the day or month is still being
- *  typed, and a year typed digit by digit passes through 0002-01-01 on its
- *  way to 2026-01-01. Running the report on those gives an empty table, and
- *  an empty table is a short page: the browser then scrolls back to the top
- *  and the box being typed in moves. So the viewer waits for a date that
- *  could plausibly be meant before it re-runs anything. */
+ *  A date box can report "" while the day or month is still being typed,
+ *  and a year typed digit by digit passes through 0002-01-01 (the native
+ *  picker) or 2020-01-01 (a typed 1/1/20) on its way to 2026-01-01. Running
+ *  the report on those gives an empty or wrong table, and an empty table is
+ *  a short page: the browser then scrolls back to the top and the box being
+ *  typed in moves. So the range fields commit only when left (DateField's
+ *  commitOnLeave), and the viewer still waits for a date that could
+ *  plausibly be meant before it re-runs anything. */
 export function isWholeDate(v: string): boolean {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
   if (!m) return false;
@@ -190,7 +199,7 @@ export function formatCell(kind: string, cents: number | null, text: string | nu
   if (cents === null) return text ?? "";
   switch (kind) {
     case "percent":
-      return `${(cents / 100).toFixed(1)}%`;
+      return `${(cents / 100).toFixed(1).replace(".", currentRegion().decimal)}%`;
     case "count":
       return String(cents);
     case "money":
@@ -584,9 +593,8 @@ export default function ReportViewer({ spec, onSpec, onOpenAccount, onOpenTransa
             … found it at the VERY bottom"), and where typing a custom date
             shortened the page and threw the scroll back to the top with the
             field you were typing in. At the top it cannot move under you, and
-            `commitDate` refuses the half-finished values a date box emits
-            mid-keystroke, so the report re-runs once you have a whole date
-            rather than on every digit. */}
+            the From and To fields commit only when left, so the report
+            re-runs once you have a whole date rather than on every digit. */}
         <div className="tm-report-range" role="group" aria-label="Report period">
           <label htmlFor="report-range">{isAsOf ? "As of the end of:" : "Date range:"}</label>
           <select
@@ -604,21 +612,9 @@ export default function ReportViewer({ spec, onSpec, onOpenAccount, onOpenTransa
           </select>
           {spec.rangeId === "custom" && (
             <>
-              <input
-                type="date"
-                className="aero-field"
-                aria-label="From"
-                value={shownRange.from}
-                onChange={(e) => commitDate("from", e.target.value)}
-              />
+              <DateField label="From" value={shownRange.from} onChange={(v) => commitDate("from", v)} commitOnLeave width={120} />
               <span>through</span>
-              <input
-                type="date"
-                className="aero-field"
-                aria-label="To"
-                value={shownRange.to}
-                onChange={(e) => commitDate("to", e.target.value)}
-              />
+              <DateField label="To" value={shownRange.to} onChange={(v) => commitDate("to", v)} commitOnLeave width={120} />
             </>
           )}
         </div>
@@ -764,7 +760,7 @@ export default function ReportViewer({ spec, onSpec, onOpenAccount, onOpenTransa
                     }}
                   />
                 </label>
-                <span className="tm-text-muted">Either can be left blank. Signs are ignored — 50 means fifty dollars in or out.</span>
+                <span className="tm-text-muted">Either can be left blank. Signs are ignored — 50 means fifty {homeName()} in or out.</span>
               </fieldset>
               <fieldset className="flex items-center gap-3 flex-wrap">
                 <legend className="font-bold">Status</legend>
@@ -878,9 +874,9 @@ export default function ReportViewer({ spec, onSpec, onOpenAccount, onOpenTransa
               {isComparison && (
                 <div className="md:col-span-2 flex items-center gap-2">
                   <span className="font-bold">Compare with:</span>
-                  <input type="date" className="aero-field" aria-label="Compare from" value={d.compare?.from ?? ""} onChange={(e) => setD({ compare: { from: e.target.value, to: d.compare?.to ?? e.target.value } })} />
+                  <DateField label="Compare from" value={d.compare?.from ?? ""} onChange={(v) => setD({ compare: { from: v, to: d.compare?.to ?? v } })} optional width={120} />
                   <span>through</span>
-                  <input type="date" className="aero-field" aria-label="Compare to" value={d.compare?.to ?? ""} onChange={(e) => setD({ compare: { from: d.compare?.from ?? e.target.value, to: e.target.value } })} />
+                  <DateField label="Compare to" value={d.compare?.to ?? ""} onChange={(v) => setD({ compare: { from: d.compare?.from ?? v, to: v } })} optional width={120} />
                   <span className="tm-text-muted">Blank = the same length of time just before.</span>
                 </div>
               )}

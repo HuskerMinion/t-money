@@ -11,6 +11,7 @@ import Money from "./Money";
 import { api } from "../lib/ipc";
 import { formatDateUS } from "../lib/format";
 import { useAccountStore } from "../stores/useAccountStore";
+import { currencyOf } from "../lib/currency";
 import type { SearchHit } from "../lib/types";
 
 interface Props {
@@ -24,6 +25,11 @@ export default function SearchResults({ query, onOpen }: Props) {
   const [scope, setScope] = useState<string>("");
   const [hits, setHits] = useState<SearchHit[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Each hit is in its own account's currency.
+  const currencyFor = (id: string) => {
+    const a = accounts.find((x) => x.id === id);
+    return a ? currencyOf(a) : undefined;
+  };
 
   useEffect(() => {
     let canceled = false;
@@ -108,7 +114,7 @@ export default function SearchResults({ query, onOpen }: Props) {
                   <td>{h.payee}</td>
                   <td>{h.category_name ?? ""}</td>
                   <td className="text-right">
-                    <Money cents={h.amount_cents} />
+                    <Money cents={h.amount_cents} currency={currencyFor(h.account_id)} />
                   </td>
                   <td>{h.notes ?? ""}</td>
                 </tr>

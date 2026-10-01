@@ -14,8 +14,9 @@ import DateField from "./DateField";
 import Money from "./Money";
 import { api } from "../lib/ipc";
 import { noteChanged } from "../lib/undo";
-import { formatAmountBare, parseMoneyToCents, today } from "../lib/format";
+import { formatAmountBare, formatDate, parseMoneyToCents, today } from "../lib/format";
 import { accountWorth } from "../lib/accountTypes";
+import { currencyOf, isForeign } from "../lib/currency";
 import type { Account } from "../lib/types";
 
 interface Props {
@@ -26,6 +27,7 @@ interface Props {
 
 export default function UpdateValueDialog({ account, onDone, onCancel }: Props) {
   const current = accountWorth(account);
+  const currency = currencyOf(account);
   const [date, setDate] = useState(today());
   const [value, setValue] = useState(formatAmountBare(current));
   const [notes, setNotes] = useState("");
@@ -38,7 +40,7 @@ export default function UpdateValueDialog({ account, onDone, onCancel }: Props) 
   async function save() {
     // DateField sends "" for text it cannot read.
     if (!date) {
-      setError("Type a date the form can read, such as 8/3/2026.");
+      setError(`Type a date the form can read, such as ${formatDate("2026-08-03")}.`);
       return;
     }
     if (cents === null) {
@@ -69,7 +71,7 @@ export default function UpdateValueDialog({ account, onDone, onCancel }: Props) 
             <label>As of</label>
             <DateField value={date} onChange={setDate} />
 
-            <label htmlFor="uv-value">It is now worth</label>
+            <label htmlFor="uv-value">It is now worth{isForeign(account) ? ` (${currency})` : ""}</label>
             <input
               id="uv-value"
               className="aero-field text-right"
@@ -89,14 +91,14 @@ export default function UpdateValueDialog({ account, onDone, onCancel }: Props) 
           </div>
 
           <div className="tm-text-muted">
-            Currently <Money cents={current} tone="neutral" />.{" "}
+            Currently <Money cents={current} tone="neutral" currency={currency} />.{" "}
             {delta === null ? (
               "Type an amount."
             ) : delta === 0 ? (
               "No change — nothing will be written."
             ) : (
               <>
-                This writes a {delta > 0 ? "rise" : "fall"} of <Money cents={Math.abs(delta)} tone="neutral" /> on that date.
+                This writes a {delta > 0 ? "rise" : "fall"} of <Money cents={Math.abs(delta)} tone="neutral" currency={currency} /> on that date.
               </>
             )}
           </div>

@@ -10,6 +10,7 @@
 // point, falls back to the table rather than drawing a lonely mark.
 import { useId, useState } from "react";
 import { formatMoney } from "../lib/format";
+import { currentRegion } from "../lib/region";
 import type { ReportChart as ChartData } from "../lib/types";
 
 /** Every way the viewer can draw a report's numbers. */
@@ -67,15 +68,25 @@ export function niceStep(maxAbs: number): number {
   return 10 * mag;
 }
 
+/** A one-decimal figure with the region's decimal mark: 12.5 -> "12,5". */
+function oneDecimal(v: number): string {
+  return v.toFixed(1).replace(".", currentRegion().decimal);
+}
+
+/** A share of a pie as a percent to one place: "12.5%", "12,5%". */
+export function pctLabel(frac: number): string {
+  return `${oneDecimal(frac * 100)}%`;
+}
+
 export function shortMoney(cents: number): string {
   const abs = Math.abs(cents);
   const sign = cents < 0 ? "-" : "";
-  if (abs >= 100_000_000) return `${sign}${(abs / 100_000_000).toFixed(1)}M`;
+  if (abs >= 100_000_000) return `${sign}${oneDecimal(abs / 100_000_000)}M`;
   // One decimal under $10k. A 500-step axis rounded $1,500 and
   // $2,500 to "2k" and "3k", so two ticks could read the same or skip; the
   // labels have to say the value the gridline is at.
   if (abs >= 1_000_000) return `${sign}${Math.round(abs / 100_000)}k`;
-  if (abs >= 100_000) return `${sign}${(abs / 100_000).toFixed(1).replace(/\.0$/, "")}k`;
+  if (abs >= 100_000) return `${sign}${(abs / 100_000).toFixed(1).replace(/\.0$/, "").replace(".", currentRegion().decimal)}k`;
   return `${sign}${Math.round(abs / 100)}`;
 }
 
@@ -226,7 +237,7 @@ export default function ReportChart({ chart, style, depth = true, height = 420, 
                 aria-label={`${s.label}: ${formatMoney(s.v)}`}
                 {...pick(s.label)}
               >
-                <title>{`${s.label}: ${formatMoney(s.v)} (${(s.frac * 100).toFixed(1)}%)${onPick ? " — click for the transactions" : ""}`}</title>
+                <title>{`${s.label}: ${formatMoney(s.v)} (${pctLabel(s.frac)})${onPick ? " — click for the transactions" : ""}`}</title>
               </path>
             ))}
             {slices
@@ -241,7 +252,7 @@ export default function ReportChart({ chart, style, depth = true, height = 420, 
             {slices.map((s) => (
               <li key={s.label} onMouseEnter={() => setHover(s.label)} onMouseLeave={() => setHover(null)} {...pick(s.label)}>
                 <span className="tm-chart-swatch" style={{ background: seriesColor(s.i) }} />
-                {s.label} <span className="tm-text-muted">{formatMoney(s.v)} · {(s.frac * 100).toFixed(1)}%</span>
+                {s.label} <span className="tm-text-muted">{formatMoney(s.v)} · {pctLabel(s.frac)}</span>
               </li>
             ))}
           </ul>

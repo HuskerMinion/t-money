@@ -6,7 +6,9 @@
 // (budgets are stored per month).
 import { useEffect, useState } from "react";
 import { api } from "../lib/ipc";
-import { formatMoney, parseMoneyToCents } from "../lib/format";
+import { formatAmountBare, formatMoney, parseMoneyToCents } from "../lib/format";
+import { homeCurrency } from "../lib/currency";
+import { currentRegion } from "../lib/region";
 import type { AutobudgetLine } from "../lib/types";
 
 interface Props {
@@ -45,6 +47,14 @@ export function acceptedLines(lines: readonly AutobudgetLine[], picks: Readonly<
   return out;
 }
 
+/** One whole unit of the home currency, for "rounded up to the dollar". */
+const UNIT_NAMES: Record<string, string> = { USD: "dollar", CAD: "dollar", AUD: "dollar", MXN: "peso", EUR: "euro", GBP: "pound" };
+
+/** A suggestion as the amount box starts: "1234.00", "1234,00". */
+export function amountInput(cents: number): string {
+  return formatAmountBare(cents).split(currentRegion().group).join("");
+}
+
 export function monthLabel(month: string): string {
   const [y, m] = month.split("-").map(Number);
   return new Date(y, m - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
@@ -69,7 +79,7 @@ export default function AutobudgetDialog({ month, source = "history", onCancel, 
         // Everything ticked at the proposal; a line that already has a
         // budget starts unticked so a considered figure is not overwritten
         // by accident.
-        setPicks(Object.fromEntries(ls.map((l) => [l.category_id, { on: l.current_cents === null, amount: (l.suggested_cents / 100).toFixed(2) }])));
+        setPicks(Object.fromEntries(ls.map((l) => [l.category_id, { on: l.current_cents === null, amount: amountInput(l.suggested_cents) }])));
       })
       .catch((e) => {
         if (!canceled) setError(String(e));
@@ -117,7 +127,7 @@ export default function AutobudgetDialog({ month, source = "history", onCancel, 
           </p>
         ) : (
           <p>
-            A proposal per expense category from what was spent in the months before {monthLabel(month)} and from the scheduled bills: the average of the months that had spending, or the bills' monthly amount if that is more, rounded up to the dollar. Uncheck a line or change its amount, then Apply.
+            A proposal per expense category from what was spent in the months before {monthLabel(month)} and from the scheduled bills: the average of the months that had spending, or the bills' monthly amount if that is more, rounded up to the {UNIT_NAMES[homeCurrency()] ?? "whole unit"}. Uncheck a line or change its amount, then Apply.
           </p>
         )}
         <div className="flex items-center gap-4">

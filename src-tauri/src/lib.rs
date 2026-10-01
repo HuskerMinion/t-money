@@ -8,6 +8,7 @@
 //! 5. Register all IPC commands.
 
 pub mod commands;
+pub mod currency;
 pub mod db;
 pub mod files;
 pub mod import;
@@ -15,6 +16,7 @@ pub mod keyring;
 pub mod models;
 pub mod backup;
 pub mod prices;
+pub mod region;
 pub mod schedule;
 mod state;
 
@@ -526,6 +528,16 @@ pub fn run() {
             commands::get_favorite_accounts,
             commands::get_all_accounts,
             commands::create_account,
+            commands::set_account_currency,
+            commands::list_currencies,
+            commands::list_regions,
+            commands::get_file_format,
+            commands::set_region,
+            commands::set_home_currency,
+            commands::list_exchange_rates,
+            commands::set_exchange_rate,
+            commands::delete_exchange_rate,
+            commands::fetch_exchange_rates,
             commands::delete_account,
             commands::merge_accounts,
             commands::update_holdings,

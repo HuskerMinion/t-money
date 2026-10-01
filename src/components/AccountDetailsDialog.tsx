@@ -7,12 +7,14 @@
 // account_number and routing_number are masked by default. The file is
 // SQLCipher-encrypted so they are safe at rest, but they should not sit on
 // screen in full while somebody is sharing a window.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { labelFor, ACCOUNT_TYPES } from "../lib/accountTypes";
-import { formatMoney, parseMoneyToCents } from "../lib/format";
+import { formatAmountBare, formatDate, formatMoney, parseMoneyToCents } from "../lib/format";
 import { api } from "../lib/ipc";
+import { CURRENCY_SYMBOLS, currencyOf, homeCurrency, homeName } from "../lib/currency";
 import Notice from "./Notice";
-import type { Account, AccountDetails, AccountType, HoldingRounding } from "../lib/types";
+import DateField from "./DateField";
+import type { Account, AccountDetails, AccountType, Currency, HoldingRounding } from "../lib/types";
 import { isDebt, isValuedAsset } from "../lib/accountTypes";
 import AttachmentsPanel from "./AttachmentsPanel";
 
@@ -37,6 +39,8 @@ export function maskNumber(value: string): string {
 
 const CREDIT_TYPES: AccountType[] = ["credit", "line_of_credit", "home_equity_line_of_credit"];
 const HOLDING_TYPES: AccountType[] = ["investment", "retirement"];
+/** Kept in the home currency by the backend: share prices are in it. */
+const HOME_ONLY: AccountType[] = ["investment", "retirement", "employee_stock_option", "watch"];
 
 export default function AccountDetailsDialog({ account, assets = [], onSave, onSaved, onCancel }: Props) {
   const [name, setName] = useState(account.name);
@@ -46,9 +50,30 @@ export default function AccountDetailsDialog({ account, assets = [], onSave, onS
   const [accountNumber, setAccountNumber] = useState(account.account_number ?? "");
   const [routingNumber, setRoutingNumber] = useState(account.routing_number ?? "");
   const [openedOn, setOpenedOn] = useState(account.opened_on ?? "");
+  // Opened-on may be blank, so "" cannot tell a cleared date from one
+  // DateField could not read; it reports the second.
+  const [openedOnBad, setOpenedOnBad] = useState(false);
   const [creditLimit, setCreditLimit] = useState(
-    account.credit_limit_cents === null ? "" : formatMoney(account.credit_limit_cents, { parens: false })
+    account.credit_limit_cents === null
+      ? ""
+      : formatMoney(account.credit_limit_cents, { parens: false, currency: currencyOf(account) })
   );
+  // The currency the account is kept in. Changing it relabels; nothing is
+  // converted.
+  const [currency, setCurrency] = useState(currencyOf(account));
+  const home = homeCurrency();
+  // Names for the select. Without the list the codes alone still work.
+  const [currencies, setCurrencies] = useState<Pick<Currency, "code" | "name">[]>(() =>
+    Object.keys(CURRENCY_SYMBOLS).map((code) => ({ code, name: "" }))
+  );
+  useEffect(() => {
+    api.listCurrencies().then(
+      (list) => {
+        if (list.length) setCurrencies(list);
+      },
+      () => {}
+    );
+  }, []);
   const [phone, setPhone] = useState(account.contact_phone ?? "");
   const [email, setEmail] = useState(account.contact_email ?? "");
   const [website, setWebsite] = useState(account.website ?? "");
@@ -76,9 +101,25 @@ export default function AccountDetailsDialog({ account, assets = [], onSave, onS
       setError(`"${creditLimit}" is not an amount.`);
       return;
     }
+    if (openedOnBad) {
+      setError(`Type an opened-on date the form can read, such as ${formatDate("2026-08-03")}, or leave it blank.`);
+      return;
+    }
+    // The backend refuses this pair either way round; say so before writing
+    // anything.
+    if (HOME_ONLY.includes(type) && currency !== home) {
+      setError(`${labelFor(type)} accounts are kept in ${homeName()}. Set the currency to ${home}.`);
+      return;
+    }
+    const currencyChanged = currencyOf(account) !== currency;
     setBusy(true);
     setError(null);
     try {
+      // Back to the home currency goes first: the details save refuses an
+      // investment type while the stored currency is still foreign.
+      if (currencyChanged && currency === home) {
+        await api.setAccountCurrency(account.id, currency);
+      }
       await onSave({
         id: account.id,
         name: name.trim(),
@@ -100,6 +141,12 @@ export default function AccountDetailsDialog({ account, assets = [], onSave, onS
       }
       if ((account.secured_by_account_id ?? "") !== securedBy) {
         await api.setAccountSecurity(account.id, securedBy === "" ? null : securedBy);
+      }
+      // Any other change after the details: the type it checks against is the
+      // one just saved. A refusal (transfers to an account in another
+      // currency, no rate yet) lands here, on the open dialog.
+      if (currencyChanged && currency !== home) {
+        await api.setAccountCurrency(account.id, currency);
       }
       // Only now. The shell used to reload and close inside `onSave`,
       // so these two writes ran against a dialog that was already gone, and
@@ -137,7 +184,12 @@ export default function AccountDetailsDialog({ account, assets = [], onSave, onS
           <select
             className="aero-field flex-1"
             value={type}
-            onChange={(e) => setType(e.target.value as AccountType)}
+            onChange={(e) => {
+              const t = e.target.value as AccountType;
+              setType(t);
+              // Investment types are kept in the home currency.
+              if (HOME_ONLY.includes(t)) setCurrency(home);
+            }}
           >
             {ACCOUNT_TYPES.map((t) => (
               <option key={t.value} value={t.value}>
@@ -145,6 +197,30 @@ export default function AccountDetailsDialog({ account, assets = [], onSave, onS
               </option>
             ))}
           </select>
+        )}
+        {row(
+          "Currency:",
+          <select
+            className="aero-field flex-1"
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value)}
+            disabled={HOME_ONLY.includes(type) && currency === home}
+            title={HOME_ONLY.includes(type) ? `Investment accounts are kept in ${homeName()}.` : undefined}
+          >
+            {currencies.some((c) => c.code === currency) ? null : <option value={currency}>{currency}</option>}
+            {currencies.map((c) => (
+              <option key={c.code} value={c.code}>
+                {c.name ? `${c.code} — ${c.name}` : c.code}
+              </option>
+            ))}
+          </select>
+        )}
+        {currency !== currencyOf(account) && (
+          <div className="pl-[138px] pb-1" style={{ color: "var(--tm-ms-text-muted)" }}>
+            Amounts are not converted: {formatMoney(account.balance_cents, { currency: currencyOf(account) })} becomes{" "}
+            {formatMoney(account.balance_cents, { currency })}. Use this to fix an account set up in the wrong
+            currency.
+          </div>
         )}
         {HOLDING_TYPES.includes(type) &&
           row(
@@ -184,12 +260,7 @@ export default function AccountDetailsDialog({ account, assets = [], onSave, onS
           )}
         {row(
           "Opened on:",
-          <input
-            className="aero-field"
-            type="date"
-            value={openedOn}
-            onChange={(e) => setOpenedOn(e.target.value)}
-          />
+          <DateField label="Opened on" value={openedOn} onChange={setOpenedOn} onInvalid={setOpenedOnBad} optional width={130} />
         )}
         {CREDIT_TYPES.includes(type) &&
           row(
@@ -198,7 +269,7 @@ export default function AccountDetailsDialog({ account, assets = [], onSave, onS
               className="aero-field"
               value={creditLimit}
               onChange={(e) => setCreditLimit(e.target.value)}
-              placeholder="0.00"
+              placeholder={formatAmountBare(0)}
             />
           )}
         {row(
@@ -214,7 +285,7 @@ export default function AccountDetailsDialog({ account, assets = [], onSave, onS
           </span>
         )}
         <div className="pl-[138px] pb-2" style={{ color: "var(--tm-ms-text-muted)" }}>
-          Balance is {formatMoney(account.balance_cents)} — derived from the register, not edited here.
+          Balance is {formatMoney(account.balance_cents, { currency: currencyOf(account) })} — derived from the register, not edited here.
         </div>
 
         <div className="font-bold pb-1 pt-1" style={{ color: "var(--tm-ms-text-cardhdr)" }}>

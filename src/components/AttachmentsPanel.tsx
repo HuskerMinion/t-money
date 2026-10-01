@@ -16,6 +16,7 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 import { api } from "../lib/ipc";
 import { noteChanged } from "../lib/undo";
 import type { Attachment } from "../lib/types";
+import { currentRegion } from "../lib/region";
 
 interface Props {
   /** Exactly one of these. */
@@ -25,12 +26,13 @@ interface Props {
   onChanged?: (count: number) => void;
 }
 
-/** "12 KB", "3.4 MB" — enough to know what a backup will carry. */
+/** "12 KB", "3.4 MB" ("3,4 MB" in a comma region) — enough to know what a
+ *  backup will carry. */
 export function sizeLabel(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
   const mb = bytes / (1024 * 1024);
-  return `${mb < 10 ? mb.toFixed(1) : Math.round(mb)} MB`;
+  return `${mb < 10 ? mb.toFixed(1).replace(".", currentRegion().decimal) : Math.round(mb)} MB`;
 }
 
 /** What the list says a file is, from its type. */

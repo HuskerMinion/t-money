@@ -10,12 +10,20 @@ import { Fragment, useEffect, useState, useRef } from "react";
 import Money from "./Money";
 import TmIcon from "./TmIcon";
 import Notice from "./Notice";
+import DateField from "./DateField";
 import { useCommand } from "../lib/useCommand";
 import { api } from "../lib/ipc";
 import { noteChanged } from "../lib/undo";
-import { formatMoney, parseMoneyToCents, today } from "../lib/format";
+import { formatDate, formatMoney, parseMoneyToCents, today } from "../lib/format";
+import { currentRegion } from "../lib/region";
+import { currencyOf } from "../lib/currency";
 import { useAccountStore } from "../stores/useAccountStore";
 import type { Goal } from "../lib/types";
+
+/** Cents as an amount to edit: no group marks, the region's decimal mark. */
+function typed(cents: number): string {
+  return (cents / 100).toFixed(2).replace(".", currentRegion().decimal);
+}
 
 export default function GoalsView() {
   const [goals, setGoals] = useState<Goal[]>([]);
@@ -37,6 +45,8 @@ export default function GoalsView() {
   const [target, setTarget] = useState("");
   const [saved, setSaved] = useState("");
   const [deadline, setDeadline] = useState("");
+  // The deadline may be blank; DateField reports text it could not read.
+  const [deadlineBad, setDeadlineBad] = useState(false);
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -63,6 +73,8 @@ export default function GoalsView() {
     const cents = parseMoneyToCents(contribAmount);
     if (!fromAccount) return setContribMsg("Pick the account the money comes from.");
     if (cents === null || cents <= 0) return setContribMsg("Enter an amount.");
+    // DateField sends "" for text it cannot read.
+    if (!contribDate) return setContribMsg(`Type a date the form can read, such as ${formatDate("2026-08-03")}.`);
     setBusy(true);
     setContribMsg(null);
     try {
@@ -105,9 +117,9 @@ export default function GoalsView() {
   function startEdit(g: Goal) {
     setEditingId(g.id);
     setName(g.name);
-    setTarget((g.target_cents / 100).toFixed(2));
+    setTarget(typed(g.target_cents));
     // The typed part only: what the tagged rows add is not editable here.
-    setSaved((g.starting_cents / 100).toFixed(2));
+    setSaved(typed(g.starting_cents));
     setAccountId(g.account_id ?? "");
     setDeadline(g.deadline ?? "");
     setNotes(g.notes ?? "");
@@ -120,6 +132,10 @@ export default function GoalsView() {
     const s = parseMoneyToCents(saved);
     if (!name.trim() || t === null || s === null) {
       setMsg("Enter a name, target, and saved amount.");
+      return;
+    }
+    if (deadlineBad) {
+      setMsg(`Type a deadline the form can read, such as ${formatDate("2026-08-03")}, or leave it blank.`);
       return;
     }
     setBusy(true);
@@ -197,6 +213,10 @@ export default function GoalsView() {
                       ? Math.min(100, Math.round((g.saved_cents / g.target_cents) * 100))
                       : 0;
                   const done = g.target_cents > 0 && g.saved_cents >= g.target_cents;
+                  // A goal that watches an account is in that account's
+                  // currency; a typed one is in the home currency.
+                  const watched = g.account_id ? accounts.find((a) => a.id === g.account_id) : undefined;
+                  const cur = watched ? currencyOf(watched) : undefined;
                   return (
                     <Fragment key={g.id}>
                     <tr title={g.notes ?? undefined}>
@@ -212,15 +232,15 @@ export default function GoalsView() {
                         className="num"
                         title={
                           g.account_id
-                            ? `${formatMoney(g.starting_cents)} to start + ${formatMoney(g.linked_cents)} from ${g.linked_count} tagged row${g.linked_count === 1 ? "" : "s"} in ${g.account_name}`
+                            ? `${formatMoney(g.starting_cents, { currency: cur })} to start + ${formatMoney(g.linked_cents, { currency: cur })} from ${g.linked_count} tagged row${g.linked_count === 1 ? "" : "s"} in ${g.account_name}`
                             : "Typed — link the goal to an account to have it counted from the register"
                         }
                       >
-                        <Money cents={g.saved_cents} tone="neutral" />
+                        <Money cents={g.saved_cents} tone="neutral" currency={cur} />
                         {g.account_id && <span className="block text-[10px] text-slate-500">watches {g.account_name}</span>}
                       </td>
                       <td className="num">
-                        <Money cents={g.target_cents} tone="neutral" />
+                        <Money cents={g.target_cents} tone="neutral" currency={cur} />
                       </td>
                       <td>
                         <div className="flex items-center gap-2">
@@ -241,7 +261,7 @@ export default function GoalsView() {
                           <span className="text-[11px] tabular-nums text-slate-600">{pct}%</span>
                         </div>
                       </td>
-                      <td className="tabular-nums text-slate-600">{g.deadline ?? "—"}</td>
+                      <td className="tabular-nums text-slate-600">{g.deadline ? formatDate(g.deadline) : "—"}</td>
                       <td className="num">
                         <span className="inline-flex gap-1">
                           {g.account_id && (
@@ -298,7 +318,9 @@ export default function GoalsView() {
                               <select className="aero-field" aria-label="From account" value={fromAccount} onChange={(e) => setFromAccount(e.target.value)}>
                                 <option value="">(choose)</option>
                                 {accounts
-                                  .filter((a) => a.id !== g.account_id && !a.is_closed)
+                                  // A contribution is one amount moved: only an
+                                  // account in the goal's currency can send it.
+                                  .filter((a) => a.id !== g.account_id && !a.is_closed && (!watched || currencyOf(a) === cur))
                                   .map((a) => (
                                     <option key={a.id} value={a.id}>
                                       {a.name}
@@ -308,11 +330,11 @@ export default function GoalsView() {
                             </label>
                             <label className="flex flex-col text-[11px]">
                               Amount
-                              <input className="aero-field text-right" style={{ width: 100 }} aria-label="Contribution" value={contribAmount} onChange={(e) => setContribAmount(e.target.value)} placeholder="0.00" />
+                              <input className="aero-field text-right" style={{ width: 100 }} aria-label="Contribution" value={contribAmount} onChange={(e) => setContribAmount(e.target.value)} placeholder={`0${currentRegion().decimal}00`} />
                             </label>
                             <label className="flex flex-col text-[11px]">
                               Date
-                              <input className="aero-field" type="date" aria-label="Contribution date" value={contribDate} onChange={(e) => setContribDate(e.target.value)} />
+                              <DateField label="Contribution date" value={contribDate} onChange={setContribDate} width={120} />
                             </label>
                             <button className="aero-btn" type="submit" disabled={busy}>
                               Move to {g.account_name}
@@ -358,7 +380,7 @@ export default function GoalsView() {
               onChange={(e) => setTarget(e.target.value)}
               className="mt-1 w-full rounded px-2 py-1 text-[12px] border"
               style={{ borderColor: "var(--tm-ms-card-border)" }}
-              placeholder="10000.00"
+              placeholder={`10000${currentRegion().decimal}00`}
             />
           </label>
           <label className="block text-[11px] text-slate-600">
@@ -390,18 +412,21 @@ export default function GoalsView() {
               onChange={(e) => setSaved(e.target.value)}
               className="mt-1 w-full rounded px-2 py-1 text-[12px] border"
               style={{ borderColor: "var(--tm-ms-card-border)" }}
-              placeholder="2500.00"
+              placeholder={`2500${currentRegion().decimal}00`}
             />
           </label>
           <label className="block text-[11px] text-slate-600">
             Deadline
-            <input
-              type="date"
-              value={deadline}
-              onChange={(e) => setDeadline(e.target.value)}
-              className="mt-1 w-full rounded px-2 py-1 text-[12px] border"
-              style={{ borderColor: "var(--tm-ms-card-border)" }}
-            />
+            <span className="block mt-1">
+              <DateField
+                label="Deadline"
+                value={deadline}
+                onChange={setDeadline}
+                onInvalid={setDeadlineBad}
+                optional
+                className="w-full rounded px-2 py-1 text-[12px] border border-[color:var(--tm-ms-card-border)]"
+              />
+            </span>
           </label>
           <label className="block text-[11px] text-slate-600">
             Notes

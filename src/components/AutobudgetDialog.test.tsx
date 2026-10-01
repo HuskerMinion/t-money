@@ -6,6 +6,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@tauri-apps/api/core", () => import("../test/tauriMock"));
 
 import AutobudgetDialog, { acceptedLines, monthLabel } from "./AutobudgetDialog";
+import { amountInput } from "./AutobudgetDialog";
+import { useFileFormat } from "../lib/region";
 import { invokeCalls, resetIpc, setIpcHandlers } from "../test/tauriMock";
 import type { AutobudgetLine } from "../lib/types";
 
@@ -68,5 +70,13 @@ describe("Autobudget", () => {
     await userEvent.selectOptions(screen.getByLabelText("Months of history"), "3");
     await waitFor(() => expect(screen.queryByLabelText("Accept Groceries")).not.toBeInTheDocument());
     expect(screen.getByLabelText("Accept Electric")).toBeInTheDocument();
+  });
+});
+
+describe("in the file's region", () => {
+  it("starts the boxes and reads them the German way", () => {
+    useFileFormat.getState().setFormat({ home_currency: "EUR", region: "de-DE" });
+    expect(amountInput(123_400)).toBe("1234,00");
+    expect(acceptedLines(lines, { "c-elec": { on: true, amount: "12,50" } })).toEqual([["c-elec", 1250]]);
   });
 });

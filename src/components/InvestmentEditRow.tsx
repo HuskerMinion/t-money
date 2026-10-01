@@ -33,12 +33,14 @@ import {
   SHARE_ACTIVITIES,
   cashEffect,
   formatPrice,
+  formatPriceInput,
   formatShares,
   isLongTerm,
   parseMicro,
   priceFrom,
   valueCents,
 } from "../lib/shares";
+import { currentRegion } from "../lib/region";
 import DateField from "./DateField";
 import type { LeaveResult } from "./TransactionEditRow";
 import type {
@@ -94,6 +96,12 @@ interface Props {
 
 const COLUMNS = 10;
 
+/** An amount to put in a box: no thousands marks, the region's decimal
+ *  mark ("1234.56", "1234,56"). */
+function amountInput(cents: number): string {
+  return formatAmountBare(cents).split(currentRegion().group).join("");
+}
+
 export default function InvestmentEditRow({
   accountId,
   row = null,
@@ -116,8 +124,8 @@ export default function InvestmentEditRow({
   const [activity, setActivity] = useState<InvestmentActivity | "transfer_shares">(row?.activity ?? "buy");
   const [securityId, setSecurityId] = useState(row?.security_id ?? "");
   const [shares, setShares] = useState(row?.shares_micro ? formatShares(row.shares_micro) : "");
-  const [price, setPrice] = useState(row?.price_micro ? formatPrice(row.price_micro).replace(/,/g, "") : "");
-  const [total, setTotal] = useState(row?.gross_cents ? formatAmountBare(row.gross_cents).replace(/,/g, "") : "");
+  const [price, setPrice] = useState(row?.price_micro ? formatPriceInput(row.price_micro) : "");
+  const [total, setTotal] = useState(row?.gross_cents ? amountInput(row.gross_cents) : "");
   // Which of price / total the user owns (see the header comment). A field
   // the user has just emptied stays empty while it has focus — the derived
   // number comes back when the field is left — so backspacing to retype
@@ -440,7 +448,7 @@ export default function InvestmentEditRow({
             className="aero-field w-full text-right"
             aria-label="Price"
             placeholder="Price"
-            value={!typed.price && !emptied.price && derivedPrice !== null ? formatPrice(derivedPrice).replace(/,/g, "") : price}
+            value={!typed.price && !emptied.price && derivedPrice !== null ? formatPriceInput(derivedPrice) : price}
             onChange={(e) => {
               const own = e.target.value.trim() !== "";
               setPrice(e.target.value);
@@ -458,7 +466,7 @@ export default function InvestmentEditRow({
             className="aero-field w-full text-right"
             aria-label="Total"
             placeholder={isSplit ? "" : isIncome ? "Amount" : "Total"}
-            value={!typed.total && !emptied.total && derivedTotal !== null ? formatAmountBare(derivedTotal).replace(/,/g, "") : total}
+            value={!typed.total && !emptied.total && derivedTotal !== null ? amountInput(derivedTotal) : total}
             onChange={(e) => {
               const own = e.target.value.trim() !== "";
               setTotal(e.target.value);
@@ -511,7 +519,7 @@ export default function InvestmentEditRow({
                   style={{ width: 90 }}
                   value={commission}
                   onChange={(e) => setCommission(e.target.value)}
-                  placeholder="0.00"
+                  placeholder={`0${currentRegion().decimal}00`}
                 />
               </>
             )}

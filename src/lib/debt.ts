@@ -11,6 +11,13 @@
 //                cheapest order) or smallest balance first (the snowball):
 //                minimums on everything, the rest onto the first in line,
 //                each payoff rolling its payment onto the next.
+//
+// Each debt is kept in its own account's currency; `inHome` brings them
+// to the home currency before `plan` adds them up.
+
+import { toHome } from "./currency";
+import { parseRateToMicro } from "./format";
+import { currentRegion } from "./region";
 
 export interface Debt {
   id: string;
@@ -183,16 +190,17 @@ export function plan(debts: readonly Debt[], budgetCents: number, order: PlanOrd
   return out;
 }
 
-/** "6.5" → 650; up to two decimals; null when it is not a rate. */
+/** "6.5" → 650 ("6,5" in a comma region); up to two decimals; null when
+ *  it is not a rate. */
 export function parseAprBp(input: string): number | null {
-  const m = /^\s*(\d+)(?:\.(\d{0,2}))?\s*%?\s*$/.exec(input.replace(/,/g, ""));
-  if (!m) return null;
-  return Number(m[1]) * 100 + Number((m[2] ?? "").padEnd(2, "0"));
+  const micro = parseRateToMicro(input);
+  if (micro === null || micro % 10_000 !== 0) return null;
+  return micro / 10_000;
 }
 
 export function formatAprBp(bp: number): string {
-  const s = `${Math.floor(bp / 100)}.${String(bp % 100).padStart(2, "0")}`;
-  return s.replace(/\.?0+$/, "") + "%";
+  const frac = String(bp % 100).padStart(2, "0").replace(/0+$/, "");
+  return `${Math.floor(bp / 100)}${frac ? `${currentRegion().decimal}${frac}` : ""}%`;
 }
 
 /** The month `n` months after an ISO date, as "Mon YYYY". */
@@ -200,4 +208,36 @@ export function monthAfter(iso: string, n: number): string {
   const [y, m] = iso.split("-").map(Number);
   const d = new Date(y, m - 1 + n, 1);
   return d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+}
+
+/** A debt in its own account's currency, with today's home-currency units
+ *  per unit in millionths (1,000,000 for the home currency, 0 when there is
+ *  no rate). */
+export interface KeptDebt extends Debt {
+  currency: string;
+  rate_micro: number;
+}
+
+/** The plan adds debts and payments together, so it works in the home
+ *  currency: each
+ *  balance and minimum converted at today's rate. A debt whose currency has
+ *  no rate cannot be added in — it is left out and named, not counted as
+ *  nothing. */
+export function inHome(debts: readonly KeptDebt[]): { debts: Debt[]; leftOut: KeptDebt[] } {
+  const out: Debt[] = [];
+  const leftOut: KeptDebt[] = [];
+  for (const d of debts) {
+    if (d.rate_micro === 0) {
+      leftOut.push(d);
+      continue;
+    }
+    out.push({
+      id: d.id,
+      name: d.name,
+      balance_cents: toHome(d.balance_cents, d.rate_micro),
+      apr_bp: d.apr_bp,
+      min_payment_cents: toHome(d.min_payment_cents, d.rate_micro),
+    });
+  }
+  return { debts: out, leftOut };
 }
