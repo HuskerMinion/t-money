@@ -17,7 +17,7 @@ classifications, and QIF/OFX/QFX import.
 | Real encryption | SQLCipher, key kept in Windows Credential Manager | Weak optional password |
 | Undo (Ctrl+Z) | Almost everything, including a whole import, payee renames and payee merges | None |
 | Share prices | Built in, on demand or daily/weekly | MSN quotes died with the online services |
-| Import from CSV | Yes, with column mapping; knows most US banks' formats | No |
+| Import from CSV | Yes, with column mapping; knows most US banks' formats and reads either decimal mark | No |
 | TSP (Thrift Savings Plan) import | Reads tsp.gov's activity file directly | No |
 | Recurring charge detection | Finds subscriptions and repeat bills in your register | No |
 | Attachments | Receipts and statements stored inside the file | No |

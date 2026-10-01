@@ -31,8 +31,8 @@ All screenshots use the made-up household in **File → New → Sample file with
 | **Bills and forecast.** Scheduled bills, paychecks and the balance they lead to. | **Investing.** Holdings, cost basis, returns and allocation. |
 | <img src="docs/screenshots/spending-chart.png" alt="A 3-D pie chart of one month's spending by category"> | <img src="docs/screenshots/reports.png" alt="The reports gallery: income and expenses, assets and liabilities, investment, taxes, classifications and monthly reports"> |
 | **Charts.** Any report as a bar, line, area or pie chart. | **Reports.** Close to 40 reports, all customizable. |
-| <img src="docs/screenshots/investment-register.png" alt="A 401(k) register with contributions, employer match, buys and reinvested dividends"> | |
-| **Investment register.** Buys, reinvestments and employer match, share by share. | |
+| <img src="docs/screenshots/investment-register.png" alt="A 401(k) register with contributions, employer match, buys and reinvested dividends"> | <img src="docs/screenshots/register-euros.png" alt="The same register in a file kept in euros with German formats: 1.234,56 euro amounts, dates like 01.10.2026, and a US-dollar account in the sidebar"> |
+| **Investment register.** Buys, reinvestments and employer match, share by share. | **Your currency and format.** The sample file kept in euros, written the German way, with a US-dollar account beside the others. |
 
 ## What it does
 
@@ -67,9 +67,11 @@ All screenshots use the made-up household in **File → New → Sample file with
   you need it to open the file or a backup on another computer.
 - **Settings → File → Backups** saves copies to a folder of your choice: once a day, and if you
   choose, whenever you close the app or the file.
-- The only thing T-Money ever sends over the internet is the list of ticker symbols when you ask it
-  to update share prices (from Yahoo Finance). No amounts, no account names, no account or sign-in. It is off
-  unless you press **Update prices** or turn on the timer in Settings.
+- The only things T-Money ever sends over the internet are ticker symbols when you ask it to update
+  share prices, and currency codes when you ask it for today's exchange rates (both from Yahoo
+  Finance). No amounts, no account names, no account or sign-in. Prices are off unless you press
+  **Update prices** or turn on the timer in Settings; exchange rates are fetched only when you ask
+  for them.
 
 ## Install
 
@@ -87,17 +89,17 @@ If you want to be sure the file is the real one before you run it:
 - **Check the checksum.** Each release has a `SHA256SUMS.txt`. In PowerShell:
 
   ```powershell
-  Get-FileHash .\T-Money_1.0.0_x64-setup.exe -Algorithm SHA256
+  Get-FileHash .\T-Money_1.1.0_x64-setup.exe -Algorithm SHA256
   ```
 
-  The hash must match the line for that file.
+  Use the name of the file you downloaded. The hash must match the line for that file.
 
 - **Check where it was built.** Every installer is built by GitHub from the public source in this
   repository, never on anyone's own computer, and GitHub signs a record of that. With the
   [GitHub CLI](https://cli.github.com/):
 
   ```powershell
-  gh attestation verify .\T-Money_1.0.0_x64-setup.exe --repo HuskerMinion/t-money
+  gh attestation verify .\T-Money_1.1.0_x64-setup.exe --repo HuskerMinion/t-money
   ```
 
 ## Coming from Microsoft Money
