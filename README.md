@@ -15,7 +15,8 @@
 **T-Money** is a desktop money manager for Windows, in the spirit of Microsoft Money. Your accounts,
 register, bills, budget, investments and reports live in one file on your computer, encrypted with
 SQLCipher. There is no sign-in, no subscription and no server. Nothing about your money leaves the
-machine.
+machine. If you want your bank's transactions fetched for you, [bank sync](#bank-sync) is optional and
+goes through a separate service you sign up for.
 
 <p align="center">
   <img src="docs/screenshots/register.png" alt="An account register: dated transactions with payees, categories, payments, deposits and a running balance" width="900">
@@ -54,14 +55,36 @@ All screenshots use the made-up household in **File → New → Sample file with
   Mexican pesos or Australian dollars, with numbers and dates written the way your country writes
   them. An account can be kept in another of those currencies; it converts at exchange rates you
   type in or fetch.
-- **Bank sync, if you want it** — with a [SimpleFIN Bridge](https://bridge.simplefin.org) subscription
-  (a separate service, about $15 a year, paid to SimpleFIN), T-Money fetches transactions from most
-  US and Canadian banks when you click. They go through the same import as a file: no duplicates,
-  matched to the ones you typed, one Undo step.
+- **Bank sync, if you want it** — fetch transactions from most US and Canadian banks through
+  SimpleFIN. See [Bank sync](#bank-sync).
 - **Import** — QIF from Microsoft Money (splits and transfers included), OFX and QFX from banks and
   brokers, CSV from most banks (either decimal mark), and the TSP activity file. Export a register as QIF or CSV, and any report as CSV.
 - **Savings goals, classifications** (track a rental or a second house separately), attachments
   (receipts and statements kept inside the file), and built-in help.
+
+## Bank sync
+
+[SimpleFIN](https://bridge.simplefin.org) is a paid service (about $15 a year) that gives the apps you
+choose read-only access to your bank transactions. You can turn an app off anytime. In T-Money you
+pick which account each one fills. It covers most US and Canadian banks.
+
+1. Sign up at SimpleFIN Bridge, connect your banks there, and make a setup token.
+2. In T-Money, open **Settings → Money → Bank sync**, paste the token and click **Connect**.
+3. Pick the T-Money account each bank account fills, then click **Get bank transactions**.
+
+<p align="center">
+  <img src="docs/screenshots/bank-sync.png" alt="Settings, Bank sync: connected to SimpleFIN, two demo bank accounts linked to Demo Checking and Demo Savings, and the result of a fetch with the bank's balance beside T-Money's" width="900">
+</p>
+
+- It fetches only when you click. The first fetch reaches back 88 days; later ones overlap the last
+  by a few days, and anything already in the register is skipped.
+- Transactions go through the same import as a statement file. Rename rules apply, they arrive
+  cleared, and one you already typed in is matched instead of added twice. Each fetch is one Undo
+  step.
+- The result shows the bank's balance beside T-Money's, so a gap shows at once. SimpleFIN's own
+  messages, such as a bank that needs you to sign in again, are shown as it wrote them.
+- The connection is kept in the Windows Credential Manager on your computer, not in the file.
+  **Disconnect** removes it. T-Money stays under SimpleFIN's daily request limit.
 
 ## Your data
 
