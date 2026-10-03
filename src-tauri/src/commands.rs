@@ -411,6 +411,11 @@ async fn simplefin_list_accounts(state: &State<'_, AppState>) -> Result<Vec<Stri
 #[tauri::command(rename_all = "camelCase")]
 pub async fn simplefin_connect(state: State<'_, AppState>, setup_token: String) -> Result<crate::models::SimplefinStatus, String> {
     let claim_url = crate::simplefin::decode_setup_token(&setup_token)?;
+    // Before the token is spent: with no keyring the connection could not
+    // be kept past this run, and a token works only once.
+    if !keyring::store_available() {
+        return Err(format!("Bank sync needs somewhere to keep its connection: {}.", keyring::NO_KEYRING_WHY));
+    }
     // Refuse before claiming when no file is open, or when it is already
     // connected here: a claimed token cannot be claimed again, and a second
     // connection would leave the first one's access working on the server.
@@ -430,7 +435,7 @@ pub async fn simplefin_connect(state: State<'_, AppState>, setup_token: String) 
         format!("simplefin:{}", queries::new_simplefin_connection_id(&conn)?)
     };
     keyring::set_key_in(&entry, &access)
-        .map_err(|_| "SimpleFIN connected, but Windows would not keep the connection. Make a new setup token and try again.".to_string())?;
+        .map_err(|_| "SimpleFIN connected, but this computer would not keep the connection. Make a new setup token and try again.".to_string())?;
     // The account list is a convenience; the connection stands without it.
     match simplefin_list_accounts(&state).await {
         Ok(messages) => status_with(&state, messages),
@@ -1962,6 +1967,7 @@ pub fn get_key_status(state: State<AppState>) -> Result<KeyStatus, String> {
     Ok(KeyStatus {
         has_key: keyring::has_key_in(&key_account_of(&state)?),
         db_path: db_path_of(&state)?.to_string_lossy().to_string(),
+        keyring: keyring::store_available(),
     })
 }
 
@@ -2009,7 +2015,11 @@ pub fn change_master_key(state: State<AppState>, new_key: String) -> Result<(), 
     // key is the ONLY way in — so say it, in full, rather than returning a
     // tidy error that loses it.
     if let Err(e) = keyring::set_key_in(&account, &new_key) {
-        return Err(reopen_after_keyring_refused(&state.pool, &db_path_of(&state)?, &new_key, &e));
+        // No keyring: the new key is held for this run, and it is the key the
+        // person just chose, so they have it. Anything else loses it.
+        if !keyring::is_no_keyring(&e) {
+            return Err(reopen_after_keyring_refused(&state.pool, &db_path_of(&state)?, &new_key, &e));
+        }
     }
     rebuild_pool(&state)
 }
@@ -2306,6 +2316,15 @@ fn open_file_impl(state: &State<AppState>, path: String, create: bool, key: Opti
             // none stored: a fresh random key cannot decrypt it, and opening
             // would fail with something far less useful than this sentence.
             if exists && !crate::keyring::has_key_in(&account) {
+                // With no keyring, every file needs its key typed in, and
+                // "not created on this computer" would be a false reason.
+                if !crate::keyring::store_available() {
+                    return Err(format!(
+                        "{NEEDS_KEY}: {}: {name} needs its master key typed in, because {}",
+                        crate::keyring::NO_KEYRING,
+                        crate::keyring::NO_KEYRING_WHY
+                    ));
+                }
                 return Err(format!(
                     "{NEEDS_KEY}: {name} was not created on this computer — its master key is needed to open it"
                 ));
@@ -2421,6 +2440,15 @@ fn open_file_impl(state: &State<AppState>, path: String, create: bool, key: Opti
 /// The reason the app is not on the file you left it on, if there is
 /// one. Read-and-clear: it is news exactly once, and a banner that will not
 /// go away is a banner people learn to ignore.
+/// The result of the last file opened from outside (a double-click in
+/// Explorer, Finder or a file manager), taken once. The event that announces
+/// it can arrive before the screen is listening — a Mac launched by
+/// double-clicking a file sends it at once — so the screen also asks here.
+#[tauri::command(rename_all = "camelCase")]
+pub fn take_outside_open(state: State<AppState>) -> Result<Option<serde_json::Value>, String> {
+    Ok(state.outside_open.lock().map_err(|_| "state lock poisoned".to_string())?.take())
+}
+
 #[tauri::command(rename_all = "camelCase")]
 pub fn startup_note(state: State<AppState>) -> Result<Option<String>, String> {
     let mut n = state.startup_note.lock().map_err(|_| "state lock poisoned".to_string())?;
@@ -2643,7 +2671,10 @@ pub fn restore_database(
     //    rebuild below fails and the app is left unable to open anything.
     if let Some(k) = new_key.as_deref() {
         if let Err(e) = keyring::set_key_in(&account, k) {
-            return Err(put_back(format!("the backup's key could not be saved to the OS keyring: {e}")));
+            // No keyring: held for this run, which is all the reopen needs.
+            if !keyring::is_no_keyring(&e) {
+                return Err(put_back(format!("the backup's key could not be saved to the OS keyring: {e}")));
+            }
         }
     }
 
@@ -3052,10 +3083,11 @@ pub fn seed_demo_data(state: State<AppState>) -> Result<SeedSummary, String> {
 /// The file is left OPEN, because the next thing a tester wants is to look at
 /// it.
 #[tauri::command(rename_all = "camelCase")]
-pub fn create_sample_file(state: State<AppState>, path: String) -> Result<SeedSummary, String> {
+pub fn create_sample_file(state: State<AppState>, path: String, key: Option<String>) -> Result<SeedSummary, String> {
     // `create = true` is the first guard: an existing path is refused here,
     // before anything is opened.
-    open_file_impl(&state, path, true, None)?;
+    // `key`: one the person keeps themselves, when no keyring is running.
+    open_file_impl(&state, path, true, key)?;
 
     let (_g, conn) = with_conn(&state)?;
     // And the second: whatever we just opened has nothing in it. Belt and

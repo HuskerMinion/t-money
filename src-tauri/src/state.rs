@@ -42,4 +42,7 @@ pub struct AppState {
     /// fallback is how a user ends up entering a week of transactions into
     /// the wrong database.
     pub startup_note: Mutex<Option<String>>,
+    /// The last file opened from outside, until the screen takes it. See
+    /// `commands::take_outside_open`.
+    pub outside_open: Mutex<Option<serde_json::Value>>,
 }

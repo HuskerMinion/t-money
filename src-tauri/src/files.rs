@@ -200,14 +200,28 @@ pub fn is_same(a: &Path, b: &Path) -> bool {
     same_path(&a.to_string_lossy(), &b.to_string_lossy())
 }
 
+/// A path as the filesystem compares it. Windows and macOS (APFS as Macs
+/// ship it) ignore case, so `Money.tmny` and `money.tmny` are one file there;
+/// on Linux they are two, and folding them together would hand one file the
+/// other's key. On Windows this is exactly the lowercasing it always was, so
+/// every key already stored is still found.
+pub fn fold_case(s: &str) -> String {
+    if cfg!(any(windows, target_os = "macos")) {
+        s.to_lowercase()
+    } else {
+        s.to_string()
+    }
+}
+
 /// Windows paths differ only by case and by the `\\?\` prefix canonicalize
 /// adds; two spellings of one file must not both sit in the list.
 pub fn same_path(a: &str, b: &str) -> bool {
     let norm = |s: &str| {
-        s.trim_start_matches("\\\\?\\")
-            .replace('\\', "/")
-            .trim_end_matches('/')
-            .to_lowercase()
+        fold_case(
+            s.trim_start_matches("\\\\?\\")
+                .replace('\\', "/")
+                .trim_end_matches('/'),
+        )
     };
     norm(a) == norm(b)
 }
@@ -220,6 +234,7 @@ mod tests {
     /// verbatim prefix on Windows and Tauri's config dir does not, so the two
     /// spellings of one file are unequal as `PathBuf`s and identical as files.
     #[test]
+    #[cfg(windows)]
     fn is_same_sees_through_the_verbatim_prefix_the_slashes_and_the_case() {
         let plain = Path::new(r"C:\Users\sam\AppData\Roaming\T-Money\t-money.db");
         assert!(is_same(Path::new(r"\\?\C:\Users\sam\AppData\Roaming\T-Money\t-money.db"), plain));
@@ -228,6 +243,16 @@ mod tests {
         // Two genuinely different files stay different.
         assert!(!is_same(Path::new(r"E:\Money\Sam.tmny"), plain));
         assert!(!is_same(Path::new(r"C:\Users\sam\AppData\Roaming\T-Money\other.db"), plain));
+    }
+
+    /// On Linux the case is part of the name: two files, two keys.
+    #[test]
+    #[cfg(not(any(windows, target_os = "macos")))]
+    fn on_linux_the_case_of_a_name_matters() {
+        let a = Path::new("/home/sam/Money/Household.tmny");
+        assert!(is_same(a, Path::new("/home/sam/Money/Household.tmny/")));
+        assert!(!is_same(a, Path::new("/home/sam/Money/household.tmny")));
+        assert!(!is_same(a, Path::new("/home/sam/money/Household.tmny")));
     }
 
     fn temp(tag: &str) -> PathBuf {
@@ -316,7 +341,9 @@ mod tests {
 
     #[test]
     fn two_spellings_of_one_windows_path_are_one_entry() {
-        assert!(same_path("C:\\Users\\t\\M.tmny", "c:/users/t/m.tmny"));
+        // The case folds only where the filesystem ignores it.
+        assert_eq!(same_path("C:\\Users\\t\\M.tmny", "c:/users/t/m.tmny"), cfg!(any(windows, target_os = "macos")));
+        assert!(same_path("C:\\Users\\t\\M.tmny", "C:/Users/t/M.tmny"));
         assert!(same_path("\\\\?\\C:\\x\\a.tmny", "C:\\x\\a.tmny"));
         assert!(!same_path("C:\\x\\a.tmny", "C:\\x\\b.tmny"));
     }

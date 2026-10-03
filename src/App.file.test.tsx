@@ -453,6 +453,23 @@ describe("a second copy handing us its file", () => {
     });
     expect(await screen.findByText(/no master key/)).toBeInTheDocument();
   });
+
+  it("asks for the key when the double-clicked file needs one, without the token", async () => {
+    render(<App />);
+    await screen.findByRole("menubar", { name: "Main menu" });
+    await act(async () => {
+      eventHandlers.get("tm://file-opened")?.({
+        payload: {
+          ok: false,
+          path: "/home/sam/Money/Household.tmny",
+          error: "NEEDS_KEY: NO_KEYRING: Household needs its master key typed in, because no keyring is running",
+        },
+      });
+    });
+    expect(await screen.findByRole("dialog", { name: "Master key needed" })).toBeInTheDocument();
+    expect(screen.getByText(/Paste the key you saved when you made this file/)).toBeInTheDocument();
+    expect(screen.queryByText(/NEEDS_KEY|NO_KEYRING/)).toBeNull();
+  });
 });
 
 describe("the error boundary", () => {

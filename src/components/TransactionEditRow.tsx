@@ -22,6 +22,7 @@ import Notice from "./Notice";
 import { formatAmountBare, parseMoneyToCents, today } from "../lib/format";
 import { currencyOf, homeCurrency } from "../lib/currency";
 import ClassPicker, { picksToSend } from "./ClassPicker";
+import { keys } from "../lib/keys";
 import type {
   ClassPick,
   Classification,
@@ -665,7 +666,7 @@ export default function TransactionEditRow({
               type="button"
               className="tm-clear-toggle"
               aria-label={row.cleared_state ? "Unclear this transaction" : "Clear this transaction"}
-              title={row.cleared_state ? "Cleared — click to unclear (Ctrl+M)" : "Click to mark cleared (Ctrl+M)"}
+              title={keys(row.cleared_state ? "Cleared — click to unclear (Ctrl+M)" : "Click to mark cleared (Ctrl+M)")}
               onClick={onToggleCleared}
             >
               {row.cleared_state || "·"}

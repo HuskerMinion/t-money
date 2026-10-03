@@ -798,6 +798,9 @@ export interface RowDecision {
 export interface KeyStatus {
   has_key: boolean;
   db_path: string;
+  /** A keyring is running to keep the key. False on a Linux system with
+   *  none, where a typed key lasts only until T-Money closes. */
+  keyring: boolean;
 }
 
 export interface Goal {

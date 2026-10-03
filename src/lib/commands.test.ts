@@ -161,6 +161,10 @@ describe("accelerators are read off the label they print", () => {
 
   it("matches the modifier set exactly", () => {
     expect(accelMatches("Ctrl+P", ev({ key: "p", ctrlKey: true }))).toBe(true);
+    // A Mac laptop's Delete key is Backspace: ⌘⌫ deletes, a bare one does not.
+    expect(accelMatches("Del", ev({ key: "Backspace", metaKey: true }))).toBe(true);
+    expect(accelMatches("Del", ev({ key: "Backspace" }))).toBe(false);
+    expect(accelMatches("Del", ev({ key: "Delete" }))).toBe(true);
     expect(accelMatches("Ctrl+P", ev({ key: "p" }))).toBe(false);
     expect(accelMatches("Ctrl+P", ev({ key: "p", ctrlKey: true, shiftKey: true }))).toBe(false);
     expect(accelMatches("Ctrl+P", ev({ key: "P", ctrlKey: true }))).toBe(true);

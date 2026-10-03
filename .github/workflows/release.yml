@@ -1,17 +1,19 @@
 name: Build release
 
-# Builds the T-Money installers on GitHub's Windows runner from a tagged commit, runs every test
-# first, and attests that the published installers were built from that exact source. Anyone can
+# Builds T-Money for Windows, macOS and Linux on GitHub's runners from a tagged commit, runs the
+# tests first, and attests that every published file was built from that exact source. Anyone can
 # then check a download with `gh attestation verify <file> --repo HuskerMinion/t-money` without
 # trusting the maintainer's machine. Building here also means no path from anyone's own computer
 # ends up inside the app.
 #
-# The installers are not code-signed (a certificate costs money every year). The attestation and
-# SHA256SUMS.txt are how a download is checked instead; the README says how.
+# Nothing is code-signed with a paid certificate (it costs money every year). The Mac app carries
+# Apple's free ad-hoc signature, which Apple silicon needs to run it at all. The attestation and
+# SHA256SUMS.txt are how a download is checked instead; the README says how, and how to get past
+# each system's first-run warning.
 #
 # A tag vX.Y.Z must match the version in src-tauri/tauri.conf.json, or nothing is built. The
 # release is created as a draft: the maintainer reads it and presses Publish. A run started by
-# hand builds and uploads the installers as a workflow artifact only, for testing.
+# hand builds and uploads everything as workflow artifacts only, for testing.
 #
 # Every action is pinned to a full commit SHA, with the release it belongs to in the comment
 # beside it. A tag is a moving pointer its own author can repoint, so moving one forward is a
@@ -28,11 +30,18 @@ permissions:
 
 jobs:
   build:
-    runs-on: windows-latest
-    permissions:
-      contents: write
-      id-token: write
-      attestations: write
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - name: windows
+            os: windows-latest
+          - name: macos
+            os: macos-latest
+          - name: linux
+            # The oldest supported Ubuntu, so the AppImage runs on older systems too.
+            os: ubuntu-22.04
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
@@ -46,16 +55,29 @@ jobs:
             exit 1
           fi
 
+      # A release build starts clean: no npm or Rust cache from earlier runs
+      # goes into a file people download. Manual test runs use the caches.
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '22'
-          cache: npm
+          cache: ${{ github.ref_type != 'tag' && 'npm' || '' }}
 
-      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+      - uses: dtolnay/rust-toolchain@89b12181fb390509a0842a86cc55eeb8eb928c1d # stable
+        with:
+          # The Mac app is universal: one build for Apple silicon and Intel.
+          targets: ${{ matrix.name == 'macos' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        if: github.ref_type != 'tag'
         with:
           workspaces: src-tauri
+
+      - name: Linux build libraries
+        if: matrix.name == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libssl-dev libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev librsvg2-dev libxdo-dev patchelf file
 
       - name: Install
         run: npm ci
@@ -67,44 +89,119 @@ jobs:
       - name: Test (frontend)
         run: npx vitest run
 
+      # On every system: path, key-store and file handling differ between them.
       - name: Test (Rust)
         working-directory: src-tauri
         run: cargo test
 
       # The first build compiles SQLCipher and OpenSSL from source; expect 15 to 30 minutes.
-      - name: Build installers
-        run: npx tauri build
+      - name: Build (Windows)
+        if: matrix.name == 'windows'
+        run: npx tauri build --bundles nsis,msi
+
+      - name: Build (macOS)
+        if: matrix.name == 'macos'
+        run: npx tauri build --target universal-apple-darwin --bundles app
+
+      # The AppImage step downloads its packaging tools (linuxdeploy and its
+      # plugins) from their own releases at build time; Tauri does not pin them.
+      # The .deb is built from the apt packages above alone.
+      - name: Build (Linux)
+        if: matrix.name == 'linux'
+        env:
+          # The AppImage tools are AppImages themselves; this runs them without FUSE.
+          APPIMAGE_EXTRACT_AND_RUN: '1'
+        run: npx tauri build --bundles deb,appimage
 
       - name: Collect
         shell: bash
         run: |
           mkdir out
-          cp src-tauri/target/release/bundle/nsis/*.exe out/
-          cp src-tauri/target/release/bundle/msi/*.msi out/
+          version=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          case "${{ matrix.name }}" in
+            windows)
+              cp src-tauri/target/release/bundle/nsis/*.exe out/
+              cp src-tauri/target/release/bundle/msi/*.msi out/
+              ;;
+            macos)
+              # The disk image is made here rather than by Tauri's script, which lays out the
+              # window by scripting Finder: one less thing that can fail on a build machine.
+              app=src-tauri/target/universal-apple-darwin/release/bundle/macos/T-Money.app
+              lipo -archs "$app/Contents/MacOS/t-money"
+              codesign --verify --deep --strict "$app"
+              mkdir stage
+              cp -R "$app" stage/
+              ln -s /Applications stage/Applications
+              # hdiutil now and then fails with "Resource busy" on these machines.
+              for try in 1 2 3; do
+                hdiutil create -volname T-Money -srcfolder stage -ov -format UDZO "out/T-Money_${version}_universal.dmg" && break
+                [ "$try" = 3 ] && exit 1
+                sleep 10
+              done
+              ;;
+            linux)
+              cp src-tauri/target/release/bundle/deb/*.deb out/
+              cp src-tauri/target/release/bundle/appimage/*.AppImage out/
+              ;;
+          esac
+          ls -la out
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: t-money-${{ matrix.name }}
+          path: out/
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          # This job can write to the repository; nothing needs that token on disk.
+          persist-credentials: false
+
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: t-money-*
+          path: out
+          merge-multiple: true
+
+      - name: Checksums
+        run: |
           cd out
           sha256sum * > SHA256SUMS.txt
           cat SHA256SUMS.txt
 
+      # Only a tagged release is attested: a test run's files must not pass
+      # `gh attestation verify` as if they were a release.
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        if: github.ref_type == 'tag'
         with:
           subject-path: |
             out/*.exe
             out/*.msi
+            out/*.dmg
+            out/*.deb
+            out/*.AppImage
 
       - name: Draft release
         if: github.ref_type == 'tag'
-        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "${GITHUB_REF_NAME}" out/* \
             --draft --verify-tag \
             --title "T-Money ${GITHUB_REF_NAME}" \
-            --notes "Installers for Windows 10 and 11. They are not code-signed; see the README for the SmartScreen warning and how to check a download."
+            --notes "For Windows, macOS and Linux. Nothing is code-signed; see the README for each system's first-run warning and how to check a download."
 
       - name: Upload (manual runs)
         if: github.ref_type != 'tag'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: t-money-installers
+          name: t-money-all
           path: out/

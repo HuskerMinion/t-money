@@ -16,6 +16,7 @@ import { useAccountStore } from "../stores/useAccountStore";
 import { api } from "../lib/ipc";
 import { useCommand } from "../lib/useCommand";
 import type { Category, CategoryKind, MergePreview } from "../lib/types";
+import { keys } from "../lib/keys";
 
 /** Top-level categories of one kind, each followed by its children. */
 export function treeOf(
@@ -640,7 +641,7 @@ export default function CategoriesView() {
               )}
 
               <p className="tm-text-muted">
-                Edit → Undo (Ctrl+Z) takes this back, including the budgets.
+                Edit → Undo ({keys("Ctrl+Z")}) takes this back, including the budgets.
               </p>
               {dialogError && (
                 <Notice tone="error" boxed>

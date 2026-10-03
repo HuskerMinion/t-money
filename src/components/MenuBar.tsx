@@ -13,6 +13,8 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { isCommandAvailable, onAvailabilityChange, runCommand } from "../lib/commands";
 import { accelMatches, menuLeaves, type Menu, type MenuItem, ariaKeys } from "../lib/menus";
+import { applyMacMenu } from "../lib/macMenu";
+import { platform } from "../lib/keyStore";
 
 /** Re-render whenever what the app can do changes. Exported, because
  *  the Ribbon reads the same registry and used to read it only when something
@@ -60,6 +62,8 @@ export function useMenuAccelerators(menus: Menu[]): void {
       for (const l of leaves) {
         if (!accelMatches(l.accel!, e)) continue;
         if (typing && !e.ctrlKey && !e.metaKey && !e.altKey) return;
+        // ⌘⌫ in a field deletes the line being typed, not a transaction.
+        if (typing && l.accel === "Del") return;
         // Ctrl+C / Ctrl+X / Ctrl+V inside a field belong to the field.
         if (typing && FIELD_OWNS.includes(l.command!)) return;
         if (runCommand(l.command!)) e.preventDefault();
@@ -83,7 +87,13 @@ function panelButtons(panel: Element): HTMLButtonElement[] {
 }
 
 export default function MenuBar({ menus }: Props) {
-  useCommandAvailability();
+  const availability = useCommandAvailability();
+  // On a Mac the menu is the system's, at the top of the screen; this bar
+  // keeps the keyboard handling and draws nothing. See lib/macMenu.ts.
+  const mac = platform() === "mac";
+  useEffect(() => {
+    if (mac) void applyMacMenu(menus).catch(() => {});
+  }, [mac, menus, availability]);
   const [open, setOpen] = useState<number | null>(null);
   const [path, setPath] = useState<number[]>([]);
   const barRef = useRef<HTMLDivElement>(null);
@@ -255,6 +265,7 @@ export default function MenuBar({ menus }: Props) {
     else if (item.command) runCommand(item.command);
   }
 
+  if (mac) return null;
   return (
     <div className="tm-menubar" role="menubar" ref={barRef} aria-label="Main menu">
       {menus.map((m, i) => (

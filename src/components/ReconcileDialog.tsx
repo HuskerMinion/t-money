@@ -15,6 +15,7 @@ import type { Category, Statement } from "../lib/types";
 import CategorySelect from "./CategorySelect";
 import Notice from "./Notice";
 import DateField from "./DateField";
+import { keys } from "../lib/keys";
 
 export type ReconcileStage = "resume" | "statement" | "clearing" | "unbalanced" | "balanced";
 
@@ -322,7 +323,7 @@ function ClearingBar({ accountName, currency, lastStatement, differenceCents, on
         Balance Account
       </span>
       <span className="tm-text-muted">
-        Click the <strong>C</strong> column (or press Ctrl+M) on each transaction that is on the statement
+        Click the <strong>C</strong> column (or press {keys("Ctrl+M")}) on each transaction that is on the statement
         {lastStatement ? ` ending ${formatDateUS(lastStatement.statement_date)}` : ""}.
       </span>
       <span className="flex-1" />

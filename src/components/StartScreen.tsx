@@ -11,6 +11,7 @@
 // the pool is dropped, the file handle released, and there is exactly one
 // thing to do here — pick a file.
 import TmIcon from "./TmIcon";
+import { keys } from "../lib/keys";
 
 export interface RecentFile {
   path: string;
@@ -150,8 +151,8 @@ export default function StartScreen({
           <p className="text-[11px] tm-text-muted pt-4">
             A T-Money file is encrypted, and its key lives in this computer’s credential store. A
             file made on another machine asks for that machine’s key the first time it is opened
-            here — paste it once and it is remembered. Get it from the other machine under Tools →
-            Settings → Database → Save master key.
+            here — paste it once and it is remembered. Get it from the other machine under{" "}
+            {keys("Tools → Settings… → Security → Master key → Save to a file…")}.
           </p>
         </div>
       </div>

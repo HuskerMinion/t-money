@@ -682,7 +682,11 @@ export const api = {
     invoke<OpenFile>("open_file", { path, create, key }),
   /** Make a NEW file full of demo data and open it. Refuses a path
    *  that already exists, which is what makes it safe in a release build. */
-  createSampleFile: (path: string) => invoke<SeedSummary>("create_sample_file", { path }),
+  /** `key`: one the person keeps themselves, when no keyring is running. */
+  /** The last file opened from outside (a double-click), taken once. */
+  takeOutsideOpen: () => invoke<unknown>("take_outside_open"),
+  createSampleFile: (path: string, key: string | null = null) =>
+    invoke<SeedSummary>("create_sample_file", { path, key }),
   /** The Budget screen: every expense category, with the parent/child
    *  rollup applied and the totals computed in Rust. */
   getBudgetGrid: (month: string) => invoke<BudgetGrid>("get_budget_grid", { month }),

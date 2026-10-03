@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useState } from "react";
 import TmIcon from "./TmIcon";
 import { HELP_GROUPS, HELP_TOPICS, searchTopics, type HelpTopic } from "../help/topics";
+import { keys } from "../lib/keys";
 
 interface Props {
   /** Topic to show; App sets it from F1 or the tab that was open. */
@@ -155,7 +156,7 @@ export default function HelpView({ topic = null }: Props) {
         </div>
         <h2 className="tm-report-title">{active.title}</h2>
         <p className="tm-help-blurb">{active.blurb}</p>
-        <div className="tm-help-body">{renderBody(active.body, open)}</div>
+        <div className="tm-help-body">{renderBody(keys(active.body), open)}</div>
         {linkedTopics(active).length > 0 && (
           <div className="tm-help-seealso">
             <span className="font-bold">See also:</span>{" "}

@@ -11,9 +11,10 @@ import { useCommand } from "./lib/useCommand";
 import { runCommand } from "./lib/commands";
 import { forgetUndo, onUndoChange, redoLast, refreshUndo, undoLast, undoStatus } from "./lib/undo";
 import KeyPromptDialog from "./components/KeyPromptDialog";
+import NoKeyringDialog from "./components/NoKeyringDialog";
 import NewFileFormatDialog from "./components/NewFileFormatDialog";
 import { useFileFormat } from "./lib/region";
-import { fileNameOf, keyProblem } from "./lib/keyError";
+import { fileNameOf, keyProblem, noKeyring, withoutSentinel } from "./lib/keyError";
 import AeroSidebar from "./components/AeroSidebar";
 import { clampRail, loadRailWidth, RAIL_DEFAULT, RAIL_MAX, RAIL_MIN, saveRailWidth } from "./lib/railWidth";
 import FavoriteAccountsWidget from "./components/FavoriteAccountsWidget";
@@ -449,7 +450,10 @@ export default function App() {
   /** The file waiting on a key, if one is. `wrong` is set after a key
    *  was tried and refused, so the dialog says so rather than looking like it
    *  ignored the press. */
-  const [keyPrompt, setKeyPrompt] = useState<{ path: string; name: string; wrong: boolean } | null>(
+  /** A new file that could not be made because no keyring is running,
+   *  and how to make it with a key the person keeps instead. */
+  const [noKeyringFor, setNoKeyringFor] = useState<{ path: string; create: (key: string) => Promise<void> } | null>(null);
+  const [keyPrompt, setKeyPrompt] = useState<{ path: string; name: string; wrong: boolean; noKeyring?: boolean } | null>(
     null
   );
   const [fileName, setFileName] = useState<string | null>(null);
@@ -564,21 +568,36 @@ export default function App() {
     // `.catch` because `listen` reaches into Tauri's internals: outside the
     // app — a test, a browser preview — it rejects, and an unhandled rejection
     // at mount is noise that hides real ones.
-    const stop = listen<{ ok: boolean; error?: string; file?: { name: string } }>(
-      "tm://file-opened",
-      (e) => {
-        void (async () => {
-          if (!e.payload.ok) {
-            setFileError(e.payload.error ?? "that file could not be opened");
-            return;
-          }
-          setFileError(null);
-          leaveFile();
-          forgetUndo();
-          await loadFile();
-        })();
+    type Outside = { ok: boolean; error?: string; file?: { name: string }; path?: string };
+    const handle = async (p: Outside) => {
+      if (!p.ok) {
+        // A file that needs its key asks for it, as File → Open does,
+        // rather than showing the backend's sentence with its token.
+        const problem = keyProblem(p.error);
+        if (problem && p.path) {
+          setKeyPrompt({ path: p.path, name: fileNameOf(p.path), wrong: problem === "wrong", noKeyring: noKeyring(p.error) });
+        } else {
+          setFileError(withoutSentinel(p.error ?? "that file could not be opened"));
+        }
+        return;
       }
-    ).catch(() => null);
+      setFileError(null);
+      leaveFile();
+      forgetUndo();
+      await loadFile();
+    };
+    const stop = listen<Outside>("tm://file-opened", (e) => {
+      // The backend also holds what it sent; collect it so it is not
+      // handled a second time below.
+      void api.takeOutsideOpen().catch(() => null);
+      void handle(e.payload);
+    }).catch(() => null);
+    // Anything opened before this screen was listening: a Mac sends the
+    // file it was launched with straight away.
+    void stop.then(async () => {
+      const held = await api.takeOutsideOpen().catch(() => null);
+      if (held) await handle(held as Outside);
+    });
     return () => {
       void stop.then((off) => off?.());
     };
@@ -674,7 +693,11 @@ export default function App() {
       // does not exist.
       const problem = keyProblem(e);
       if (problem) {
-        setKeyPrompt({ path, name: fileNameOf(path), wrong: problem === "wrong" });
+        setKeyPrompt({ path, name: fileNameOf(path), wrong: problem === "wrong", noKeyring: noKeyring(e) });
+      } else if (create && noKeyring(e)) {
+        // A new file with no keyring to keep its key: explain, and offer to
+        // make it with a key the person keeps.
+        setNoKeyringFor({ path, create: (k) => switchTo(path, true, k, init) });
       } else {
         setFileError(String(e));
       }
@@ -690,6 +713,7 @@ export default function App() {
     }
     // It opened. Whatever was being asked for is answered.
     setKeyPrompt(null);
+    setNoKeyringFor(null);
     // The backend cleared its undo stack when it swapped the file; drop the
     // label that went with the old one.
     forgetUndo();
@@ -717,16 +741,22 @@ export default function App() {
       filters: [{ name: "T-Money file", extensions: ["tmny"] }],
     });
     if (typeof picked !== "string") return;
+    await sampleAt(picked, null);
+  }
+
+  async function sampleAt(picked: string, key: string | null) {
     setFileError(null);
     leaveFile();
     try {
-      await api.createSampleFile(picked);
+      await api.createSampleFile(picked, key);
     } catch (e) {
-      setFileError(String(e));
+      if (noKeyring(e) && !keyProblem(e)) setNoKeyringFor({ path: picked, create: (k) => sampleAt(picked, k) });
+      else setFileError(String(e));
       if (fileOpen) await useAccountStore.getState().reloadAll();
       else await refreshFiles();
       return;
     }
+    setNoKeyringFor(null);
     forgetUndo();
     await loadFile();
   }
@@ -875,6 +905,21 @@ export default function App() {
   // The key dialog's Open is disabled while the file is being opened;
   // it was never told, so a second press opened the file twice.
   const [keyBusy, setKeyBusy] = useState(false);
+  const [noKeyringBusy, setNoKeyringBusy] = useState(false);
+  const noKeyringDialog = noKeyringFor && (
+    <NoKeyringDialog
+      fileName={fileNameOf(noKeyringFor.path)}
+      busy={noKeyringBusy}
+      onCancel={() => setNoKeyringFor(null)}
+      onCreate={(k) => {
+        const create = noKeyringFor.create;
+        setNoKeyringFor(null);
+        setNoKeyringBusy(true);
+        void create(k).finally(() => setNoKeyringBusy(false));
+      }}
+    />
+  );
+
   const submitKey = async (path: string, key: string) => {
     setKeyBusy(true);
     try {
@@ -955,12 +1000,14 @@ export default function App() {
           <KeyPromptDialog
             fileName={keyPrompt.name}
             wrongKey={keyPrompt.wrong}
+            noKeyring={keyPrompt.noKeyring}
             busy={keyBusy}
             onCancel={() => setKeyPrompt(null)}
             onSubmit={(k) => void submitKey(keyPrompt.path, k)}
           />
         )}
         {newFileDialog}
+        {noKeyringDialog}
       </div>
     );
   }
@@ -1206,12 +1253,14 @@ export default function App() {
         <KeyPromptDialog
           fileName={keyPrompt.name}
           wrongKey={keyPrompt.wrong}
+          noKeyring={keyPrompt.noKeyring}
           busy={keyBusy}
           onCancel={() => setKeyPrompt(null)}
           onSubmit={(k) => void submitKey(keyPrompt.path, k)}
         />
       )}
       {newFileDialog}
+      {noKeyringDialog}
 
       {calcOpen && (
         <>

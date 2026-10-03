@@ -514,10 +514,11 @@ describe("coverage of the registered command set", () => {
   // RETIRED when the lines started traveling in the create and
   // edit payloads and nothing called it any more. 159: get_performance. 164: the five attachment commands.
   // 170: account currencies and the five exchange-rate commands. 174: the
-  // home currency and region. 180: the six SimpleFIN commands.
-  it("finds the 180 registered commands", () => {
-    expect(registered.length).toBe(180);
-    expect(new Set(registered).size).toBe(180);
+  // home currency and region. 180: the six SimpleFIN commands. 181:
+  // take_outside_open.
+  it("finds the 181 registered commands", () => {
+    expect(registered.length).toBe(181);
+    expect(new Set(registered).size).toBe(181);
   });
 
   it("ipc.ts wraps every registered command and nothing else", () => {

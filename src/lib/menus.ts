@@ -274,6 +274,10 @@ export function ariaKeys(accel: string): string {
 export function accelMatches(accel: string, e: KeyboardEvent): boolean {
   const parts = accel.split("+").map((p) => p.trim().toLowerCase());
   const key = parts[parts.length - 1];
+  // A Mac laptop's Delete key is Backspace; ⌘⌫ is how a Mac deletes an item.
+  if (parts.length === 1 && key === "del" && e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+    return e.key === "Backspace";
+  }
   const wantCtrl = parts.includes("ctrl");
   const wantAlt = parts.includes("alt");
   const wantShift = parts.includes("shift");

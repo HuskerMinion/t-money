@@ -25,6 +25,8 @@
 // a trailing newline: all the same.
 import { useEffect, useRef, useState } from "react";
 import Notice from "./Notice";
+import { keyStoreWords } from "../lib/keyStore";
+import { keys } from "../lib/keys";
 
 /** A T-Money key is 32 random bytes, hex-encoded. */
 const KEY_RE = /\b[0-9a-fA-F]{64}\b/;
@@ -48,6 +50,9 @@ interface Props {
   /** True when a key was already tried and refused, so the dialog says so
    *  rather than looking like it did nothing. */
   wrongKey?: boolean;
+  /** No keyring is running: the key is asked for every time, not because
+   *  the file came from another computer. */
+  noKeyring?: boolean;
   busy?: boolean;
   onSubmit: (key: string) => void;
   onCancel: () => void;
@@ -56,6 +61,7 @@ interface Props {
 export default function KeyPromptDialog({
   fileName,
   wrongKey = false,
+  noKeyring = false,
   busy = false,
   onSubmit,
   onCancel,
@@ -76,11 +82,19 @@ export default function KeyPromptDialog({
       <div className="tm-dialog" role="dialog" aria-label="Master key needed">
         <div className="tm-dialog-title">Master key needed</div>
         <div className="tm-dialog-body space-y-2 text-[12px]">
-          <p>
-            <strong>{fileName}</strong> was not created on this computer, so its key is not
-            in this computer’s credential store. Paste it below and it will be remembered
-            here.
-          </p>
+          {noKeyring ? (
+            <p>
+              T-Money can&rsquo;t keep keys right now: it keeps them in {keyStoreWords().name}, which
+              can&rsquo;t be reached. Paste the key for <strong>{fileName}</strong> to open it; you will be
+              asked again next time T-Money starts.
+            </p>
+          ) : (
+            <p>
+              <strong>{fileName}</strong> was not created on this computer, so its key is not
+              in this computer’s credential store. Paste it below and it will be remembered
+              here.
+            </p>
+          )}
 
           {wrongKey && (
             <Notice tone="error" boxed>
@@ -114,10 +128,12 @@ export default function KeyPromptDialog({
               </>
             ) : typedSomething ? (
               "No 64-character key in that — paste the key itself, or the whole key file."
+            ) : noKeyring ? (
+              "Paste the key you saved when you made this file, or the whole key file."
             ) : (
               // The real path. There is no "Database → Save master key";
               // the key lives under Security → Master key (SettingsView).
-              "On the other computer: Tools → Settings… → Security → Master key → Save to a file…, or Show my key and copy it."
+              keys("On the other computer: Tools → Settings… → Security → Master key → Save to a file…, or Show my key and copy it.")
             )}
           </p>
 

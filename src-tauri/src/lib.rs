@@ -193,8 +193,24 @@ fn startup_file(
 
 /// Why a file was not opened when the keyring would not answer.
 /// Written as a clause because `fallback_note` puts it in parentheses.
+#[cfg(windows)]
 const KEYRING_UNREACHABLE: &str =
-    "the Windows credential store could not be reached, so this file's key cannot be read or saved";
+    "Windows Credential Manager could not be reached, so this file's key cannot be read or saved";
+#[cfg(target_os = "macos")]
+const KEYRING_UNREACHABLE: &str =
+    "the macOS Keychain could not be reached, so this file's key cannot be read or saved";
+#[cfg(not(any(windows, target_os = "macos")))]
+const KEYRING_UNREACHABLE: &str =
+    "the keyring could not be reached, so this file's key cannot be read or saved";
+
+/// What startup says about the last file when no keyring is running: not a
+/// problem with the file, just a key to type.
+fn no_keyring_note(path: &std::path::Path) -> String {
+    format!(
+        "No keyring is running, so T-Money can't keep keys. To open {}, choose it below and type its key.",
+        files::display_name(path)
+    )
+}
 
 /// The key startup opens `exists`'s file with, as `(key, created)`.
 ///
@@ -269,43 +285,7 @@ pub fn run() {
         // file. Focusing an existing window and ignoring the file you just
         // double-clicked would be technically correct and infuriating.
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
-            // Bring the window back first, whatever else happens: the user
-            // just double-clicked something and expects to see the app.
-            if let Some(w) = app.get_webview_window("main") {
-                let _ = w.unminimize();
-                let _ = w.show();
-                let _ = w.set_focus();
-            }
-            let Some(path) = file_argument(argv.into_iter().skip(1)) else {
-                return;
-            };
-            // Already on it — say nothing rather than reloading the file the
-            // user is looking at.
-            // Through `files::is_same`, not `PathBuf` equality. A file
-            // opened at startup is held in the recents list's `canonicalize`
-            // spelling (`\\?\C:\…`) and Explorer passes `C:\…`, possibly in
-            // another case — equal as files, never as `PathBuf`s, so the file
-            // on screen was reloaded under the user (the path-comparison bug, again).
-            let already = app
-                .try_state::<AppState>()
-                .and_then(|s| s.db_path.lock().ok().map(|p| files::is_same(&p, &path)))
-                .unwrap_or(false);
-            if already {
-                return;
-            }
-            let Some(state) = app.try_state::<AppState>() else { return };
-            let payload = match commands::open_file(
-                state,
-                path.to_string_lossy().to_string(),
-                false,
-                None,
-            ) {
-                Ok(f) => serde_json::json!({ "ok": true, "file": f }),
-                // A file it cannot open is news, not silence: the frontend
-                // shows it in the same banner a failed File → Open uses.
-                Err(e) => serde_json::json!({ "ok": false, "error": e }),
-            };
-            let _ = app.emit("tm://file-opened", payload);
+            open_from_outside(app, file_argument(argv.into_iter().skip(1)));
         }))
         .setup(|app| {
             let handle = app.handle().clone();
@@ -410,7 +390,11 @@ pub fn run() {
                 match remembered_problem(p.exists(), keyring::has_key_in(&account)) {
                     Some(why) => {
                         eprintln!("[t-money] not opening {}: {why}", p.display());
-                        note = Some(fallback_note(&p, why));
+                        note = Some(if p.exists() && !keyring::store_available() {
+                            no_keyring_note(&p)
+                        } else {
+                            fallback_note(&p, why)
+                        });
                     }
                     None => match open(&p) {
                         Ok(v) => {
@@ -512,6 +496,7 @@ pub fn run() {
                 scratch_dir: scratch,
                 undo: std::sync::Mutex::new(Default::default()),
                 startup_note: std::sync::Mutex::new(note),
+                outside_open: std::sync::Mutex::new(None),
             });
 
             Ok(())
@@ -721,6 +706,7 @@ pub fn run() {
             commands::preview_tsp,
             commands::import_tsp,
             commands::startup_note,
+            commands::take_outside_open,
             commands::undo_status,
             commands::undo_last,
             commands::redo_last,
@@ -740,11 +726,65 @@ pub fn run() {
         // about to, and a backup that races the process death is not a backup.
         // A `VACUUM INTO` of a file this size is well under a second; the
         // switch is off by default and in Settings for anyone it is not.
-        .run(|app, event| {
-            if let tauri::RunEvent::ExitRequested { .. } = event {
-                backup_on_exit(app);
+        .run(|app, event| match event {
+            tauri::RunEvent::ExitRequested { .. } => backup_on_exit(app),
+            // A .tmny double-clicked in Finder, at launch or while running.
+            #[cfg(target_os = "macos")]
+            tauri::RunEvent::Opened { urls } => {
+                let path = urls.iter().filter_map(|u| u.to_file_path().ok()).find(|p| file_argument([p.to_string_lossy().to_string()]).is_some());
+                open_from_outside(app, path);
             }
+            _ => {}
         });
+}
+
+/// Open a file the system handed us while T-Money is running: a second
+/// launch with a .tmny on its command line (Windows, Linux), or a Finder
+/// double-click (macOS, which sends an open-document event instead).
+fn open_from_outside(app: &tauri::AppHandle, path: Option<std::path::PathBuf>) {
+    // Bring the window back first, whatever else happens: the user
+    // just double-clicked something and expects to see the app.
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.unminimize();
+        let _ = w.show();
+        let _ = w.set_focus();
+    }
+    let Some(path) = path else {
+        return;
+    };
+    // Already on it — say nothing rather than reloading the file the
+    // user is looking at.
+    // Through `files::is_same`, not `PathBuf` equality. A file
+    // opened at startup is held in the recents list's `canonicalize`
+    // spelling (`\\?\C:\…`) and Explorer passes `C:\…`, possibly in
+    // another case — equal as files, never as `PathBuf`s, so the file
+    // on screen was reloaded under the user (the path-comparison bug, again).
+    let already = app
+        .try_state::<AppState>()
+        .and_then(|s| s.db_path.lock().ok().map(|p| files::is_same(&p, &path)))
+        .unwrap_or(false);
+    if already {
+        return;
+    }
+    let Some(state) = app.try_state::<AppState>() else { return };
+    let payload = match commands::open_file(
+        state,
+        path.to_string_lossy().to_string(),
+        false,
+        None,
+    ) {
+        Ok(f) => serde_json::json!({ "ok": true, "file": f, "path": path }),
+        // A file it cannot open is news, not silence: the frontend
+        // shows it in the same banner a failed File → Open uses.
+        Err(e) => serde_json::json!({ "ok": false, "error": e, "path": path }),
+    };
+    // Held as well as announced: the screen may not be listening yet.
+    if let Some(state) = app.try_state::<AppState>() {
+        if let Ok(mut slot) = state.outside_open.lock() {
+            *slot = Some(payload.clone());
+        }
+    }
+    let _ = app.emit("tm://file-opened", payload);
 }
 
 /// Take the exit backup, and never let it stop the app closing.
@@ -804,7 +844,8 @@ mod tests {
         );
         // The reason reads as a clause inside the start screen's note.
         let note = fallback_note(std::path::Path::new(r"E:\Money\Sam.tmny"), KEYRING_UNREACHABLE);
-        assert!(note.contains("(the Windows credential store could not be reached"), "{note}");
+        assert!(note.contains(&format!("({KEYRING_UNREACHABLE})")), "{note}");
+        assert!(KEYRING_UNREACHABLE.contains("could not be reached"));
     }
 
     #[test]
@@ -893,8 +934,12 @@ mod tests {
 
         // And the plain spelling, and a case-different one.
         assert_eq!(startup_file(None, Some(default_db.to_path_buf()), default_db), None);
-        let shouty = PathBuf::from(r"C:\USERS\SAM\AppData\Roaming\T-Money\T-MONEY.DB");
-        assert_eq!(startup_file(None, Some(shouty), default_db), None);
+        // A case-different spelling is the same file where the filesystem
+        // ignores case (Windows, macOS); on Linux it is another file.
+        if cfg!(any(windows, target_os = "macos")) {
+            let shouty = PathBuf::from(r"C:\USERS\SAM\AppData\Roaming\T-Money\T-MONEY.DB");
+            assert_eq!(startup_file(None, Some(shouty), default_db), None);
+        }
 
         // A real file of the user's own is remembered, as it always was.
         let real = PathBuf::from(r"\\?\E:\Money\Sam.tmny");

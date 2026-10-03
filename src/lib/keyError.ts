@@ -21,9 +21,15 @@ export function keyProblem(err: unknown): KeyProblem | null {
   return null;
 }
 
+/** True when the error says no keyring is running (a Linux system with
+ *  none): the key cannot be kept, only typed in or kept by the person. */
+export function noKeyring(err: unknown): boolean {
+  return String(err ?? "").includes("NO_KEYRING");
+}
+
 /** The same error with the token taken off, for anywhere that just shows it. */
 export function withoutSentinel(err: unknown): string {
-  return String(err ?? "").replace(/\b(NEEDS_KEY|WRONG_KEY):\s*/, "");
+  return String(err ?? "").replace(/\b(NEEDS_KEY|WRONG_KEY|NO_KEYRING):\s*/g, "");
 }
 
 /** What a file is called, from its path — the last segment without its

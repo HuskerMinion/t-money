@@ -43,6 +43,7 @@ import {
 import { currentRegion } from "../lib/region";
 import DateField from "./DateField";
 import type { LeaveResult } from "./TransactionEditRow";
+import { keys } from "../lib/keys";
 import type {
   Account,
   Category,
@@ -425,7 +426,7 @@ export default function InvestmentEditRow({
         </td>
         <td className="mid">
           {row && onToggleCleared ? (
-            <button type="button" className="tm-clear-toggle" aria-label={row.cleared_state ? "Unclear this transaction" : "Clear this transaction"} title="Click to toggle cleared (Ctrl+M)" onClick={onToggleCleared}>
+            <button type="button" className="tm-clear-toggle" aria-label={row.cleared_state ? "Unclear this transaction" : "Clear this transaction"} title={keys("Click to toggle cleared (Ctrl+M)")} onClick={onToggleCleared}>
               {row.cleared_state || "·"}
             </button>
           ) : (

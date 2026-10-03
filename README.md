@@ -136,8 +136,9 @@ or newer.
 5. macOS asks once more. Click **Open Anyway**, then type your Mac password.
 
 From then on T-Money opens like any other app. After an update you do steps 3 to 5 again, because
-macOS checks each new download. Right-click → Open, which used to skip the warning, no longer works
-since macOS 15. If you'd rather use Terminal, this one line does the same as steps 3 to 5:
+macOS checks each new download. On macOS 11 to 14 it's quicker: right-click T-Money in Applications,
+choose **Open**, then **Open** again (macOS 15 and later removed that shortcut). If you'd rather use
+Terminal, this one line does the same as steps 3 to 5 on any version:
 
 ```sh
 xattr -dr com.apple.quarantine /Applications/T-Money.app
@@ -148,7 +149,8 @@ folder. Click **Allow**.
 
 ### Linux
 
-For 64-bit Intel or AMD PCs. Linux doesn't warn about unsigned apps.
+For 64-bit Intel or AMD PCs. Installing with `apt` or running the AppImage gives no warning; a
+graphical installer such as Ubuntu's App Center may say the package isn't from your distribution.
 
 - **Debian, Ubuntu, Mint, Pop!_OS:** download `T-Money_x.y.z_amd64.deb` and install it with
   `sudo apt install ./T-Money_x.y.z_amd64.deb`. T-Money is then in your applications menu.
@@ -157,7 +159,8 @@ For 64-bit Intel or AMD PCs. Linux doesn't warn about unsigned apps.
 
 T-Money keeps each file's key in your desktop's keyring, GNOME Keyring or KDE's KWallet, which most
 desktops start when you log in. With no keyring running, T-Money says so and offers to let you keep
-the key yourself; you then type it each time you open the file. If the window is blank (some
+the key yourself; you then type it each time you open the file. If you start a keyring later,
+restart T-Money so it finds it. If the window is blank (some
 graphics drivers), start it with `WEBKIT_DISABLE_DMABUF_RENDERER=1` in front of the command.
 
 ### Checking a download
@@ -168,12 +171,12 @@ If you want to be sure a file is the real one before you run it:
   downloaded; the result must match the line for that file.
 
   ```powershell
-  Get-FileHash .\T-Money_1.2.0_x64-setup.exe -Algorithm SHA256   # Windows, in PowerShell
+  Get-FileHash .\T-Money_1.3.0_x64-setup.exe -Algorithm SHA256   # Windows, in PowerShell
   ```
 
   ```sh
-  shasum -a 256 T-Money_1.2.0_universal.dmg      # Mac
-  sha256sum T-Money_1.2.0_amd64.AppImage         # Linux
+  shasum -a 256 T-Money_1.3.0_universal.dmg      # Mac
+  sha256sum T-Money_1.3.0_amd64.AppImage         # Linux
   ```
 
 - **Check where it was built.** Every download is built by GitHub from the public source in this
@@ -181,7 +184,7 @@ If you want to be sure a file is the real one before you run it:
   [GitHub CLI](https://cli.github.com/):
 
   ```sh
-  gh attestation verify T-Money_1.2.0_x64-setup.exe --repo HuskerMinion/t-money
+  gh attestation verify T-Money_1.3.0_x64-setup.exe --repo HuskerMinion/t-money
   ```
 
 ## Coming from Microsoft Money

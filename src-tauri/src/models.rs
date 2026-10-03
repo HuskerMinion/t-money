@@ -1100,6 +1100,9 @@ pub struct ImportSummary {
 pub struct KeyStatus {
     pub has_key: bool,
     pub db_path: String,
+    /// A keyring is running to keep the key. False on a Linux system with
+    /// none, where a typed key lasts only until T-Money closes.
+    pub keyring: bool,
 }
 
 // ---------------------------------------------------------------------------

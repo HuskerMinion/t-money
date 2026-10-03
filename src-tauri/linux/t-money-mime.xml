@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Tells Linux desktops that *.tmny files are T-Money files, so a
+     double-click opens them in T-Money (see t-money.desktop.hbs). -->
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/x-tmoney">
+    <comment>T-Money file</comment>
+    <glob pattern="*.tmny"/>
+  </mime-type>
+</mime-info>

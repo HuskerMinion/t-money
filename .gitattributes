@@ -1,0 +1,2 @@
+# Linux packaging files are read on Linux: keep them LF on every checkout.
+src-tauri/linux/* text eol=lf

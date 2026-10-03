@@ -55,6 +55,6 @@ describe("StartScreen", () => {
 
   it("says where to get the key from", () => {
     render(<StartScreen {...props} />);
-    expect(screen.getByText(/Save master key/)).toBeInTheDocument();
+    expect(screen.getByText(/Security → Master key → Save to a file/)).toBeInTheDocument();
   });
 });

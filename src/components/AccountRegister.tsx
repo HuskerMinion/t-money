@@ -49,6 +49,7 @@ import { api } from "../lib/ipc";
 import { samePicks } from "./ClassPicker";
 import { noteChanged } from "../lib/undo";
 import type { Classification, ClearedState, CommonTransaction, Goal, NewInvestmentTransaction, NewSplit, Security, Statement } from "../lib/types";
+import { keys } from "../lib/keys";
 
 /** Money's register views. `view` is the Show
  *  half; dates and sort ride alongside in `viewOpts`. Reconcile drives the
@@ -1522,7 +1523,7 @@ export default function AccountRegister() {
           className="aero-btn"
           type="button"
           disabled={stage !== null}
-          title="Find a transaction in this register by any field (Ctrl+F)"
+          title={keys("Find a transaction in this register by any field (Ctrl+F)")}
           onClick={() => setFindOpen(true)}
         >
           Find…
@@ -1610,7 +1611,7 @@ export default function AccountRegister() {
           className="aero-btn"
           type="button"
           disabled={selectedRowId === null || busy}
-          title="Mark the selected transaction cleared, or uncleared (Ctrl+M)"
+          title={keys("Mark the selected transaction cleared, or uncleared (Ctrl+M)")}
           onClick={() => selectedRowId && void toggleCleared(selectedRowId)}
         >
           {register.find((r) => r.id === selectedRowId)?.cleared_state ? "Unclear" : "Mark cleared"}
@@ -1855,7 +1856,7 @@ export default function AccountRegister() {
                   ? "Unreconcile (was balanced on a statement)"
                   : row.cleared_state === "C"
                     ? "Mark as uncleared"
-                    : "Mark as cleared (Ctrl+M)";
+                    : keys("Mark as cleared (Ctrl+M)");
               return (
                 <>
                 <button

@@ -29,6 +29,7 @@ import Notice from "./Notice";
 import { api } from "../lib/ipc";
 import { formatDateUS } from "../lib/format";
 import type { PayeeRuleChange } from "../lib/types";
+import { keys } from "../lib/keys";
 
 interface Props {
   onClose: () => void;
@@ -129,7 +130,7 @@ export default function ApplyPayeeRulesDialog({ onClose, onApplied }: Props) {
             <p className="text-[12px] pb-2">
               {changes.length} transaction{changes.length === 1 ? "" : "s"} would change. Uncheck
               anything you want left alone. This lands on the undo stack as one step, so{" "}
-              <strong>Ctrl+Z</strong> takes all of it back.
+              <strong>{keys("Ctrl+Z")}</strong> takes all of it back.
             </p>
 
             {groups.map((g) => {

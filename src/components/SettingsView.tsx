@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import TmIcon from "./TmIcon";
 import { api } from "../lib/ipc";
+import { keyStoreWords } from "../lib/keyStore";
 import { useCommand } from "../lib/useCommand";
 import { refreshUndo } from "../lib/undo";
 import Notice from "./Notice";
@@ -904,16 +905,18 @@ export default function SettingsView() {
               lose everything that no amount of care with the app prevents. */}
           <div className="tm-keywarn text-[12px]">
             <strong>Save this key somewhere safe.</strong> It is stored only in
-            this computer&rsquo;s credential manager. It decrypts your database{" "}
-            <em>and every backup of it</em> — so if this Windows profile is lost
+            this computer&rsquo;s credential store. It decrypts your database{" "}
+            <em>and every backup of it</em> — so if this computer account is lost
             or reinstalled and you have not written the key down, those files
             cannot be opened again by anyone, including you.
           </div>
 
           <div className="text-[12px] text-slate-600">
-            {keyStatus?.has_key
-              ? "A master key is stored in the OS keyring."
-              : "No master key found."}
+            {keyStatus?.keyring === false
+              ? `T-Money can't reach ${keyStoreWords().name}, so this key is held only until T-Money closes. You will be asked for it each time you open this file.`
+              : keyStatus?.has_key
+                ? "A master key is stored in this computer's credential store."
+                : "No master key found."}
           </div>
 
           {revealed ? (

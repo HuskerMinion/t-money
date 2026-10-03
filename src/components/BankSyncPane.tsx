@@ -2,7 +2,7 @@
 //
 // SimpleFIN Bridge is a paid service the user signs up for themselves. It
 // hands out a setup token; T-Money claims it once and keeps what comes back
-// in Windows Credential Manager. Nothing on this screen ever holds that
+// in the computer's credential store. Nothing on this screen ever holds that
 // credential — the backend reports the server's name and nothing more.
 //
 // Nothing is fetched on a timer. Each button press is one request, and
@@ -184,7 +184,7 @@ export default function BankSyncPane() {
                 T-Money stays free.
               </div>
               <div className="text-slate-500">
-                The connection is kept in Windows Credential Manager on this computer, not in the file itself. Opened
+                The connection is kept in this computer's credential store, not in the file itself. Opened
                 on another computer, the file needs connecting there.
               </div>
               <form className="space-y-2" onSubmit={connect}>

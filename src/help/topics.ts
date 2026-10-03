@@ -34,7 +34,7 @@ T-Money is a personal-finance program in the shape of Microsoft Money Plus: acco
 
 # Your data
 
-Everything is in one SQLite file protected with SQLCipher. The key is kept in the Windows credential store, so the file opens without a password on this machine; Settings shows where the file is, its size, and lets you back it up and reveal the key for use on another machine. See [[settings|Settings, backup and the master key]].
+Everything is in one SQLite file protected with SQLCipher. The key is kept in this computer's credential store (Credential Manager on Windows, the Keychain on a Mac, the keyring on Linux), so the file opens without a password on this machine; Settings shows where the file is, its size, and lets you back it up and reveal the key for use on another machine. See [[settings|Settings, backup and the master key]].
 
 # Where to begin
 
@@ -74,7 +74,7 @@ The **File** menu treats your money as a document, because that is what it is.
 
 # Where it lives
 
-Out of the box, in T-Money's own folder under AppData\\Roaming. That is a perfectly good place for it — but it is not the only one, and File → **New T-Money file…** lets you put a file anywhere and call it anything: Household.tmny, Rentals.tmny, Rental property.tmny. Each file has its **own master key** in the Windows credential store, so one file's key never opens another.
+Out of the box, in T-Money's own folder under AppData\\Roaming. That is a perfectly good place for it — but it is not the only one, and File → **New T-Money file…** lets you put a file anywhere and call it anything: Household.tmny, Rentals.tmny, Rental property.tmny. Each file has its **own master key** in this computer's credential store, so one file's key never opens another.
 
 A new file asks two more things once you have picked where it goes: its **home currency** — the one totals, budgets and reports are in — and its **region**, which decides how numbers and dates are written (1,234.56 and 8/30/2026 in the United States, 1.234,56 € and 30.08.2026 in Germany). Both are kept in the file and can be changed later under Settings → Money → **Home currency and region**. The sample file is in US dollars, United States.
 
@@ -141,7 +141,7 @@ are bound — the menu bar is the list, and this page repeats it.
 - **Ctrl+P** prints what is on screen. (File)
 - **Ctrl+Z** undoes the last transaction you added, edited, deleted, voided or split; **Ctrl+Y** does it again. The Edit menu names what it will undo. (Edit)
 - **Ctrl+X**, **Ctrl+C**, **Ctrl+V** cut, copy and paste. (Edit)
-- **Ctrl+F** jumps to the search box — except with an account register open, where it opens **Find** over that register (any field, or one you choose; a click selects the row behind the window and closing it leaves that row selected), and on the Budget tab, where it goes to *Find a category on this page* and finds a budget line rather than a transaction; **Ctrl+H** is find and replace. (Edit)
+- **Ctrl+F** jumps to the search box — except with an account register open, where it opens **Find** over that register (any field, or one you choose; a click selects the row behind the window and closing it leaves that row selected), and on the Budget tab, where it goes to *Find a category on this page* and finds a budget line rather than a transaction. (Edit)
 - **Del** deletes the selected transaction. (Edit)
 - **Ctrl+M** marks the selected row cleared, or uncleared. (Edit → Mark as cleared)
 - **Ctrl+K** opens the calculator. (Tools)
@@ -849,7 +849,7 @@ SimpleFIN Bridge (bridge.simplefin.org) is a separate paid service, about $15 a 
 
 Sign up at SimpleFIN Bridge, connect your banks there, and make a **setup token**. In T-Money, Settings → Money → **Bank sync**: paste the token and click **Connect**. A token works once.
 
-The connection is kept in **Windows Credential Manager** on this computer, not in the file itself. Moving or renaming the file keeps it connected. Opened on another computer, the file is not connected; disconnect it here and connect it there with a new token if you want to fetch from there.
+The connection is kept in this computer's **credential store** (Credential Manager on Windows, the Keychain on a Mac, the keyring on Linux), not in the file itself. Moving or renaming the file keeps it connected. Opened on another computer, the file is not connected; disconnect it here and connect it there with a new token if you want to fetch from there.
 
 # Linking accounts
 
@@ -867,7 +867,7 @@ Each fetch is **one Undo step**, and the next fetch reaches back for whatever an
 
 # Disconnecting
 
-**Disconnect** removes the connection from Credential Manager and forgets the account links. Transactions already fetched stay. Do this before deleting a file that is connected; otherwise the connection stays in Credential Manager until you remove it there. To stop SimpleFIN itself reading your banks, remove the app or the connection on SimpleFIN's site too.
+**Disconnect** removes the connection from the credential store and forgets the account links. Transactions already fetched stay. Do this before deleting a file that is connected; otherwise the connection stays in the credential store until you remove it there. To stop SimpleFIN itself reading your banks, remove the app or the connection on SimpleFIN's site too.
 `,
   },
   {
@@ -907,7 +907,7 @@ The gear at the top right opens Settings.
 - **Light and dark** — the ☾ / ☀ button beside the gear switches between the light theme you use and Evening, one click, and remembers which light theme to come back to.
 - **Window** — the window's size, position and maximized state are remembered when you close the program and restored the next time it opens. There is nothing to set.
 - **Database** — where the file is and how big it is, and that it is encrypted.
-- **Master Key** — the encryption key lives in the Windows credential store, so the file opens without a password here. **Reveal** it and keep a copy somewhere safe: a backup restored on another machine needs it. **Change** re-encrypts the file with a new key.
+- **Master Key** — the encryption key lives in this computer's credential store, so the file opens without a password here. On Linux with no keyring running, it is asked for each time instead. **Reveal** it and keep a copy somewhere safe: a backup restored on another machine needs it. **Change** re-encrypts the file with a new key.
 - **Automatic backup** — choose a folder and every session ends with a fresh copy there, keeping the number you set. A backup can be restored from here; restoring one made on another machine asks for that machine's key.
 - **Scratch database** — not a switch in Settings but a way of starting the program: run the installed \`t-money.exe --data-dir D:\\some\\folder\` and it opens, or creates, a separate file in that folder with its own key, leaving the real file untouched. A banner across the top of Settings says when you are on one. Delete the folder to start over. See [[import-export|Import and export]] for using it to rehearse an import.
 `,
