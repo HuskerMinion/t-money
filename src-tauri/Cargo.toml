@@ -1,6 +1,6 @@
 [package]
 name = "t-money"
-version = "1.1.0"
+version = "1.2.0"
 description = "T-Money — local-first, encrypted personal finance desktop app"
 authors = ["T-Money contributors"]
 license = "GPL-3.0-or-later"

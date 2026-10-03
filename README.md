@@ -97,7 +97,7 @@ If you want to be sure the file is the real one before you run it:
 - **Check the checksum.** Each release has a `SHA256SUMS.txt`. In PowerShell:
 
   ```powershell
-  Get-FileHash .\T-Money_1.1.0_x64-setup.exe -Algorithm SHA256
+  Get-FileHash .\T-Money_1.2.0_x64-setup.exe -Algorithm SHA256
   ```
 
   Use the name of the file you downloaded. The hash must match the line for that file.
@@ -107,7 +107,7 @@ If you want to be sure the file is the real one before you run it:
   [GitHub CLI](https://cli.github.com/):
 
   ```powershell
-  gh attestation verify .\T-Money_1.1.0_x64-setup.exe --repo HuskerMinion/t-money
+  gh attestation verify .\T-Money_1.2.0_x64-setup.exe --repo HuskerMinion/t-money
   ```
 
 ## Coming from Microsoft Money
