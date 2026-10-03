@@ -6,13 +6,13 @@
 
 <p align="center">
   <a href="https://github.com/HuskerMinion/t-money/releases/latest"><img src="https://img.shields.io/github/v/release/HuskerMinion/t-money?label=release" alt="Latest release"></a>
-  <img src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4" alt="Windows 10 and 11">
+  <img src="https://img.shields.io/badge/runs%20on-Windows%20%7C%20macOS%20%7C%20Linux-0078D4" alt="Runs on Windows, macOS and Linux">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-blue" alt="GPL-3.0 license"></a>
 </p>
 
 ---
 
-**T-Money** is a desktop money manager for Windows, in the spirit of Microsoft Money. Your accounts,
+**T-Money** is a desktop money manager for Windows, macOS and Linux, in the spirit of Microsoft Money. Your accounts,
 register, bills, budget, investments and reports live in one file on your computer, encrypted with
 SQLCipher. There is no sign-in, no subscription and no server. Nothing about your money leaves the
 machine. If you want your bank's transactions fetched for you, [bank sync](#bank-sync) is optional and
@@ -83,14 +83,14 @@ pick which account each one fills. It covers most US and Canadian banks.
   step.
 - The result shows the bank's balance beside T-Money's, so a gap shows at once. SimpleFIN's own
   messages, such as a bank that needs you to sign in again, are shown as it wrote them.
-- The connection is kept in the Windows Credential Manager on your computer, not in the file.
+- The connection is kept in your computer's credential store, not in the file.
   **Disconnect** removes it. T-Money stays under SimpleFIN's daily request limit.
 
 ## Your data
 
 - Everything is in one `.tmny` file that you choose where to keep.
-- The file is encrypted. Its key is kept in the Windows Credential Manager, so it opens without a
-  password on your computer. **Settings → Security → Master key** shows the key. Keep a copy somewhere safe:
+- The file is encrypted. Its key is kept in your computer's credential store (Credential Manager on
+  Windows, the Keychain on a Mac, the keyring on Linux), so it opens without a password on your computer. **Settings → Security → Master key** shows the key. Keep a copy somewhere safe:
   you need it to open the file or a backup on another computer.
 - **Settings → File → Backups** saves copies to a folder of your choice: once a day, and if you
   choose, whenever you close the app or the file.
@@ -101,36 +101,87 @@ pick which account each one fills. It covers most US and Canadian banks.
   only when you ask for them.
 - Bank sync is off until you connect it. Once connected, T-Money asks SimpleFIN for your accounts
   and transactions only when you click **Get bank transactions**, and sends nothing about your
-  file. The connection is kept in the Windows Credential Manager, not in the file, and
+  file. The connection is kept in your computer's credential store, not in the file, and
   **Disconnect** removes it.
 
 ## Install
 
-1. Download `T-Money_x.y.z_x64-setup.exe` from the
-   [latest release](https://github.com/HuskerMinion/t-money/releases/latest). The `.msi` is the same
-   app, for people who prefer an MSI.
-2. Run it.
+Download from the [latest release](https://github.com/HuskerMinion/t-money/releases/latest). None of
+the downloads is code-signed: a signing certificate costs money every year, and this is a free app.
+So each system warns you the first time, and the steps below get past it.
 
-**Windows will warn you the first time.** The installer is not code-signed. A signing certificate
-costs money every year, and this is a free app. Windows SmartScreen shows *"Windows protected your
-PC"*. Click **More info**, then **Run anyway**.
+> **The Mac and Linux versions are new and not fully tested.** So far T-Money has been tested on
+> macOS 26 and Ubuntu 24.04. It hasn't been tried on an Apple silicon Mac, older macOS versions, or
+> other Linux distributions yet. If something doesn't work, or looks wrong, please
+> [open an issue](https://github.com/HuskerMinion/t-money/issues) and say which Mac or distribution
+> you're on.
 
-If you want to be sure the file is the real one before you run it:
+### Windows 10 and 11
 
-- **Check the checksum.** Each release has a `SHA256SUMS.txt`. In PowerShell:
+1. Download `T-Money_x.y.z_x64-setup.exe`. The `.msi` is the same app, for people who prefer an MSI.
+2. Run it. Windows SmartScreen shows *"Windows protected your PC"*. Click **More info**, then
+   **Run anyway**.
+
+### Mac
+
+One app for both kinds of Mac, Apple silicon (M1 and later) and Intel. It needs macOS 11 (Big Sur)
+or newer.
+
+1. Download `T-Money_x.y.z_universal.dmg` and open it.
+2. Drag **T-Money** onto **Applications**.
+3. Open T-Money from Applications. The first time, macOS stops it: *"T-Money" Not Opened. Apple
+   could not verify "T-Money" is free of malware…* Click **Done** (not Move to Trash).
+4. Open **System Settings → Privacy & Security** and scroll down to **Security**. It says
+   *"T-Money" was blocked to protect your Mac.* Click **Open Anyway**.
+5. macOS asks once more. Click **Open Anyway**, then type your Mac password.
+
+From then on T-Money opens like any other app. After an update you do steps 3 to 5 again, because
+macOS checks each new download. Right-click → Open, which used to skip the warning, no longer works
+since macOS 15. If you'd rather use Terminal, this one line does the same as steps 3 to 5:
+
+```sh
+xattr -dr com.apple.quarantine /Applications/T-Money.app
+```
+
+The first time you save a file in Documents or Desktop, macOS asks whether T-Money may use that
+folder. Click **Allow**.
+
+### Linux
+
+For 64-bit Intel or AMD PCs. Linux doesn't warn about unsigned apps.
+
+- **Debian, Ubuntu, Mint, Pop!_OS:** download `T-Money_x.y.z_amd64.deb` and install it with
+  `sudo apt install ./T-Money_x.y.z_amd64.deb`. T-Money is then in your applications menu.
+- **Any distribution:** download `T-Money_x.y.z_amd64.AppImage`, then
+  `chmod +x T-Money_x.y.z_amd64.AppImage` and run it.
+
+T-Money keeps each file's key in your desktop's keyring, GNOME Keyring or KDE's KWallet, which most
+desktops start when you log in. With no keyring running, T-Money says so and offers to let you keep
+the key yourself; you then type it each time you open the file. If the window is blank (some
+graphics drivers), start it with `WEBKIT_DISABLE_DMABUF_RENDERER=1` in front of the command.
+
+### Checking a download
+
+If you want to be sure a file is the real one before you run it:
+
+- **Check the checksum.** Each release has a `SHA256SUMS.txt`. Use the name of the file you
+  downloaded; the result must match the line for that file.
 
   ```powershell
-  Get-FileHash .\T-Money_1.2.0_x64-setup.exe -Algorithm SHA256
+  Get-FileHash .\T-Money_1.2.0_x64-setup.exe -Algorithm SHA256   # Windows, in PowerShell
   ```
 
-  Use the name of the file you downloaded. The hash must match the line for that file.
+  ```sh
+  shasum -a 256 T-Money_1.2.0_universal.dmg      # Mac
+  sha256sum T-Money_1.2.0_amd64.AppImage         # Linux
+  ```
 
-- **Check where it was built.** Every installer is built by GitHub from the public source in this
+- **Check where it was built.** Every download is built by GitHub from the public source in this
   repository, never on anyone's own computer, and GitHub signs a record of that. With the
   [GitHub CLI](https://cli.github.com/):
 
-  ```powershell
-  gh attestation verify .\T-Money_1.2.0_x64-setup.exe --repo HuskerMinion/t-money
+  ```sh
+  gh attestation verify T-Money_1.2.0_x64-setup.exe --repo HuskerMinion/t-money
   ```
 
 ## Coming from Microsoft Money
@@ -149,15 +200,21 @@ To move your data over: Money can't be read directly, but it exports each accoun
 
 ## Building from source
 
-You need [Node.js](https://nodejs.org/) 22, [Rust](https://rustup.rs/) (stable), and the Visual
-Studio C++ build tools. The first build compiles SQLCipher and OpenSSL, and takes a while.
+You need [Node.js](https://nodejs.org/) 22 and [Rust](https://rustup.rs/) (stable), plus:
+
+- **Windows:** the Visual Studio C++ build tools.
+- **Mac:** Apple's Command Line Tools (`xcode-select --install`).
+- **Linux (Debian/Ubuntu):** `sudo apt install build-essential pkg-config libssl-dev
+  libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev`.
+
+The first build compiles SQLCipher and OpenSSL, and takes a while.
 
 ```powershell
 npm ci
 npx tauri dev      # run it
 npm test           # frontend tests
 cd src-tauri; cargo test   # Rust tests
-npx tauri build    # installers, in src-tauri\target\release\bundle
+npx tauri build    # installers, in src-tauri/target/release/bundle
 ```
 
 Releases are built by [`.github/workflows/release.yml`](.github/workflows/release.yml) when a
