@@ -54,6 +54,10 @@ All screenshots use the made-up household in **File → New → Sample file with
   Mexican pesos or Australian dollars, with numbers and dates written the way your country writes
   them. An account can be kept in another of those currencies; it converts at exchange rates you
   type in or fetch.
+- **Bank sync, if you want it** — with a [SimpleFIN Bridge](https://bridge.simplefin.org) subscription
+  (a separate service, about $15 a year, paid to SimpleFIN), T-Money fetches transactions from most
+  US and Canadian banks when you click. They go through the same import as a file: no duplicates,
+  matched to the ones you typed, one Undo step.
 - **Import** — QIF from Microsoft Money (splits and transfers included), OFX and QFX from banks and
   brokers, CSV from most banks (either decimal mark), and the TSP activity file. Export a register as QIF or CSV, and any report as CSV.
 - **Savings goals, classifications** (track a rental or a second house separately), attachments
@@ -67,11 +71,15 @@ All screenshots use the made-up household in **File → New → Sample file with
   you need it to open the file or a backup on another computer.
 - **Settings → File → Backups** saves copies to a folder of your choice: once a day, and if you
   choose, whenever you close the app or the file.
-- The only things T-Money ever sends over the internet are ticker symbols when you ask it to update
-  share prices, and currency codes when you ask it for today's exchange rates (both from Yahoo
-  Finance). No amounts, no account names, no account or sign-in. Prices are off unless you press
-  **Update prices** or turn on the timer in Settings; exchange rates are fetched only when you ask
-  for them.
+- Without bank sync, the only things T-Money ever sends over the internet are ticker symbols when
+  you ask it to update share prices, and currency codes when you ask it for today's exchange rates
+  (both from Yahoo Finance). No amounts, no account names, no account or sign-in. Prices are off
+  unless you press **Update prices** or turn on the timer in Settings; exchange rates are fetched
+  only when you ask for them.
+- Bank sync is off until you connect it. Once connected, T-Money asks SimpleFIN for your accounts
+  and transactions only when you click **Get bank transactions**, and sends nothing about your
+  file. The connection is kept in the Windows Credential Manager, not in the file, and
+  **Disconnect** removes it.
 
 ## Install
 
@@ -106,8 +114,8 @@ If you want to be sure the file is the real one before you run it:
 
 T-Money was built to replace Money Plus Sunset Deluxe. Compared with Sunset, it adds real encryption,
 undo, built-in share prices, CSV import, attachments and recurring-charge detection. What it doesn't do:
-open `.mny` files, sign in to your bank (Direct Connect), the Lifetime Planner, the tax estimator, or
-check printing. It handles six currencies, where Money handled dozens. **[The full side-by-side comparison](docs/money-comparison.md)**
+open `.mny` files, sign in to your bank (Direct Connect; bank sync goes through SimpleFIN instead),
+the Lifetime Planner, the tax estimator, or check printing. It handles six currencies, where Money handled dozens. **[The full side-by-side comparison](docs/money-comparison.md)**
 covers both directions.
 
 To move your data over: Money can't be read directly, but it exports each account as QIF. In Money, open an account and use
@@ -134,11 +142,12 @@ Releases are built by [`.github/workflows/release.yml`](.github/workflows/releas
 
 ## Status
 
-T-Money is used every day for one household's money, and has a large test suite (about 550 Rust
+T-Money is used every day for one household's money, and has a large test suite (about 580 Rust
 tests and 1,200 frontend tests). It has not yet been used by many people. Back up your file, and
 please [open an issue](https://github.com/HuskerMinion/t-money/issues) if something is wrong.
 
-There is no bank sync (Direct Connect) and no mobile app. The tax reports follow US tax forms.
+There is no Direct Connect and no mobile app. Bank sync needs SimpleFIN, a separate paid service, and
+covers US and Canadian banks. The tax reports follow US tax forms.
 
 ## License
 

@@ -181,6 +181,87 @@ pub fn import_file_with_rules(pool: &DbPool, file_path: &str, account_id: &str, 
     import_parsed(pool, account_id, src, &HashMap::new(), memo_rules)
 }
 
+/// One transaction from a bank feed (SimpleFIN): already read, dated and in
+/// cents of the account's currency.
+pub struct BankRow {
+    /// The feed's own id for the transaction, stable across fetches.
+    pub id: String,
+    pub date: String,
+    pub amount_cents: i64,
+    pub payee: String,
+    pub memo: Option<String>,
+}
+
+/// The days either side a bank row may be from one typed by hand — what
+/// the review dialog opens with.
+pub const BANK_MATCH_DAYS: u32 = 3;
+
+/// Write a bank feed's transactions into `account_id` through the same path
+/// as a file: payee rules, the duplicate test, payees, the balance. The
+/// feed's id is kept as the row's bank id (prefixed, so it can never meet an
+/// OFX file's), which is what makes fetching the same days again add nothing.
+///
+/// There is no review dialog for a feed, so each row gets the answer the
+/// review starts with: a likely match to a row typed by hand is matched (the
+/// typed row is kept and marked cleared), anything less sure is written as
+/// new. Without this, every transaction entered ahead of the bank would
+/// arrive a second time.
+pub fn import_bank_rows(pool: &DbPool, account_id: &str, rows: Vec<BankRow>) -> Result<ImportSummary, String> {
+    let preview = preview_parsed(pool, account_id, bank_source(&rows), BANK_MATCH_DAYS)?;
+    // Only a row typed by hand can be the same transaction. One that came
+    // from the bank already is a different transaction with the same
+    // amount — two coffees on one day, the second posted after a fetch —
+    // and matching onto it would drop the second for good.
+    let decisions: HashMap<usize, matching::RowDecision> = preview
+        .rows
+        .iter()
+        .filter_map(|r| {
+            let c = r.candidates.iter().find(|c| !c.existing.has_fitid && c.score >= matching::LIKELY)?;
+            Some((
+                r.index,
+                matching::RowDecision {
+                    index: r.index,
+                    action: "match".to_string(),
+                    existing_id: Some(c.existing.id.clone()),
+                    category_id: None,
+                },
+            ))
+        })
+        .collect();
+    import_parsed(pool, account_id, bank_source(&rows), &decisions, &[])
+}
+
+fn bank_source(rows: &[BankRow]) -> ParsedSource {
+    let txns = rows
+        .iter()
+        .map(|r| ParsedTxn {
+            date: r.date.clone(),
+            amount_cents: r.amount_cents,
+            payee: r.payee.clone(),
+            category: None,
+            notes: r.memo.clone(),
+            fitid: Some(format!("sfin:{}", r.id)),
+            check_number: None,
+            // The bank has posted it: cleared, like a row matched to it.
+            cleared_state: "C".to_string(),
+            splits: Vec::new(),
+            invest: None,
+            raw_payee: None,
+            rule_category_id: None,
+            unknown_action: None,
+        })
+        .collect();
+    ParsedSource {
+        txns,
+        qif_securities: Vec::new(),
+        qif_prices: Vec::new(),
+        unreadable: 0,
+        text: String::new(),
+        is_ofx: false,
+        bad: Vec::new(),
+    }
+}
+
 /// A file read and parsed, with nothing written. This is split out of
 /// `import_file` / `import_csv` so the same bytes can be looked at first
 /// (`preview_import`) and imported after (`import_with_decisions`) — the
@@ -339,7 +420,16 @@ pub fn preview_import(
     mapping: Option<&csv::CsvMapping>,
     window_days: u32,
 ) -> Result<matching::ImportMatchPreview, String> {
-    let src = parse_source(file_path, mapping)?;
+    preview_parsed(pool, account_id, parse_source(file_path, mapping)?, window_days)
+}
+
+/// `preview_import` for rows already read.
+fn preview_parsed(
+    pool: &DbPool,
+    account_id: &str,
+    src: ParsedSource,
+    window_days: u32,
+) -> Result<matching::ImportMatchPreview, String> {
     let conn = pool.get().map_err(|e| e.to_string())?;
     let account_name: String = conn
         .query_row("SELECT name FROM accounts WHERE id = ?1", params![account_id], |r| r.get(0))

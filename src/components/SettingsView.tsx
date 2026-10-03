@@ -19,6 +19,7 @@ import { formatDate, formatMoney, today } from "../lib/format";
 import { formatRate, homeCurrency, homeName, rateForBackend } from "../lib/currency";
 import { useFileFormat } from "../lib/region";
 import HomeCurrencyPane from "./HomeCurrencyPane";
+import BankSyncPane from "./BankSyncPane";
 import { HOLDING_ROUNDING_KEY } from "../lib/shares";
 import { PRICE_INTERVALS } from "../lib/prices";
 
@@ -58,7 +59,7 @@ const GROUPS: { id: GroupId; label: string; panes: { id: string; label: string }
       { id: "verify", label: "Verify" },
     ],
   },
-  { id: "money", label: "Money", panes: [{ id: "holdings", label: "Holding values" }, { id: "prices", label: "Prices" }, { id: "currencies", label: "Currencies" }, { id: "format", label: "Home currency and region" }] },
+  { id: "money", label: "Money", panes: [{ id: "holdings", label: "Holding values" }, { id: "prices", label: "Prices" }, { id: "currencies", label: "Currencies" }, { id: "format", label: "Home currency and region" }, { id: "banksync", label: "Bank sync" }] },
   { id: "security", label: "Security", panes: [{ id: "key", label: "Master key" }] },
   { id: "advanced", label: "Advanced", panes: [{ id: "developer", label: "Developer" }] },
 ];
@@ -637,6 +638,7 @@ export default function SettingsView() {
 
       {at("money", "currencies") && <CurrenciesPane />}
       {at("money", "format") && <HomeCurrencyPane onCurrencies={() => setPane("currencies")} />}
+      {at("money", "banksync") && <BankSyncPane />}
 
       {at("appearance", "theme") && (
         <>

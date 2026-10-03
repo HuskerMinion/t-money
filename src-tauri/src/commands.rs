@@ -327,6 +327,218 @@ pub async fn fetch_exchange_rates(
     Ok(summary)
 }
 
+// ---------------------------------------------------------------------------
+// SimpleFIN bank sync.
+//
+// The access URL SimpleFIN hands back holds the user's credential. It lives
+// in Windows Credential Manager under the open file, and nothing here ever
+// returns it, logs it or writes it to the file: the screen sees the server's
+// name only. Nothing is fetched except when the user asks.
+// ---------------------------------------------------------------------------
+
+/// The Credential Manager entry holding the open file's SimpleFIN access,
+/// or None when this file has never been connected. Named by a random id
+/// kept in the file, not by the file's path: a file that is moved or
+/// renamed stays connected, and a new file made later at the same path
+/// does not inherit someone's bank feed.
+fn simplefin_entry(conn: &queries::Conn) -> Result<Option<String>, String> {
+    Ok(queries::simplefin_connection_id(conn)?.map(|id| format!("simplefin:{id}")))
+}
+
+fn simplefin_access(state: &State<AppState>) -> Result<crate::simplefin::Access, String> {
+    let entry = {
+        let (_g, conn) = with_conn(state)?;
+        simplefin_entry(&conn)?
+    };
+    match entry.filter(|e| keyring::has_key_in(e)) {
+        Some(e) => crate::simplefin::parse_access(&keyring::get_key_in(&e)?),
+        None => Err("This file is not connected to SimpleFIN on this computer. Paste a setup token in Settings → Money → Bank sync.".to_string()),
+    }
+}
+
+fn local_today() -> chrono::NaiveDate {
+    chrono::Local::now().date_naive()
+}
+
+fn status_with(state: &State<AppState>, messages: Vec<String>) -> Result<crate::models::SimplefinStatus, String> {
+    let (_g, conn) = with_conn(state)?;
+    let entry = simplefin_entry(&conn)?.filter(|e| keyring::has_key_in(e));
+    let server = entry
+        .as_deref()
+        .and_then(|e| keyring::get_key_in(e).ok())
+        .and_then(|a| crate::simplefin::parse_access(&a).ok())
+        .map(|a| a.host());
+    Ok(crate::models::SimplefinStatus {
+        connected: entry.is_some(),
+        server,
+        accounts: queries::list_simplefin_accounts(&conn)?,
+        requests_today: queries::simplefin_requests_today(&conn, chrono::Utc::now().timestamp())?,
+        daily_limit: crate::simplefin::DAILY_REQUESTS,
+        messages,
+    })
+}
+
+#[tauri::command(rename_all = "camelCase")]
+pub fn simplefin_status(state: State<AppState>) -> Result<crate::models::SimplefinStatus, String> {
+    status_with(&state, Vec::new())
+}
+
+/// Ask SimpleFIN for its accounts and balances (no transactions) and record
+/// them. Counted against the day's requests. Returns SimpleFIN's own
+/// messages, which the screen must show.
+async fn simplefin_list_accounts(state: &State<'_, AppState>) -> Result<Vec<String>, String> {
+    let started_on = db_path_of(state)?;
+    let access = simplefin_access(state)?;
+    {
+        let (_g, conn) = with_conn(state)?;
+        queries::take_simplefin_request(&conn, chrono::Utc::now().timestamp())?;
+    }
+    // Balances only: the dates are not sent.
+    let body = tauri::async_runtime::spawn_blocking(move || crate::simplefin::fetch_accounts(&access, 0, 0, true))
+        .await
+        .map_err(|_| "The request to SimpleFIN did not run. Try again.".to_string())??;
+    let set = crate::simplefin::parse_account_set(&body)?;
+    let (_g, conn) = with_conn(state)?;
+    if !crate::files::is_same(&db_path_of(state)?, &started_on) {
+        return Err("A different file was opened while SimpleFIN answered, so nothing was saved.".to_string());
+    }
+    queries::upsert_simplefin_accounts(&conn, &set)?;
+    Ok(set.messages)
+}
+
+/// Connect the open file: claim the setup token (which works once), keep the
+/// access it returns in Credential Manager, and list the accounts.
+#[tauri::command(rename_all = "camelCase")]
+pub async fn simplefin_connect(state: State<'_, AppState>, setup_token: String) -> Result<crate::models::SimplefinStatus, String> {
+    let claim_url = crate::simplefin::decode_setup_token(&setup_token)?;
+    // Refuse before claiming when no file is open, or when it is already
+    // connected here: a claimed token cannot be claimed again, and a second
+    // connection would leave the first one's access working on the server.
+    {
+        let (_g, conn) = with_conn(&state)?;
+        if simplefin_entry(&conn)?.is_some_and(|e| keyring::has_key_in(&e)) {
+            return Err("This file is already connected to SimpleFIN. Disconnect it first to use a new token.".to_string());
+        }
+    }
+    let access = tauri::async_runtime::spawn_blocking(move || crate::simplefin::claim(&claim_url))
+        .await
+        .map_err(|_| "The request to SimpleFIN did not run. Try again.".to_string())??;
+    // Checked before it is kept: an access that is not https is refused here.
+    crate::simplefin::parse_access(&access)?;
+    let entry = {
+        let (_g, conn) = with_conn(&state)?;
+        format!("simplefin:{}", queries::new_simplefin_connection_id(&conn)?)
+    };
+    keyring::set_key_in(&entry, &access)
+        .map_err(|_| "SimpleFIN connected, but Windows would not keep the connection. Make a new setup token and try again.".to_string())?;
+    // The account list is a convenience; the connection stands without it.
+    match simplefin_list_accounts(&state).await {
+        Ok(messages) => status_with(&state, messages),
+        Err(e) => status_with(&state, vec![format!("Connected, but the accounts could not be listed: {e}")]),
+    }
+}
+
+/// Ask SimpleFIN again which accounts there are, without transactions.
+#[tauri::command(rename_all = "camelCase")]
+pub async fn simplefin_refresh_accounts(state: State<'_, AppState>) -> Result<crate::models::SimplefinStatus, String> {
+    let messages = simplefin_list_accounts(&state).await?;
+    status_with(&state, messages)
+}
+
+/// Link a SimpleFIN account to a T-Money account, or unlink it (`None`).
+#[tauri::command(rename_all = "camelCase")]
+pub fn simplefin_link(state: State<AppState>, sf_id: String, account_id: Option<String>) -> Result<crate::models::SimplefinStatus, String> {
+    {
+        let (_g, conn) = with_conn(&state)?;
+        queries::link_simplefin_account(&conn, &sf_id, account_id.as_deref())?;
+    }
+    simplefin_status(state)
+}
+
+/// Forget the connection: the credential leaves Credential Manager and the
+/// account list leaves the file. Transactions already fetched stay.
+#[tauri::command(rename_all = "camelCase")]
+pub fn simplefin_disconnect(state: State<AppState>) -> Result<crate::models::SimplefinStatus, String> {
+    let entry = {
+        let (_g, conn) = with_conn(&state)?;
+        simplefin_entry(&conn)?
+    };
+    // The credential goes first: if Windows will not remove it, the links
+    // stay too, and the screen still says it is connected.
+    if let Some(e) = entry {
+        keyring::delete_key_in(&e)?;
+    }
+    {
+        let (_g, conn) = with_conn(&state)?;
+        queries::clear_simplefin(&conn)?;
+    }
+    simplefin_status(state)
+}
+
+/// Get bank transactions: one request for every linked account, from a few
+/// days before the newest bank row already in the register — the earliest
+/// such date across the linked accounts, or 88 days back when one has none —
+/// written through the ordinary import path as one Undo step.
+///
+/// The register, not the date of the last fetch, decides where to start:
+/// a fetch that was undone took its rows with it, and the next fetch has to
+/// reach back for them again.
+#[tauri::command(rename_all = "camelCase")]
+pub async fn simplefin_sync(app: tauri::AppHandle, state: State<'_, AppState>) -> Result<crate::models::SimplefinSync, String> {
+    let started_on = db_path_of(&state)?;
+    let access = simplefin_access(&state)?;
+    let today = local_today();
+    let linked: Vec<Option<chrono::NaiveDate>> = {
+        let (_g, conn) = with_conn(&state)?;
+        queries::list_simplefin_accounts(&conn)?
+            .into_iter()
+            .filter_map(|a| a.account_id)
+            .map(|id| {
+                queries::latest_feed_date(&conn, &id)
+                    .map(|d| d.and_then(|d| chrono::NaiveDate::parse_from_str(&d, "%Y-%m-%d").ok()))
+            })
+            .collect::<Result<_, _>>()?
+    };
+    if linked.is_empty() {
+        return Err("No SimpleFIN account is linked to a T-Money account yet. Pick one for each in the list first.".to_string());
+    }
+    // The earliest need decides the window; a never-fetched link needs it all.
+    let since = if linked.iter().any(Option::is_none) { None } else { linked.into_iter().flatten().min() };
+    let windows = crate::simplefin::request_windows(today, since);
+    let start = windows.first().map(|w| w.0).unwrap_or_default();
+    {
+        let (_g, conn) = with_conn(&state)?;
+        queries::take_simplefin_requests(&conn, chrono::Utc::now().timestamp(), windows.len() as u32)?;
+    }
+    // Oldest first; each reply folded into the one before it.
+    let mut set = crate::simplefin::AccountSet::default();
+    for (s, e) in windows {
+        let access = access.clone();
+        let body = tauri::async_runtime::spawn_blocking(move || crate::simplefin::fetch_accounts(&access, s, e, false))
+            .await
+            .map_err(|_| "The request to SimpleFIN did not run. Try again.".to_string())??;
+        crate::simplefin::merge_sets(&mut set, crate::simplefin::parse_account_set(&body)?);
+    }
+    let from = crate::simplefin::utc_date(start).unwrap_or_default();
+    let today_s = today.to_string();
+    importing(&state, "get bank transactions", || {
+        let guard = state.pool.lock().map_err(|_| "state lock poisoned".to_string())?;
+        // The file may have been switched while SimpleFIN answered. Checked
+        // while holding the pool, so no switch can land before the write.
+        if !crate::files::is_same(&db_path_of(&state)?, &started_on) {
+            return Err("A different file was opened while SimpleFIN answered, so nothing was imported.".to_string());
+        }
+        let pool = guard.as_ref().ok_or_else(|| NO_FILE.to_string())?;
+        // Which account is importing, for the progress bar. A lost event
+        // costs a frame of the bar, nothing more.
+        use tauri::Emitter;
+        let mut progress = |done: usize, total: usize, account: &str| {
+            let _ = app.emit("tm://simplefin-progress", serde_json::json!({ "done": done, "total": total, "account": account }));
+        };
+        crate::simplefin::apply_fetch(pool, &set, &today_s, &from, &mut progress)
+    })
+}
+
 /// Deleting an account empties the undo stack.
 ///
 /// Deleting an account is not undoable and is not going to be (`undo.rs`'s
@@ -2156,9 +2368,15 @@ fn open_file_impl(state: &State<AppState>, path: String, create: bool, key: Opti
     if let Some(k) = &typed {
         let _ = crate::keyring::set_key_in(&account, k);
     }
-    *state.pool.lock().map_err(|_| "state lock poisoned".to_string())? = Some(pool);
-    *state.db_path.lock().map_err(|_| "state lock poisoned".to_string())? = target.clone();
-    *state.key_account.lock().map_err(|_| "state lock poisoned".to_string())? = account;
+    {
+        // The path changes while the pool lock is held, so a fetch that
+        // checks "is this still the file I started on?" under that lock
+        // never sees the new pool beside the old path.
+        let mut slot = state.pool.lock().map_err(|_| "state lock poisoned".to_string())?;
+        *state.db_path.lock().map_err(|_| "state lock poisoned".to_string())? = target.clone();
+        *state.key_account.lock().map_err(|_| "state lock poisoned".to_string())? = account;
+        *slot = Some(pool);
+    }
 
     // A different file is a different history. The stack holds row ids
     // and whole rows from the file that was open a moment ago; undoing one of

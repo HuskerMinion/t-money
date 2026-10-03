@@ -1516,6 +1516,30 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         ALTER TABLE exchange_rates_new RENAME TO exchange_rates;
         "#,
     ),
+    (
+        "0049",
+        "simplefin_accounts",
+        r#"
+        -- The accounts a SimpleFIN server reports, and which T-Money account
+        -- each one fills. The credential to reach the server is NOT here: it
+        -- is in Windows Credential Manager. `synced_through` is the last day
+        -- fetched, so the next fetch starts a few days before it.
+        CREATE TABLE IF NOT EXISTS simplefin_accounts (
+            sf_id          TEXT PRIMARY KEY,
+            name           TEXT NOT NULL,
+            org            TEXT,
+            currency       TEXT,
+            balance_cents  INTEGER,
+            balance_date   TEXT,
+            account_id     TEXT REFERENCES accounts(id) ON DELETE SET NULL,
+            synced_through TEXT
+        );
+        -- One SimpleFIN account per T-Money account: two feeding one register
+        -- would write every transaction twice.
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_simplefin_account
+            ON simplefin_accounts(account_id) WHERE account_id IS NOT NULL;
+        "#,
+    ),
 ];
 
 /// Apply all pending migrations to `conn`. Returns the number applied.

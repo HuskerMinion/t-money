@@ -3983,9 +3983,11 @@ dependencies = [
 name = "t-money"
 version = "1.1.0"
 dependencies = [
+ "base64 0.22.1",
  "chrono",
  "keyring",
  "openssl-sys",
+ "percent-encoding",
  "r2d2",
  "r2d2_sqlite",
  "rand 0.8.8",
@@ -4001,6 +4003,7 @@ dependencies = [
  "tauri-plugin-window-state",
  "thiserror 2.0.20",
  "ureq",
+ "url",
  "uuid",
 ]
 

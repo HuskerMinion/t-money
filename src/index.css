@@ -2992,3 +2992,46 @@ li:hover .tm-subs-ignore,
   max-width: min(1100px, 94vw);
   width: min(1100px, 94vw);
 }
+
+/* Progress bar: a sweep while the time is unknown, a fill once it is. With
+   animations turned off in Windows the sweep stands still as a partial
+   bar, and the words beside it still say what is happening. */
+.tm-progress {
+  position: relative;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+.tm-progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--tm-ms-chrome-sel);
+  transition: width 0.3s ease;
+}
+.tm-progress-sweep {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 35%;
+  border-radius: 3px;
+  background: var(--tm-ms-chrome-sel);
+  animation: tm-progress-sweep 1.4s ease-in-out infinite;
+}
+@keyframes tm-progress-sweep {
+  from {
+    left: -35%;
+  }
+  to {
+    left: 100%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tm-progress-sweep {
+    animation: none;
+    left: 0;
+  }
+  .tm-progress-fill {
+    transition: none;
+  }
+}

@@ -21,6 +21,7 @@ mod search;
 mod settings;
 mod verify;
 mod fx;
+mod simplefin;
 
 #[cfg(test)]
 mod test_support;
@@ -42,3 +43,4 @@ pub use search::*;
 pub use settings::*;
 pub use verify::*;
 pub use fx::*;
+pub use simplefin::*;

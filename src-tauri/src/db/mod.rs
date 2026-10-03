@@ -8,6 +8,7 @@
 pub mod classes;
 #[cfg(test)]
 mod currency_tests;
+mod simplefin_tests;
 
 // Demo data. This used to be gated: it was `#[cfg(debug_assertions)]`, compiled
 // out of release entirely, so that a personal-finance app could not ship a

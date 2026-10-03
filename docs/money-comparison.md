@@ -17,6 +17,7 @@ classifications, and QIF/OFX/QFX import.
 | Real encryption | SQLCipher, key kept in Windows Credential Manager | Weak optional password |
 | Undo (Ctrl+Z) | Almost everything, including a whole import, payee renames and payee merges | None |
 | Share prices | Built in, on demand or daily/weekly | MSN quotes died with the online services |
+| Bank sync | Optional, through SimpleFIN Bridge (a separate service, about $15 a year): most US and Canadian banks, fetched when you click | Direct Connect, only with the few banks still running a compatible server |
 | Import from CSV | Yes, with column mapping; knows most US banks' formats and reads either decimal mark | No |
 | TSP (Thrift Savings Plan) import | Reads tsp.gov's activity file directly | No |
 | Recurring charge detection | Finds subscriptions and repeat bills in your register | No |
@@ -25,14 +26,14 @@ classifications, and QIF/OFX/QFX import.
 | Tax line on a single transaction | Yes | Categories only |
 | Merge accounts | Yes | No |
 | Looks and text size | 14 looks, 14 color themes, scalable text | One fixed 2008 look |
-| Still maintained | Yes, with about 1,750 automated tests | No updates since 2010 |
+| Still maintained | Yes, with about 1,780 automated tests | No updates since 2010 |
 
 ## What Money Sunset does that T-Money doesn't
 
 | Feature | Money Sunset | T-Money |
 |---|---|---|
 | Open .mny files | Yes | No. You export each account from Money as QIF and import it |
-| Direct Connect (bank login inside the app) | Only with the few banks still running a compatible server | No. You download the file from your bank |
+| Direct Connect (bank login inside the app) | Only with the few banks still running a compatible server | No. Download the file from your bank, or use bank sync through SimpleFIN |
 | Lifetime Planner, retirement and college planners | Yes | No |
 | Tax estimator and TXF export to TurboTax | Yes | No |
 | Check printing | Yes | No |
@@ -42,8 +43,9 @@ classifications, and QIF/OFX/QFX import.
 | Stock option grants | Yes | No |
 | 15+ years of muscle memory | Yes | Close, but not identical |
 
-Several of these are left out on purpose, not just not yet: bank sync needs a server relationship banks
-don't offer to small apps, and a tax estimator or lifetime planner is better done by tools built for it.
+Several of these are left out on purpose, not just not yet: Direct Connect needs a server relationship
+banks don't offer to small apps (SimpleFIN covers that for people who want bank sync), and a tax
+estimator or lifetime planner is better done by tools built for it.
 
 ## Moving over
 

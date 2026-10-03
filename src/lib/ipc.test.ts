@@ -514,10 +514,10 @@ describe("coverage of the registered command set", () => {
   // RETIRED when the lines started traveling in the create and
   // edit payloads and nothing called it any more. 159: get_performance. 164: the five attachment commands.
   // 170: account currencies and the five exchange-rate commands. 174: the
-  // home currency and region.
-  it("finds the 174 registered commands", () => {
-    expect(registered.length).toBe(174);
-    expect(new Set(registered).size).toBe(174);
+  // home currency and region. 180: the six SimpleFIN commands.
+  it("finds the 180 registered commands", () => {
+    expect(registered.length).toBe(180);
+    expect(new Set(registered).size).toBe(180);
   });
 
   it("ipc.ts wraps every registered command and nothing else", () => {
@@ -547,5 +547,25 @@ describe("currency commands", () => {
     expect(lastCall()).toEqual({ cmd: "set_region", args: { region: "de-DE" } });
     await api.getFileFormat();
     expect(lastCall()).toEqual({ cmd: "get_file_format", args: {} });
+  });
+});
+
+describe("SimpleFIN commands", () => {
+  it("send their arguments camelCase", async () => {
+    await api.simplefinConnect("aHR0cHM6Ly9leGFtcGxlLmNvbS9jbGFpbS94");
+    expect(lastCall()).toEqual({ cmd: "simplefin_connect", args: { setupToken: "aHR0cHM6Ly9leGFtcGxlLmNvbS9jbGFpbS94" } });
+    await api.simplefinLink("sf-1", "a-1");
+    expect(lastCall()).toEqual({ cmd: "simplefin_link", args: { sfId: "sf-1", accountId: "a-1" } });
+    await api.simplefinLink("sf-1", null);
+    expect(lastCall()).toEqual({ cmd: "simplefin_link", args: { sfId: "sf-1", accountId: null } });
+    for (const [call, cmd] of [
+      [api.simplefinStatus, "simplefin_status"],
+      [api.simplefinRefreshAccounts, "simplefin_refresh_accounts"],
+      [api.simplefinDisconnect, "simplefin_disconnect"],
+      [api.simplefinSync, "simplefin_sync"],
+    ] as const) {
+      await call();
+      expect(lastCall()).toEqual({ cmd, args: {} });
+    }
   });
 });

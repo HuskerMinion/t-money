@@ -17,6 +17,7 @@ pub mod models;
 pub mod backup;
 pub mod prices;
 pub mod region;
+pub mod simplefin;
 pub mod schedule;
 mod state;
 
@@ -538,6 +539,12 @@ pub fn run() {
             commands::set_exchange_rate,
             commands::delete_exchange_rate,
             commands::fetch_exchange_rates,
+            commands::simplefin_status,
+            commands::simplefin_connect,
+            commands::simplefin_refresh_accounts,
+            commands::simplefin_link,
+            commands::simplefin_disconnect,
+            commands::simplefin_sync,
             commands::delete_account,
             commands::merge_accounts,
             commands::update_holdings,

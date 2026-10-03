@@ -1014,6 +1014,8 @@ const FROZEN: &[(&str, u64)] = &[
     ("0047", 0xb17f346f3c001837),
     // Rates say which home currency they are quoted in.
     ("0048", 0xaed8b3c80164a049),
+    // SimpleFIN accounts and their links.
+    ("0049", 0x5e37c5e7f398d79b),
 ];
 
 #[test]

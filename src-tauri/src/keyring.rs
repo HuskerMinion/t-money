@@ -167,6 +167,19 @@ pub fn set_key_in(name: &str, key: &str) -> Result<(), String> {
     entry_named(name)?.set_password(key).map_err(|e| format!("keyring set failed: {e}"))
 }
 
+/// Remove an entry. One that is not there is not an error: the point is
+/// that afterwards it is gone.
+pub fn delete_key_in(name: &str) -> Result<(), String> {
+    match entry_named(name)?.delete_credential() {
+        Ok(()) => Ok(()),
+        Err(e) if !has_key_in(name) => {
+            let _ = e;
+            Ok(())
+        }
+        Err(e) => Err(format!("keyring delete failed: {e}")),
+    }
+}
+
 /// The key for an account, generating and storing one if there is none.
 /// Returns `(key, created_new)` — the caller cares, because a brand new key
 /// against a file that already has data means the file will not open.

@@ -71,6 +71,70 @@ fn default_home() -> String {
     crate::currency::DEFAULT_HOME.to_string()
 }
 
+/// A SimpleFIN account this file knows about, and the T-Money account it
+/// fills, if any.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SimplefinAccount {
+    pub sf_id: String,
+    pub name: String,
+    /// The bank, when SimpleFIN says.
+    pub org: Option<String>,
+    pub currency: Option<String>,
+    /// What the bank says the balance is, as of `balance_date`.
+    pub balance_cents: Option<i64>,
+    pub balance_date: Option<String>,
+    pub account_id: Option<String>,
+    pub account_name: Option<String>,
+    /// The last day fetched for this account.
+    pub synced_through: Option<String>,
+}
+
+/// Whether the open file is connected to SimpleFIN, and to what.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SimplefinStatus {
+    pub connected: bool,
+    /// The server's name, e.g. bridge.simplefin.org — never the credential.
+    pub server: Option<String>,
+    pub accounts: Vec<SimplefinAccount>,
+    /// Requests in the last 24 hours (a rolling day, not a calendar one).
+    pub requests_today: u32,
+    pub daily_limit: u32,
+    /// SimpleFIN's own messages from the request just made (a bank to sign
+    /// in to again, a quota warning). Empty when nothing was asked.
+    pub messages: Vec<String>,
+}
+
+/// What one fetch did to one linked account.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SimplefinSyncLine {
+    pub sf_name: String,
+    pub account_id: String,
+    pub account_name: String,
+    pub imported: u32,
+    /// Paired with a transaction already typed in, which is kept.
+    pub matched: u32,
+    pub duplicates: u32,
+    /// The bank's balance and the register's, side by side, so a gap shows.
+    pub bank_balance_cents: Option<i64>,
+    pub balance_cents: i64,
+    pub error: Option<String>,
+    /// Something to know that is not an error: days SimpleFIN could not
+    /// reach back to.
+    pub note: Option<String>,
+}
+
+/// What a fetch did: per linked account, SimpleFIN's own messages (a bank
+/// to sign in to again), and how many accounts are not linked yet.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SimplefinSync {
+    pub lines: Vec<SimplefinSyncLine>,
+    pub messages: Vec<String>,
+    pub unlinked: u32,
+    /// The days asked for, YYYY-MM-DD.
+    pub from: String,
+    pub to: String,
+}
+
 /// How a file writes money and dates: its home currency and its region
 /// (a tag from `region::REGIONS`).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

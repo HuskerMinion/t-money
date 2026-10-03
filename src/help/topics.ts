@@ -741,7 +741,7 @@ In T-Money, Banking → Account List → **Import QIF / OFX**: choose the **targ
 
 # From a bank
 
-The same importer reads **OFX/QFX** downloads from a bank or card website.
+The same importer reads **OFX/QFX** downloads from a bank or card website. To fetch transactions straight from the bank instead, see [[bank-sync|Bank sync with SimpleFIN]].
 
 # CSV downloads
 
@@ -833,6 +833,41 @@ The same review also lists any new row that would land with **no category** — 
 # Export
 
 **Export** on the same card writes an account's register as a QIF file, splits and transfers included, for a spreadsheet or another program.
+`,
+  },
+  {
+    id: "bank-sync",
+    group: "Tools and settings",
+    title: "Bank sync with SimpleFIN",
+    blurb: "Fetching transactions from US and Canadian banks, only when you ask.",
+    body: `
+# What it is
+
+SimpleFIN Bridge (bridge.simplefin.org) is a separate paid service, about $15 a year, that reads your bank and card accounts and hands the transactions to an app you choose. Its fee goes to SimpleFIN; T-Money stays free. It covers most US and Canadian banks and card issuers. It reports cash amounts only, so it can fill checking, savings, card, cash and loan accounts but not investment accounts.
+
+# Connecting
+
+Sign up at SimpleFIN Bridge, connect your banks there, and make a **setup token**. In T-Money, Settings → Money → **Bank sync**: paste the token and click **Connect**. A token works once.
+
+The connection is kept in **Windows Credential Manager** on this computer, not in the file itself. Moving or renaming the file keeps it connected. Opened on another computer, the file is not connected; disconnect it here and connect it there with a new token if you want to fetch from there.
+
+# Linking accounts
+
+Once connected, the list shows each account SimpleFIN reports, with the bank's balance. For each one, pick the T-Money account it fills. Only open accounts in the same currency are offered, and one T-Money account can be filled from only one bank account, or every transaction would come in twice.
+
+# Getting transactions
+
+Click **Get bank transactions**. T-Money never fetches on its own. One click is one request for every linked account. The first fetch for an account reaches back 88 days, as two requests, because SimpleFIN asks that one request cover no more than 45 days; later ones start five days before the newest transaction it sent, and anything already in the register is skipped, so overlapping is harmless.
+
+They come in through the same path as a statement file, marked cleared: rename rules apply, a row the bank has sent before is recognized by its id, and a row that is very likely one you typed in ahead (same amount, within three days, a similar name) is **matched** to it rather than written again. Your payee, category and memo stand, and the row is marked cleared. Anything less sure comes in as new. If something does arrive twice, delete the one you typed: the bank's copy carries its id, so it is not fetched again. To be rid of a transaction the bank sent, **Void** it rather than deleting it, or a later fetch brings it back.
+
+Each fetch is **one Undo step**, and the next fetch reaches back for whatever an Undo took away. Afterwards the result lists, per account, how many came in, how many were matched and how many were already there, beside the bank's balance and T-Money's, so a gap shows at once. A bank that needs you to sign in again is shown as SimpleFIN wrote it; fix it on SimpleFIN's site. If an account was not fetched for longer than SimpleFIN reaches back (90 days), the result says which days were missed, so you can import a statement for them.
+
+> SimpleFIN asks apps to make no more than about 24 requests a day, and can turn off a connection that keeps asking for more. T-Money stops at 20 in any 24 hours and shows the count; each one is free again a day after it was made.
+
+# Disconnecting
+
+**Disconnect** removes the connection from Credential Manager and forgets the account links. Transactions already fetched stay. Do this before deleting a file that is connected; otherwise the connection stays in Credential Manager until you remove it there. To stop SimpleFIN itself reading your banks, remove the app or the connection on SimpleFIN's site too.
 `,
   },
   {

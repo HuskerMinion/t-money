@@ -71,6 +71,8 @@ import type {
   UsedText,
   PriceRefreshSummary,
   PriceStatus,
+  SimplefinStatus,
+  SimplefinSync,
   Currency,
   ExchangeRate,
   FileFormat,
@@ -142,6 +144,16 @@ export const api = {
    *  currencies named = every currency an account is kept in. */
   fetchExchangeRates: (currencies: string[] | null = null) =>
     invoke<PriceRefreshSummary>("fetch_exchange_rates", { currencies }),
+  simplefinStatus: () => invoke<SimplefinStatus>("simplefin_status"),
+  /** Claim a SimpleFIN setup token. It works once; the access it returns is
+   *  kept in Credential Manager and never comes back here. */
+  simplefinConnect: (setupToken: string) => invoke<SimplefinStatus>("simplefin_connect", { setupToken }),
+  simplefinRefreshAccounts: () => invoke<SimplefinStatus>("simplefin_refresh_accounts"),
+  /** `accountId` null unlinks. */
+  simplefinLink: (sfId: string, accountId: string | null) =>
+    invoke<SimplefinStatus>("simplefin_link", { sfId, accountId }),
+  simplefinDisconnect: () => invoke<SimplefinStatus>("simplefin_disconnect"),
+  simplefinSync: () => invoke<SimplefinSync>("simplefin_sync"),
   deleteAccount: (id: string) => invoke<void>("delete_account", { id }),
   /** Merge `fromId` into `intoId`. `dryRun` reports without changing. */
   mergeAccounts: (intoId: string, fromId: string, afterLast: boolean, dryRun: boolean) =>

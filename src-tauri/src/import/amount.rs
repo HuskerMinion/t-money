@@ -22,7 +22,9 @@ pub fn parse_amount_cents(s: &str) -> Option<i64> {
     let d = Decimal::from_str(&cleaned).ok()?;
     // Multiply by 100 and round to the nearest cent (handles 3+ decimal places).
     // Half-away-from-zero is the conventional money rounding (0.005 -> 1 cent).
-    let cents = (d * Decimal::new(100, 0))
+    // `checked_mul`: a 29-digit amount parses, and the plain multiply panics.
+    let cents = d
+        .checked_mul(Decimal::new(100, 0))?
         .round_dp_with_strategy(0, RoundingStrategy::MidpointAwayFromZero);
     cents.to_i64()
 }
@@ -39,9 +41,24 @@ pub fn parse_micro(s: &str) -> Option<i64> {
         return None;
     }
     let d = Decimal::from_str(&cleaned).ok()?;
-    (d * Decimal::new(1_000_000, 0))
+    d.checked_mul(Decimal::new(1_000_000, 0))?
         .round_dp_with_strategy(0, RoundingStrategy::MidpointAwayFromZero)
         .to_i64()
+}
+
+#[cfg(test)]
+mod overflow_tests {
+    use super::*;
+
+    #[test]
+    fn an_amount_too_large_to_hold_is_unreadable_not_a_crash() {
+        assert_eq!(parse_amount_cents("79228162514264337593543950335"), None);
+        assert_eq!(parse_amount_cents("-79228162514264337593543950335"), None);
+        assert_eq!(parse_micro("79228162514264337593543950335"), None);
+        // Past what cents in an i64 can hold, but not past Decimal.
+        assert_eq!(parse_amount_cents("100000000000000000000"), None);
+        assert_eq!(parse_amount_cents("1234.567"), Some(123_457));
+    }
 }
 
 /// Normalize a QIF date to `YYYY-MM-DD`.

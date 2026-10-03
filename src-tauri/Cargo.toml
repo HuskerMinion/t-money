@@ -54,6 +54,12 @@ rust_decimal = { version = "1", features = ["serde-with-str"] }
 #     brings no async runtime and no second TLS stack alongside the OpenSSL
 #     vendored for SQLCipher. Calls run on spawn_blocking. ---
 ureq = "2"
+# SimpleFIN (bank transactions on request): its setup token is base64, and
+# its access URL carries credentials that are split out and sent as a Basic
+# Authorization header. All three are already in the build through ureq.
+base64 = "0.22"
+url = "2"
+percent-encoding = "2"
 
 # --- Misc ---
 uuid = { version = "1", features = ["v4", "serde"] }

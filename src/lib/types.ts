@@ -1486,3 +1486,55 @@ export interface MergePreview {
   /** Why this merge cannot happen — null when it can. */
   blocked: string | null;
 }
+
+/** A SimpleFIN account the open file knows about, and the T-Money account
+ *  it fills, if any. Amounts are in cents of `currency`. */
+export interface SimplefinAccount {
+  sf_id: string;
+  name: string;
+  org: string | null;
+  currency: string | null;
+  balance_cents: number | null;
+  balance_date: string | null;
+  account_id: string | null;
+  account_name: string | null;
+  synced_through: string | null;
+}
+
+/** Whether the open file is connected to SimpleFIN. `server` is the host's
+ *  name only; the credential never leaves the backend. */
+export interface SimplefinStatus {
+  connected: boolean;
+  server: string | null;
+  accounts: SimplefinAccount[];
+  /** Requests in the last 24 hours (a rolling day). */
+  requests_today: number;
+  daily_limit: number;
+  /** SimpleFIN's own messages from the step just taken. */
+  messages: string[];
+}
+
+export interface SimplefinSyncLine {
+  sf_name: string;
+  account_id: string;
+  account_name: string;
+  imported: number;
+  /** Paired with a transaction already typed in, which is kept. */
+  matched: number;
+  duplicates: number;
+  bank_balance_cents: number | null;
+  balance_cents: number;
+  error: string | null;
+  /** Not an error: days SimpleFIN could not reach back to. */
+  note: string | null;
+}
+
+/** What one "Get bank transactions" did. */
+export interface SimplefinSync {
+  lines: SimplefinSyncLine[];
+  /** SimpleFIN's own messages, such as a bank to sign in to again. */
+  messages: string[];
+  unlinked: number;
+  from: string;
+  to: string;
+}
