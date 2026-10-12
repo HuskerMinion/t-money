@@ -32,6 +32,9 @@ interface Props {
   initialOpen?: ReportOpen | null;
   onOpenAccount: (accountId: string) => void;
   onOpenTransaction: (accountId: string | null, transactionId: string) => void;
+  /** A saved report was added, changed or removed — the Favorites menu
+   *  lists them too. */
+  onSavedReportsChanged?: () => void;
 }
 
 /** The range a report opens with. Balances are "as of" and want the whole
@@ -67,7 +70,7 @@ export function specForOpen(o: ReportOpen): ReportSpec {
   return base;
 }
 
-export default function ReportsView({ initialOpen = null, onOpenAccount, onOpenTransaction }: Props) {
+export default function ReportsView({ initialOpen = null, onOpenAccount, onOpenTransaction, onSavedReportsChanged }: Props) {
   const [gallery, setGallery] = useState<ReportGalleryEntry[]>([]);
   const [spec, setSpec] = useState<ReportSpec | null>(initialOpen ? specForOpen(initialOpen) : null);
   // My favorites: saved, named, customized reports, kept in the file.
@@ -143,11 +146,13 @@ export default function ReportsView({ initialOpen = null, onOpenAccount, onOpenT
         onSave={async (r) => {
           const stored = await api.saveReport(r);
           await loadFavorites();
+          onSavedReportsChanged?.();
           return stored;
         }}
         onDeleteSaved={async (id) => {
           await api.deleteSavedReport(id);
           await loadFavorites();
+          onSavedReportsChanged?.();
         }}
       />
     );

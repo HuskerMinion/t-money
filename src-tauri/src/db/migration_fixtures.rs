@@ -698,6 +698,55 @@ fn a_0036_file_reads_its_budgets_as_the_monthly_figures_they_were() {
     );
 }
 
+// ---------------------------------------------------------------------------
+// 0049 — the version before opening balances were marked revaluations. Only
+// a plain, uncategorized "Opening Balance" row may be marked; one given a
+// category, a split one and a transfer named that way are real money in
+// reports. No balance moves.
+// ---------------------------------------------------------------------------
+
+fn fixture_0049() -> Connection {
+    let conn = db_at("0049");
+    conn.execute_batch(
+        r#"
+        INSERT INTO accounts (id, name, type, balance_cents, opened_on) VALUES
+            ('a-chk', 'Checking', 'checking',    465000, '2026-01-01'),
+            ('a-sav', 'Savings',  'savings',      20000, '2026-01-01'),
+            ('a-mtg', 'Mortgage', 'mortgage', -15000000, '2026-01-01');
+        INSERT INTO categories (id, name, parent_id, kind) VALUES
+            ('c-gift', 'Gifts', NULL, 'expense');
+        INSERT INTO transactions (id, account_id, date, payee, category_id, amount_cents) VALUES
+            ('t-chk-open', 'a-chk', '2026-01-01', 'Opening Balance', NULL,     500000),
+            ('t-mtg-open', 'a-mtg', '2026-01-01', 'Opening Balance', NULL,  -15000000),
+            ('t-cat',      'a-chk', '2026-02-01', 'Opening Balance', 'c-gift', -10000),
+            ('t-split',    'a-chk', '2026-02-02', 'Opening Balance', NULL,      -5000),
+            ('t-out',      'a-chk', '2026-02-03', 'Opening Balance', NULL,     -20000),
+            ('t-in',       'a-sav', '2026-02-03', 'Opening Balance', NULL,      20000);
+        UPDATE transactions SET transfer_id = 't-in' WHERE id = 't-out';
+        UPDATE transactions SET transfer_id = 't-out' WHERE id = 't-in';
+        INSERT INTO splits (id, transaction_id, category_id, amount_cents) VALUES
+            ('s-1', 't-split', 'c-gift', -5000);
+        "#,
+    )
+    .unwrap();
+    conn
+}
+
+#[test]
+fn a_0049_file_marks_only_its_plain_opening_rows() {
+    let mut conn = fixture_0049();
+    let balances_before: i64 = one(&conn, "SELECT SUM(balance_cents) FROM accounts", &[]);
+    migrate_to_latest(&mut conn);
+
+    let marked: Vec<String> = {
+        let mut st = conn.prepare("SELECT id FROM transactions WHERE is_revaluation = 1 ORDER BY id").unwrap();
+        st.query_map([], |r| r.get(0)).unwrap().collect::<Result<_, _>>().unwrap()
+    };
+    assert_eq!(marked, ["t-chk-open", "t-mtg-open"]);
+    let balances_after: i64 = one(&conn, "SELECT SUM(balance_cents) FROM accounts", &[]);
+    assert_eq!(balances_after, balances_before, "marking a row moves no money");
+}
+
 #[test]
 fn running_the_migrations_twice_changes_nothing() {
     // Idempotence on a POPULATED file, not an empty one: a second `migrate`
@@ -1016,6 +1065,9 @@ const FROZEN: &[(&str, u64)] = &[
     ("0048", 0xaed8b3c80164a049),
     // SimpleFIN accounts and their links.
     ("0049", 0x5e37c5e7f398d79b),
+    // Opening balances written without `create_account` are marked
+    // revaluations, so category reports leave them out.
+    ("0050", 0x6c761f2318d9d321),
 ];
 
 #[test]

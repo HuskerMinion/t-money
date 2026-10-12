@@ -573,7 +573,10 @@ export default function AccountRegister() {
             draft.transfer_to_account_id,
             draft.amount_cents,
             draft.notes,
-            draft.transfer_amount_cents ?? null
+            draft.transfer_amount_cents ?? null,
+            // Only a payee that was changed. Sending the same name back
+            // copied this half's payee (a bank's text) onto the other half.
+            draft.payee !== before?.payee ? draft.payee : null
           );
         // "edit a transfer" is an undo step, and the store's
         // `editTransfer` does not say so the way `editTransaction` does.
@@ -607,9 +610,10 @@ export default function AccountRegister() {
                 draft.date,
                 otherAmount ?? amount,
                 draft.notes,
-                otherAmount === null ? null : amount
+                otherAmount === null ? null : amount,
+                draft.payee
               )
-            : await api.createTransfer(accountId, other, draft.date, amount, draft.notes, otherAmount);
+            : await api.createTransfer(accountId, other, draft.date, amount, draft.notes, otherAmount, draft.payee);
         // `created` is the sending half, which for a deposit is the other
         // account's row. Both writes below follow the pair: the goal to the
         // half in the goal's account, the classes to both halves.

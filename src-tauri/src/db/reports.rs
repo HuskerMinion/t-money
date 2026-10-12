@@ -224,6 +224,9 @@ pub fn run_report(conn: &Conn, req: &ReportRequest) -> Result<Report, String> {
 // Scope: which accounts and categories a report covers
 // ---------------------------------------------------------------------------
 
+/// The category scope a click on a report's Uncategorized row asks for.
+pub const UNCATEGORIZED_SCOPE: &str = "uncategorized";
+
 struct Scope {
     /// `None` = every account.
     accounts: Option<Vec<String>>,
@@ -231,6 +234,9 @@ struct Scope {
     categories: Option<Vec<String>>,
     /// `categories` is a leave-out list.
     exclude_categories: bool,
+    /// The Uncategorized row clicked was one side only: `Some(true)` the
+    /// money in, `Some(false)` the money out. Applies to the "" entry.
+    uncategorized_in: Option<bool>,
     /// `None` = every security (investment reports).
     securities: Option<Vec<String>>,
     /// Only accounts with `tax_included`.
@@ -298,15 +304,34 @@ const T_HOME: &str = concat!(
 impl Scope {
     fn from_request(conn: &Conn, req: &ReportRequest) -> Result<Self, String> {
         let accounts = req.account_ids.clone().filter(|v| !v.is_empty());
+        let mut uncategorized_in = None;
         let categories = match req.category_ids.clone().filter(|v| !v.is_empty()) {
             None => None,
             Some(ids) => {
-                // Expand parents to include their children.
-                let mut all = ids.clone();
+                // Expand parents to include their children. Two ids are
+                // the report's own drill-throughs: `UNCATEGORIZED_SCOPE` is
+                // the lines with no category (kept as "" in the list), and
+                // `own:<id>` is a parent's own lines without its
+                // subcategories ("Automobile - Unassigned").
+                let mut all = Vec::new();
+                let mut expand = Vec::new();
+                for id in &ids {
+                    if id == UNCATEGORIZED_SCOPE {
+                        all.push(String::new());
+                    } else if let Some(side) = id.strip_prefix("uncategorized:") {
+                        all.push(String::new());
+                        uncategorized_in = Some(side == "in");
+                    } else if let Some(own) = id.strip_prefix("own:") {
+                        all.push(own.to_string());
+                    } else {
+                        all.push(id.clone());
+                        expand.push(id.clone());
+                    }
+                }
                 let mut st = conn
                     .prepare("SELECT id FROM categories WHERE parent_id = ?1")
                     .map_err(|e| e.to_string())?;
-                for id in &ids {
+                for id in &expand {
                     let kids = st
                         .query_map(params![id], |r| r.get::<_, String>(0))
                         .map_err(|e| e.to_string())?
@@ -416,6 +441,7 @@ impl Scope {
             accounts,
             categories,
             exclude_categories,
+            uncategorized_in,
             securities,
             tax_only,
             tax_accounts,
@@ -474,10 +500,20 @@ impl Scope {
         if let Some(ids) = &self.categories {
             let marks = ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
             binds.extend(ids.iter().cloned());
-            if self.exclude_categories {
-                out.push_str(&format!(" AND ({expr} IS NULL OR {expr} NOT IN ({marks}))"));
-            } else {
-                out.push_str(&format!(" AND {expr} IN ({marks})"));
+            // "" in the list is the uncategorized lines — one side of them
+            // when the Income or the Expenses row was the one clicked.
+            let none = ids.iter().any(|i| i.is_empty());
+            let alias = expr.split('.').next().unwrap_or("l");
+            let side = match self.uncategorized_in {
+                Some(true) => format!(" AND {alias}.amount_cents > 0"),
+                Some(false) => format!(" AND {alias}.amount_cents <= 0"),
+                None => String::new(),
+            };
+            match (self.exclude_categories, none) {
+                (true, false) => out.push_str(&format!(" AND ({expr} IS NULL OR {expr} NOT IN ({marks}))")),
+                (true, true) => out.push_str(&format!(" AND ({expr} IS NOT NULL AND {expr} NOT IN ({marks}))")),
+                (false, false) => out.push_str(&format!(" AND {expr} IN ({marks})")),
+                (false, true) => out.push_str(&format!(" AND (({expr} IS NULL{side}) OR {expr} IN ({marks}))")),
             }
         }
         out
@@ -802,6 +838,30 @@ fn money_month_label(ym: &str) -> String {
         _ => format!("{mi}{}{y}", r.date_sep),
     }
 }
+/// "All dates" (from 1900, to ten years out) as the months a report across
+/// months should show: the first line in scope through the last one, or
+/// today when that is later — as Money does. It was a column for every
+/// month from 1900: some 1,500 of them. Any other range is kept as asked,
+/// empty months and all.
+fn lines_span(conn: &Conn, scope: &Scope, from: NaiveDate, to: NaiveDate) -> Result<(NaiveDate, NaiveDate), String> {
+    if from.year() > 1900 {
+        return Ok((from, to));
+    }
+    let mut binds = vec![iso(from), iso(to)];
+    let scoped = scope.lines_where(&mut binds);
+    let sql = format!("{LINES} SELECT MIN(l.date), MAX(l.date) FROM lines l WHERE l.date >= ?1 AND l.date <= ?2{scoped}");
+    let span = query_rows(conn, &sql, &binds, |r| Ok((r.get::<_, Option<String>>(0)?, r.get::<_, Option<String>>(1)?)))?;
+    let parse = |v: &Option<String>| v.as_deref().and_then(|d| NaiveDate::parse_from_str(d, "%Y-%m-%d").ok());
+    let today = chrono::Local::now().date_naive().min(to);
+    match span.first() {
+        Some((first, last)) => match (parse(first), parse(last)) {
+            (Some(f), Some(l)) => Ok((f.max(from), l.max(today).min(to))),
+            _ => Ok((today, today)),
+        },
+        None => Ok((today, today)),
+    }
+}
+
 /// `YYYY-MM` for every month touching the range, oldest first.
 pub fn months_in(from: NaiveDate, to: NaiveDate) -> Vec<String> {
     let mut out = Vec::new();
@@ -878,12 +938,13 @@ fn category_nodes(conn: &Conn, scope: &Scope, from: NaiveDate, to: NaiveDate, bu
     let sql = format!(
         "{LINES}
         SELECT c.id, c.name, c.parent_id, p.name, c.kind,
-               substr(l.date, 1, 7), SUM(l.amount_cents), COUNT(*)
+               substr(l.date, 1, 7), SUM(l.amount_cents), COUNT(*),
+               CASE WHEN c.id IS NULL THEN l.amount_cents > 0 END AS money_in
           FROM lines l
           LEFT JOIN categories c ON c.id = l.category_id
           LEFT JOIN categories p ON p.id = c.parent_id
          WHERE l.date >= ?1 AND l.date <= ?2{scoped}
-         GROUP BY c.id, substr(l.date, 1, 7)"
+         GROUP BY c.id, money_in, substr(l.date, 1, 7)"
     );
     let raw = query_rows(conn, &sql, &binds, |r| {
         Ok((
@@ -895,16 +956,20 @@ fn category_nodes(conn: &Conn, scope: &Scope, from: NaiveDate, to: NaiveDate, bu
             r.get::<_, String>(5)?,
             r.get::<_, i64>(6)?,
             r.get::<_, i64>(7)?,
+            r.get::<_, Option<bool>>(8)?,
         ))
     })?;
     // (id or "" + kind for uncategorized) → node
     let mut nodes: BTreeMap<String, CatNode> = BTreeMap::new();
     let ncols = buckets.len().max(1);
-    for (id, name, parent_id, parent_name, kind, ym, cents, count) in raw {
+    for (id, name, parent_id, parent_name, kind, ym, cents, count, money_in) in raw {
         let (key, kind) = match (&id, &kind) {
             (Some(i), Some(k)) => (i.clone(), k.clone()),
             _ => {
-                let k = if cents > 0 { "income" } else { "expense" };
+                // By each line's own sign, not the month's net: a $1,000
+                // deposit and a $300 withdrawal are $1,000 in and $300 out,
+                // not $700 of income and no spending.
+                let k = if money_in.unwrap_or(cents > 0) { "income" } else { "expense" };
                 (format!("uncategorized:{k}"), k.to_string())
             }
         };
@@ -1005,7 +1070,7 @@ fn tree_rows(nodes: &[CatNode], ncols: usize, cells: &dyn Fn(&[i64], Option<i64>
                 }
                 if let Some(o) = own {
                     if o.values.iter().any(|v| *v != 0) {
-                        rows.push(keyed(&format!("{name} - Unassigned"), "category", &pid, 1, cells(&o.values, Some(o.count), kind)));
+                        rows.push(keyed(&format!("{name} - Unassigned"), "category", &format!("own:{pid}"), 1, cells(&o.values, Some(o.count), kind)));
                     }
                 }
                 let mut t = keyed(&format!("Total {name}"), "category", &pid, 1, cells(&total, Some(count), kind));
@@ -1016,7 +1081,10 @@ fn tree_rows(nodes: &[CatNode], ncols: usize, cells: &dyn Fn(&[i64], Option<i64>
             section_totals[si] = sum_values(&section_totals[si], &total);
         }
         if let Some(u) = in_section.iter().find(|n| n.id.is_empty()) {
-            let mut r = keyed("Uncategorized", "category", "", 0, cells(&u.values, Some(u.count), kind));
+            // Keyed by side: the Income row opens the money in, the
+            // Expenses row the money out.
+            let scope_key = if *kind == "income" { "uncategorized:in" } else { "uncategorized:out" };
+            let mut r = keyed("Uncategorized", "category", scope_key, 0, cells(&u.values, Some(u.count), kind));
             r.style = "bold".to_string();
             rows.push(r);
             chart.push(("Uncategorized".to_string(), u.values[0]));
@@ -1099,6 +1167,7 @@ fn spending_by_payee(conn: &Conn, scope: &Scope, from: NaiveDate, to: NaiveDate)
 /// Category × month matrix, Money's "Monthly income and expenses": the same
 /// tree, one column per month plus Total; month headers `8/2026`.
 fn monthly_income_expenses(conn: &Conn, scope: &Scope, from: NaiveDate, to: NaiveDate) -> Result<Report, String> {
+    let (from, to) = lines_span(conn, scope, from, to)?;
     let months = months_in(from, to);
     let nodes = category_nodes(conn, scope, from, to, &months)?;
     let n = months.len();
@@ -1135,6 +1204,7 @@ fn monthly_income_expenses(conn: &Conn, scope: &Scope, from: NaiveDate, to: Naiv
 
 /// Income, expense and net per month — the "over time" bar chart.
 fn income_spending_over_time(conn: &Conn, scope: &Scope, from: NaiveDate, to: NaiveDate) -> Result<Report, String> {
+    let (from, to) = lines_span(conn, scope, from, to)?;
     let months = months_in(from, to);
     let mut binds = vec![iso(from), iso(to)];
     let scoped = scope.lines_where(&mut binds);
@@ -4184,6 +4254,56 @@ mod tests {
         assert_eq!((cell_money(f, 0), cell_money(f, 1), cell_money(f, 2)), (7_000, 0, 7_000));
         let net = find(&r, "Income less Expenses");
         assert_eq!(cell_money(net, 2), 600_000 - 35_000 - 8_000);
+    }
+
+    #[test]
+    fn monthly_matrix_keeps_uncategorized_in_and_out_apart_and_leaves_opening_balances_out() {
+        let db = TestDb::new("matrix-uncat");
+        let c = db.conn();
+        let (chk, ..) = world(&c);
+        queries::create_transaction(&c, &chk, "2026-08-12", "Deposit", None, 100_000, None, None).unwrap();
+        queries::create_transaction(&c, &chk, "2026-08-13", "ATM", None, -30_000, None, None).unwrap();
+        // An opening row written the way 0021, the demo and a QIF opening
+        // line wrote one: plain, unmarked. Marked, it is not income.
+        let mtg = queries::create_account(&c, "Mortgage", "loan", 0, Some("2026-08-01")).unwrap().id;
+        queries::create_transaction(&c, &mtg, "2026-08-01", "Opening Balance", None, -15_000_000, None, None).unwrap();
+        queries::mark_opening_balances(&c, None).unwrap();
+
+        let r = run_report(&c, &req("monthly_income_expenses", "2026-08-01", "2026-09-30")).unwrap();
+        let uncat: Vec<&ReportLine> = r.rows.iter().filter(|x| x.label == "Uncategorized").collect();
+        assert_eq!(uncat.len(), 2, "one under Income, one under Expenses");
+        assert_eq!(cell_money(uncat[0], 0), 100_000, "the deposit, not the month's net");
+        assert_eq!(cell_money(uncat[1], 0), 30_000, "the ATM withdrawal only; no mortgage");
+        assert_eq!(uncat[0].key.as_deref(), Some("uncategorized:in"));
+        assert_eq!(uncat[1].key.as_deref(), Some("uncategorized:out"));
+        let net = find(&r, "Income less Expenses");
+        assert_eq!(cell_money(net, 2), 600_000 - 35_000 - 8_000 + 100_000 - 30_000);
+
+        // The Uncategorized row's drill-through is the uncategorized lines only.
+        let mut q = req("spending_by_category", "2026-08-01", "2026-09-30");
+        q.category_ids = Some(vec![UNCATEGORIZED_SCOPE.to_string()]);
+        let r = run_report(&c, &q).unwrap();
+        assert!(r.rows.iter().all(|x| x.label != "Groceries"), "{:?}", r.rows.iter().map(|x| &x.label).collect::<Vec<_>>());
+        assert_eq!(r.rows.iter().filter(|x| x.label == "Uncategorized").count(), 2);
+        // …and one side of them, for the row on that side.
+        q.category_ids = Some(vec!["uncategorized:out".to_string()]);
+        let r = run_report(&c, &q).unwrap();
+        let uncat: Vec<&ReportLine> = r.rows.iter().filter(|x| x.label == "Uncategorized").collect();
+        assert_eq!(uncat.len(), 1);
+        assert_eq!(cell_money(uncat[0], 0), 30_000);
+    }
+
+    #[test]
+    fn all_dates_runs_from_the_first_line_not_from_1900() {
+        let db = TestDb::new("matrix-all");
+        let c = db.conn();
+        world(&c);
+        let r = run_report(&c, &req("monthly_income_expenses", "1900-01-01", "2036-12-31")).unwrap();
+        // First line in August 2026; through this month at the latest.
+        assert_eq!(r.columns[1].label, "8/2026");
+        let now = chrono::Local::now().date_naive();
+        let through = months_in(NaiveDate::from_ymd_opt(2026, 8, 1).unwrap(), now.max(NaiveDate::from_ymd_opt(2026, 9, 30).unwrap())).len();
+        assert_eq!(r.columns.len(), through + 2, "label, a column a month, Total");
     }
 
     #[test]

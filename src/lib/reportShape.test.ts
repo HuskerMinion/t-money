@@ -36,6 +36,46 @@ const report: Report = {
 };
 
 describe("shaping a report", () => {
+  it("a month-by-month tree sorts whole groups by their Total, each Total X riding with its group", () => {
+    const m = (label: string, aug: number, sep: number, level = 0, style: ReportLine["style"] = "normal"): ReportLine => ({
+      key: label,
+      key_kind: "category",
+      label,
+      level,
+      style,
+      cells: [{ text: null, cents: aug }, { text: null, cents: sep }, { text: null, cents: aug + sep }],
+    });
+    const blank = (label: string): ReportLine => ({ key: label, key_kind: "category", label, level: 0, style: "group", cells: [0, 1, 2].map(() => ({ text: null, cents: null })) });
+    const matrix: Report = {
+      kind: "monthly_income_expenses",
+      title: "",
+      subtitle: "",
+      columns: [
+        { label: "Subcategory", kind: "text" },
+        { label: "8/2026", kind: "money" },
+        { label: "9/2026", kind: "money" },
+        { label: "Total", kind: "money" },
+      ],
+      rows: [
+        header("Expenses"),
+        blank("Automobile"),
+        m("Fuel", 100, 100, 1),
+        m("Total Automobile", 100, 100, 1, "subtotal"),
+        m("Groceries", 300, 0, 0, "bold"),
+        // Nothing in August, the most for the year.
+        m("Rent", 0, 5000, 0, "bold"),
+        m("Total Expenses", 400, 5100, 0, "subtotal"),
+      ],
+      chart: null,
+    };
+    const sorted = shapeReport(matrix, { ...DEFAULT_OPTIONS, sort: "amount" }).rows.map((r) => r.label);
+    expect(sorted).toEqual(["Expenses", "Rent", "Groceries", "Automobile", "Fuel", "Total Automobile", "Total Expenses"]);
+    // Folding: Automobile (200 of 5,500) goes with its total; Rent stays.
+    const folded = shapeReport(matrix, { ...DEFAULT_OPTIONS, combineUnderBps: 1000 }).rows;
+    expect(folded.map((r) => r.label)).toEqual(["Expenses", "Rent", "Other (2 combined)", "Total Expenses"]);
+    expect(folded[2].cells.map((c) => c.cents)).toEqual([400, 100, 500]);
+  });
+
   it("leaves the default alone and sorts blocks, children riding along", () => {
     expect(shapeReport(report, DEFAULT_OPTIONS)).toBe(report);
     const byAmount = shapeReport(report, { ...DEFAULT_OPTIONS, sort: "amount" }).rows.map((r) => r.label);

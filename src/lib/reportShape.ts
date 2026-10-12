@@ -60,6 +60,9 @@ function cellTotal(rows: ReportLine[], at: number, i: number): number {
   let sum = 0;
   let j = at + 1;
   while (j < rows.length && rows[j].level > head.level) {
+    // A group that prints its own "Total X" has said what it is worth;
+    // adding it to the rows it totals would count them twice.
+    if (rows[j].style === "subtotal") return rows[j].cells[i]?.cents ?? 0;
     sum += cellTotal(rows, j, i);
     const childLevel = rows[j].level;
     j++;
@@ -69,8 +72,14 @@ function cellTotal(rows: ReportLine[], at: number, i: number): number {
   return sum;
 }
 
+/** What a block weighs: its Total column when the report has one (a
+ *  month-by-month matrix ends in "Total" — ranking by the first month put
+ *  a category with nothing that month last however large its year), else
+ *  its first money column. */
 function firstMoneyTotal(report: Report, rows: ReportLine[]): number {
   const head = rows[0];
+  const total = report.columns.findIndex((c, i) => i > 0 && c.kind === "money" && c.label === "Total");
+  if (total > 0 && total - 1 < head.cells.length) return cellTotal(rows, 0, total - 1);
   for (let i = 0; i < head.cells.length; i++) {
     if (report.columns[i + 1]?.kind === "money") return cellTotal(rows, 0, i);
   }
@@ -135,7 +144,11 @@ export function shapeReport(report: Report, options: ReportOptions): Report {
     run = [];
   };
   for (const r of report.rows) {
-    if (MOVABLE.has(r.style)) run.push(r);
+    // A group's own "Total X" (a subtotal inside it, below level 0) moves
+    // and folds with the group. Left outside, every one split its section
+    // into separate runs, so groups never sorted past each other and a
+    // folded group left its total behind.
+    if (MOVABLE.has(r.style) || (r.style === "subtotal" && r.level > 0 && run.length > 0)) run.push(r);
     else {
       flush();
       out.push(r);

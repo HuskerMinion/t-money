@@ -60,7 +60,14 @@ export default function PickList({
     if (next.has(v)) next.delete(v);
     else next.add(v);
     // Keep the caller's order stable: the item order, not click order.
-    onChange(items.map((i) => i.value).filter((x) => next.has(x)));
+    onChange(ordered(next));
+  }
+
+  /** The ticked values in item order, plus any the list does not show (a
+   *  report's "Uncategorized" scope), which a click elsewhere must not drop. */
+  function ordered(next: Set<string>): string[] {
+    const known = new Set(items.map((i) => i.value));
+    return [...items.map((i) => i.value).filter((x) => next.has(x)), ...value.filter((v) => !known.has(v) && next.has(v))];
   }
 
   /** All / None apply to what the SEARCH is showing, not the whole list —
@@ -71,7 +78,7 @@ export default function PickList({
       if (ticked) next.add(v);
       else next.delete(v);
     }
-    onChange(items.map((i) => i.value).filter((x) => next.has(x)));
+    onChange(ordered(next));
   }
 
   return (

@@ -470,7 +470,9 @@ export const api = {
     date: string,
     amountCents: number,
     notes: string | null,
-    receivedCents: number | null = null
+    receivedCents: number | null = null,
+    /** The payee typed in the register; blank or null is "Transfer Money". */
+    payee: string | null = null
   ) =>
     invoke<Transaction>("create_transfer", {
       fromAccountId,
@@ -479,6 +481,7 @@ export const api = {
       amountCents,
       receivedCents,
       notes,
+      payee,
     }),
 
   /** The order the accounts are listed in, everywhere; the whole arrangement. */
@@ -509,7 +512,9 @@ export const api = {
     notes: string | null,
     /** The other side's amount (a magnitude, in its currency) when the two
      *  accounts are kept in different currencies; null otherwise. */
-    otherAmountCents: number | null = null
+    otherAmountCents: number | null = null,
+    /** A new payee for both halves; null keeps the one it has. */
+    payee: string | null = null
   ) =>
     invoke<Transaction>("update_transfer", {
       id,
@@ -518,6 +523,7 @@ export const api = {
       amountCents,
       otherAmountCents,
       notes,
+      payee,
     }),
 
   // Splits — an empty array clears the transaction's splits. The line amounts

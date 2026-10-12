@@ -93,7 +93,14 @@ describe("formatting", () => {
 
 describe("drill-through", () => {
   it("a category row opens its transactions, scoped to it", () => {
-    expect(drillFor(spec, report.rows[1])).toEqual({ kind: "transactions_by_category", categoryIds: ["c-groc"] });
+    expect(drillFor(spec, report.rows[1])).toEqual({ kind: "transactions_by_category", categoryIds: ["c-groc"], excludeCategories: false });
+    // The Uncategorized row opens its own side, even from a report that
+    // leaves categories out.
+    expect(drillFor({ ...spec, excludeCategories: true }, { ...report.rows[1], key: "uncategorized:in" })).toEqual({
+      kind: "transactions_by_category",
+      categoryIds: ["uncategorized:in"],
+      excludeCategories: false,
+    });
     expect(drillFor(spec, report.rows[0])).toBeNull();
     expect(drillFor(spec, { ...report.rows[1], key_kind: "month", key: "2026-02" })).toMatchObject({
       kind: "income_and_spending",
@@ -454,6 +461,52 @@ describe("the page", () => {
 
 // What the code review found in the viewer.
 describe("Customize, Save and Remove", () => {
+  const twoAccounts = () =>
+    useAccountStore.setState({
+      accounts: [{ id: "a-1", name: "Checking" } as never, { id: "a-2", name: "Visa" } as never],
+    });
+
+  it("Save with Customize still open saves what is checked there, and applies it", async () => {
+    twoAccounts();
+    const { onSpec, onSave } = setup({ spec: { ...spec, savedId: "saved-1", savedName: "Mine" } });
+    await screen.findByRole("heading", { name: "Mine" });
+    await userEvent.click(screen.getByRole("button", { name: "Customize…" }));
+    await userEvent.click(within(screen.getByRole("group", { name: "Accounts" })).getByRole("checkbox", { name: "Visa" }));
+    await userEvent.click(screen.getByRole("button", { name: /Save changes to this report/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    expect(onSave.mock.calls[0][0]).toMatchObject({ id: "saved-1", name: "Mine", account_ids: ["a-2"] });
+    await waitFor(() => expect(onSpec).toHaveBeenCalledWith(expect.objectContaining({ accountIds: ["a-2"], savedId: "saved-1" })));
+    expect(screen.queryByRole("region", { name: "Customize report" })).not.toBeInTheDocument();
+  });
+
+  it("a favorite customized further can be saved as a new favorite beside it", async () => {
+    twoAccounts();
+    const onSaveNew = vi.fn(async (r: SavedReport) => ({ ...r, id: r.id || "saved-2" }));
+    const { onSpec } = setup({ onSave: onSaveNew, spec: { ...spec, accountIds: ["a-2"], savedId: "saved-1", savedName: "Mine" } });
+    const onSave = onSaveNew;
+    await screen.findByRole("heading", { name: "Mine" });
+    await userEvent.click(screen.getByRole("button", { name: /Save changes to this report/ }));
+    const name = screen.getByLabelText("Name:");
+    await userEvent.clear(name);
+    await userEvent.type(name, "Mine - Visa only");
+    await userEvent.click(screen.getByRole("button", { name: "Save as a new favorite" }));
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    // No id: a new saved report, not a replacement of "Mine".
+    expect(onSave.mock.calls[0][0]).toMatchObject({ id: "", name: "Mine - Visa only", account_ids: ["a-2"] });
+    // The viewer is now the new favorite; "Mine" was not touched.
+    await waitFor(() => expect(onSpec).toHaveBeenCalledWith(expect.objectContaining({ savedId: "saved-2", savedName: "Mine - Visa only" })));
+  });
+
+  it("Enter in Customize applies it", async () => {
+    const { onSpec } = setup();
+    await screen.findByRole("heading", { name: "Spending by category" });
+    await userEvent.click(screen.getByRole("button", { name: "Customize…" }));
+    await userEvent.type(screen.getByLabelText("Smallest amount"), "50{Enter}");
+    await waitFor(() => expect(onSpec).toHaveBeenCalledWith(expect.objectContaining({ minCents: 5000 })));
+    expect(screen.queryByRole("region", { name: "Customize report" })).not.toBeInTheDocument();
+  });
+
   it("lets At least be typed as $50, and reads it on Apply", async () => {
     const { onSpec } = setup();
     await screen.findByRole("heading", { name: "Spending by category" });

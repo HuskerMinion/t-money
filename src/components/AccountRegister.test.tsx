@@ -1948,6 +1948,37 @@ describe("transfers", () => {
     });
   });
 
+  it("a transfer keeps the payee typed (a card payment to the Store Card)", async () => {
+    render(<AccountRegister />);
+    await screen.findByRole("table");
+    await userEvent.click(screen.getByRole("button", { name: "New" }));
+    await userEvent.type(screen.getByLabelText("Payee"), "Store Card");
+    await pickCategory("Transfer : Everyday Savings 5678");
+    // A typed payee is not replaced by "Transfer Money"…
+    expect((screen.getByLabelText("Payee") as HTMLInputElement).value).toBe("Store Card");
+    await userEvent.type(screen.getByLabelText("Payment"), "250.00");
+    await userEvent.click(screen.getByRole("button", { name: "Enter" }));
+    // …and it is what is saved.
+    const call = await waitFor(() => invokeCalls.find((c) => c.cmd === "create_transfer")!);
+    expect(call.args).toMatchObject({ payee: "Store Card" });
+  });
+
+  it("a transfer's payee can be typed over after the transfer is picked", async () => {
+    render(<AccountRegister />);
+    await screen.findByRole("table");
+    await userEvent.click(screen.getByRole("button", { name: "New" }));
+    await pickCategory("Transfer : Everyday Savings 5678");
+    const payee = screen.getByLabelText("Payee") as HTMLInputElement;
+    expect(payee.value).toBe("Transfer Money");
+    expect(payee).not.toHaveAttribute("readonly");
+    await userEvent.clear(payee);
+    await userEvent.type(payee, "Store Card");
+    await userEvent.type(screen.getByLabelText("Payment"), "250.00");
+    await userEvent.click(screen.getByRole("button", { name: "Enter" }));
+    const call = await waitFor(() => invokeCalls.find((c) => c.cmd === "create_transfer")!);
+    expect(call.args).toMatchObject({ payee: "Store Card" });
+  });
+
   it("a transfer in one currency sends no second amount", async () => {
     render(<AccountRegister />);
     await screen.findByRole("table");

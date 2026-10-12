@@ -58,7 +58,9 @@ interface AccountState {
     notes: string | null,
     /** The other side's amount, in its currency, when the two accounts
      *  are kept in different currencies; null otherwise. */
-    otherAmountCents?: number | null
+    otherAmountCents?: number | null,
+    /** A new payee for both halves; null keeps the one it has. */
+    payee?: string | null
   ) => Promise<void>;
   updateAccountDetails: (details: AccountDetails) => Promise<Account>;
   /** Bumped when something outside the register asks to start reconciling
@@ -276,8 +278,8 @@ export const useAccountStore = create<AccountState>((set, get) => ({
     return created;
   },
 
-  editTransfer: async (id, date, otherAccountId, amountCents, notes, otherAmountCents = null) => {
-    await api.updateTransfer(id, date, otherAccountId, amountCents, notes, otherAmountCents);
+  editTransfer: async (id, date, otherAccountId, amountCents, notes, otherAmountCents = null, payee = null) => {
+    await api.updateTransfer(id, date, otherAccountId, amountCents, notes, otherAmountCents, payee);
     // The backend records "edit a transfer" like every other edit;
     // without this the Edit menu kept naming the step before it.
     noteChanged();

@@ -960,6 +960,13 @@ pub fn seed(conn: &Conn) -> Result<SeedSummary, String> {
     account_names.push(name_of(conn, &heloc)?);
     account_names.push(name_of(conn, &old)?);
 
+    // The opening rows above are written as plain transactions; mark them
+    // as `create_account` marks its own, so reports leave them out. The
+    // demo's own accounts only: seeding leaves what was in the file alone.
+    for a in [&checking, &savings, &visa, &mastercard, &cash, &heloc, &truck_loan, &mortgage, &brokerage, &retirement, &home, &old] {
+        queries::mark_opening_balances(conn, Some(a))?;
+    }
+
     Ok(SeedSummary {
         accounts: account_names.len() as u32,
         transactions: n_txn,

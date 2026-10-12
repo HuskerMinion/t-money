@@ -225,8 +225,16 @@ describe("transfer commands", () => {
         amountCents: -25000,
         otherAmountCents: null,
         notes: null,
+        payee: null,
       },
     });
+  });
+
+  it("updateTransfer and createTransfer send the payee typed", async () => {
+    await api.updateTransfer("t-1", "2026-09-01", "acc-2", -25000, null, null, "Store Card");
+    expect(lastCall().args).toMatchObject({ payee: "Store Card" });
+    await api.createTransfer("acc-1", "acc-2", "2026-09-01", 25000, null, null, "Store Card");
+    expect(lastCall().args).toMatchObject({ payee: "Store Card" });
   });
 });
 
@@ -443,6 +451,7 @@ describe("module commands", () => {
         amountCents: 25000,
         receivedCents: null,
         notes: null,
+        payee: null,
       },
     });
   });

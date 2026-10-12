@@ -655,8 +655,8 @@ export default function TransactionEditRow({
             onSettle={recallCategoryFor}
             payees={payees}
             placeholder={transferToAccountId !== null ? "Transfer Money" : "Payee"}
-            readOnly={transferToAccountId !== null}
-            title={transferToAccountId !== null ? "A transfer's payee is the other account" : undefined}
+            // A transfer's payee can be typed over ("Store Card" for a card
+            // payment); left blank it is "Transfer Money", as Money fills it.
             autoFocus={startIn === "payee"}
           />
         </td>

@@ -1,7 +1,7 @@
 // T-Money main application shell: Aero header + slate sidebar + content area.
 // The Home tab shows the dashboard widgets; Banking shows accounts + a
 // quick-add transaction form. All data flows through Tauri IPC.
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { accountWorth } from "./lib/accountTypes";
 import { currencyOf } from "./lib/currency";
 import AeroHeader, { type Tab } from "./components/AeroHeader";
@@ -235,12 +235,21 @@ export default function App() {
   // updates prices), which is what lets the menu gray out honestly.
   const favoriteAccounts = useAccountStore((s) => s.favorites);
   const [savedReports, setSavedReports] = useState<{ id: string; name: string }[]>([]);
-  useEffect(() => {
-    void api
-      .listSavedReports()
-      .then((rs) => setSavedReports(rs.map((r) => ({ id: r.id, name: r.name }))))
-      .catch(() => setSavedReports([]));
+  // Re-read on open and whenever the Reports tab saves, renames or removes
+  // one. It used to be read only when a file was opened, so a report just
+  // saved was missing from Favorites → Favorite reports (and a removed one
+  // stayed) until the file was opened again.
+  const reloadSavedReports = useCallback(async () => {
+    try {
+      const rs = await api.listSavedReports();
+      setSavedReports(rs.map((r) => ({ id: r.id, name: r.name })));
+    } catch {
+      setSavedReports([]);
+    }
   }, []);
+  useEffect(() => {
+    void reloadSavedReports();
+  }, [reloadSavedReports]);
 
   const goTab = (t: Tab) => {
     setReportKind(null);
@@ -666,12 +675,7 @@ export default function App() {
     await loadFormat(true);
     await useAccountStore.getState().reloadAll();
     await useBudgetStore.getState().loadSummary();
-    try {
-      const rs = await api.listSavedReports();
-      setSavedReports(rs.map((r) => ({ id: r.id, name: r.name })));
-    } catch {
-      setSavedReports([]);
-    }
+    await reloadSavedReports();
     await refreshFiles();
   }
 
@@ -1148,6 +1152,7 @@ export default function App() {
           {tab === "Reports" && (
             <ReportsView
               initialOpen={reportOpen}
+              onSavedReportsChanged={() => void reloadSavedReports()}
               onOpenAccount={openAccountRegister}
               onOpenTransaction={(accountId, txnId) => void openTransaction(accountId, txnId)}
             />

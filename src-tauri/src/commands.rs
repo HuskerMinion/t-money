@@ -3123,11 +3123,15 @@ pub fn update_transfer(
     amount_cents: i64,
     other_amount_cents: Option<i64>,
     notes: Option<String>,
+    payee: Option<String>,
 ) -> Result<Transaction, String> {
     let (_g, conn) = with_conn(&state)?;
     let ids = undo::related_ids(&conn, &id)?;
     let (out, step) = undo::recording(&conn, "edit a transfer", &ids, || {
-        queries::update_transfer_amounts(&conn, &id, &date, &other_account_id, amount_cents, other_amount_cents, notes.as_deref())
+        // No payee sent leaves the ones the transfer has; a blank one is
+        // "Transfer Money".
+        let payee = payee.as_deref().map(|p| queries::transfer_payee(Some(p)));
+        queries::update_transfer_payee(&conn, &id, &date, &other_account_id, amount_cents, other_amount_cents, notes.as_deref(), payee)
     })?;
     push_undo(&state, step)?;
     Ok(out)
@@ -3185,11 +3189,15 @@ pub fn create_transfer(
     amount_cents: i64,
     received_cents: Option<i64>,
     notes: Option<String>,
+    payee: Option<String>,
 ) -> Result<Transaction, String> {
     let (_g, conn) = with_conn(&state)?;
+    // The payee typed in the register ("Store Card" for a card payment)
+    // goes on both halves; a blank one is Money's "Transfer Money".
+    let payee = queries::transfer_payee(payee.as_deref());
     match received_cents {
-        Some(received) => queries::create_transfer_between(&conn, &from_account_id, &to_account_id, &date, amount_cents, received, notes.as_deref()),
-        None => queries::create_transfer(&conn, &from_account_id, &to_account_id, &date, amount_cents, notes.as_deref()),
+        Some(received) => queries::create_transfer_between_named(&conn, &from_account_id, &to_account_id, &date, amount_cents, received, notes.as_deref(), payee),
+        None => queries::create_transfer_named(&conn, &from_account_id, &to_account_id, &date, amount_cents, notes.as_deref(), payee),
     }
 }
 

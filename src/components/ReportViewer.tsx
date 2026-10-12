@@ -233,7 +233,9 @@ export function drillFor(spec: ReportSpec, row: ReportLine): Partial<ReportSpec>
   if (!row.key_kind || row.key === null) return null;
   switch (row.key_kind) {
     case "category":
-      return { kind: "transactions_by_category", categoryIds: row.key ? [row.key] : [] };
+      // The row clicked, included — even when the report itself leaves
+      // its categories out, or the drill would open everything else.
+      return { kind: "transactions_by_category", categoryIds: row.key ? [row.key] : [], excludeCategories: false };
     case "payee":
       // Scoped to the payee clicked (the line filter), so the report
       // it opens is that payee's transactions, not every payee's. A payee
@@ -299,22 +301,58 @@ export default function ReportViewer({ spec, onSpec, onOpenAccount, onOpenTransa
     setAmountText({ min: centsText(spec.minCents), max: centsText(spec.maxCents) });
     setCustomize(true);
   }
+  /** The report Customize describes, as Apply would run it. */
+  function draftSpec(d: ReportSpec): ReportSpec {
+    // A half-filled comparison is no comparison. Clearing one of
+    // the two dates left "" in the request, which the backend refused;
+    // either box blank now means what the hint beside them says — the
+    // same length of time just before.
+    const compare = d.compare && d.compare.from && d.compare.to ? d.compare : null;
+    return {
+      ...d,
+      compare,
+      minCents: centsOrNull(amountText.min),
+      maxCents: centsOrNull(amountText.max),
+    };
+  }
   function closeCustomize(apply: boolean) {
-    if (apply && draft) {
-      // A half-filled comparison is no comparison. Clearing one of
-      // the two dates left "" in the request, which the backend refused;
-      // either box blank now means what the hint beside them says — the
-      // same length of time just before.
-      const compare = draft.compare && draft.compare.from && draft.compare.to ? draft.compare : null;
-      onSpec({
-        ...draft,
-        compare,
-        minCents: centsOrNull(amountText.min),
-        maxCents: centsOrNull(amountText.max),
-      });
-    }
+    if (apply && draft) onSpec(draftSpec(draft));
     setDraft(null);
     setCustomize(false);
+  }
+
+  // Enter in Customize asks for Apply; it runs once the draft has the
+  // keystroke's own changes in it.
+  const [applyOnEnter, setApplyOnEnter] = useState(false);
+  useEffect(() => {
+    if (!applyOnEnter) return;
+    setApplyOnEnter(false);
+    closeCustomize(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [applyOnEnter]);
+
+  /** Save the report under the name typed: over the favorite it came from,
+   *  or (`asNew`) as another favorite beside it. With Customize open, what
+   *  the panel says is saved and applied — Save used to store the report as
+   *  last applied and quietly drop the accounts just checked. */
+  function saveReport(asNew: boolean) {
+    if (saveBusy) return;
+    const base = customize && draft ? draftSpec(draft) : spec;
+    if (customize) closeCustomize(false);
+    const toSave = asNew ? { ...base, savedId: undefined, savedName: undefined } : base;
+    setSaveError(null);
+    setSaveBusy(true);
+    onSave(savedFromSpec(toSave, saveName))
+      .then((stored) => {
+        onSpec({ ...base, savedId: stored.id, savedName: stored.name });
+        setSaving(false);
+      })
+      .catch((err) => {
+        // Not saved: what was being described is still on screen, applied.
+        if (base !== spec) onSpec(base);
+        setSaveError(String(err));
+      })
+      .finally(() => setSaveBusy(false));
   }
 
   useEffect(() => {
@@ -401,7 +439,16 @@ export default function ReportViewer({ spec, onSpec, onOpenAccount, onOpenTransa
       parts.push(spec.accountIds.map((id) => accounts.find((a) => a.id === id)?.name ?? "?").join(", "));
     }
     if (spec.categoryIds.length) {
-      const names = spec.categoryIds.map((id) => categories.find((c) => c.id === id)?.full_name ?? categories.find((c) => c.id === id)?.name ?? "?").join(", ");
+      const nameOf = (id: string): string => {
+        // The drill-through scopes of the Uncategorized and Unassigned rows.
+        if (id === "uncategorized") return "Uncategorized";
+        if (id === "uncategorized:in") return "Uncategorized income";
+        if (id === "uncategorized:out") return "Uncategorized expenses";
+        if (id.startsWith("own:")) return `${nameOf(id.slice(4))} - Unassigned`;
+        const c = categories.find((x) => x.id === id);
+        return c?.full_name ?? c?.name ?? "?";
+      };
+      const names = spec.categoryIds.map(nameOf).join(", ");
       parts.push(spec.excludeCategories ? `all but ${names}` : names);
     }
     return parts.join(" · ");
@@ -435,7 +482,9 @@ export default function ReportViewer({ spec, onSpec, onOpenAccount, onOpenTransa
       // The quick look is this report, narrowed — it must carry the same
       // filters or its rows would not add up to the row that opened it.
       ...filtersOf(spec),
-      // …and the value that was clicked narrows it further.
+      // …and the value that was clicked narrows it further. A category
+      // clicked is included, whatever the report leaves out.
+      ...(peek.drill.categoryIds?.length ? { exclude_categories: false } : {}),
       payee_ids: peek.drill.payeeIds?.length ? peek.drill.payeeIds : spec.payeeIds?.length ? spec.payeeIds : null,
       class_value_ids: peek.drill.classValueIds?.length
         ? peek.drill.classValueIds
@@ -631,16 +680,7 @@ export default function ReportViewer({ spec, onSpec, onOpenAccount, onOpenTransa
             aria-label="Save report"
             onSubmit={(e) => {
               e.preventDefault();
-              if (saveBusy) return;
-              setSaveError(null);
-              setSaveBusy(true);
-              onSave(savedFromSpec(spec, saveName))
-                .then((stored) => {
-                  onSpec({ ...spec, savedId: stored.id, savedName: stored.name });
-                  setSaving(false);
-                })
-                .catch((err) => setSaveError(String(err)))
-                .finally(() => setSaveBusy(false));
+              saveReport(false);
             }}
           >
             <div className="aero-card-title">{spec.savedId ? "Save changes" : "Add to my favorite reports"}</div>
@@ -653,11 +693,22 @@ export default function ReportViewer({ spec, onSpec, onOpenAccount, onOpenTransa
                 onChange={(e) => setSaveName(e.target.value)}
                 autoFocus
               />
-              <button className="aero-btn default" type="submit" disabled={saveBusy}>Save</button>
+              <button className="aero-btn default" type="submit" disabled={saveBusy}>
+                {spec.savedId ? "Save changes" : "Save"}
+              </button>
+              {/* A favorite customized further can be kept as one more,
+                  leaving the one it came from as it was. */}
+              {spec.savedId && (
+                <button className="aero-btn" type="button" disabled={saveBusy} onClick={() => saveReport(true)}>
+                  Save as a new favorite
+                </button>
+              )}
               <button className="aero-btn" type="button" onClick={() => setSaving(false)}>Cancel</button>
             </div>
             <div className="px-3 pb-2 text-[12px] tm-text-muted">
-              Saves the report with its date range, accounts and categories, into your file.
+              Saves the report with its date range, accounts and categories, into your file
+              {customize ? ", including the changes in Customize below" : ""}.
+              {spec.savedId ? " A new favorite needs a name of its own." : ""}
             </div>
             {saveError && (
               <div className="px-3 pb-2">
@@ -680,7 +731,24 @@ export default function ReportViewer({ spec, onSpec, onOpenAccount, onOpenTransa
           const setDOptions = (patch: Partial<ReportOptions>) => setDraft({ ...d, options: { ...dOptions, ...patch } });
           const dirty = JSON.stringify(savedFromSpec(d, "")) !== JSON.stringify(savedFromSpec(spec, ""));
           return (
-          <div className="aero-card mb-3" role="region" aria-label="Customize report">
+          <div
+            className="aero-card mb-3"
+            role="region"
+            aria-label="Customize report"
+            onKeyDown={(e) => {
+              // Apply is the default button: Enter in any box or check box
+              // runs the report described. Not on a button (it is its own
+              // action) or in a list being chosen from.
+              if (e.key !== "Enter" || e.defaultPrevented || e.nativeEvent.isComposing) return;
+              const t = e.target as HTMLInputElement;
+              // A list's search box narrows the list; Enter there is not Apply.
+              if (t.tagName !== "INPUT" || t.type === "search") return;
+              e.preventDefault();
+              // After this keystroke's own updates — Enter in a date box
+              // commits the date to the draft in the same event.
+              setApplyOnEnter(true);
+            }}
+          >
             <div className="aero-card-title">Customize</div>
             <div className="p-3 grid grid-cols-1 md:grid-cols-2 gap-3 text-[12px]">
               <PickList

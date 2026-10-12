@@ -1540,6 +1540,25 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
             ON simplefin_accounts(account_id) WHERE account_id IS NOT NULL;
         "#,
     ),
+    (
+        "0050",
+        "opening_balances_are_not_income_or_spending",
+        r#"
+        -- An opening balance is what was already in the account, not income
+        -- or spending. `create_account` has marked its row a revaluation since
+        -- 0032 so category reports leave it out, but the rows 0021 wrote,
+        -- the demo's, and a QIF file's own opening line were never marked: a
+        -- $150,000 mortgage read as $150,000 of uncategorized expense in
+        -- Monthly income and expenses. Same test the account merge uses.
+        -- Kept in step with `queries::mark_opening_balances`.
+        UPDATE transactions SET is_revaluation = 1
+         WHERE payee = 'Opening Balance'
+           AND category_id IS NULL AND activity IS NULL
+           AND transfer_id IS NULL AND is_split_transfer = 0
+           AND is_revaluation = 0
+           AND NOT EXISTS (SELECT 1 FROM splits s WHERE s.transaction_id = transactions.id);
+        "#,
+    ),
 ];
 
 /// Apply all pending migrations to `conn`. Returns the number applied.

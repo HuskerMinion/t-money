@@ -119,6 +119,25 @@ fn with_holdings(conn: &Connection, mut accounts: Vec<Account>) -> Result<Vec<Ac
     Ok(accounts)
 }
 
+/// Mark every unmarked "Opening Balance" row a revaluation, so category
+/// and payee reports leave it out (see `create_account`). For the rows
+/// written without `create_account`: the demo's and a QIF file's opening
+/// line. Migration 0050 does the same once for older files. `account`
+/// limits it to one account's rows (an import touches only its own).
+pub fn mark_opening_balances(conn: &Connection, account: Option<&str>) -> Result<usize, String> {
+    conn.execute(
+        "UPDATE transactions SET is_revaluation = 1
+         WHERE payee = 'Opening Balance'
+           AND category_id IS NULL AND activity IS NULL
+           AND transfer_id IS NULL AND is_split_transfer = 0
+           AND is_revaluation = 0
+           AND NOT EXISTS (SELECT 1 FROM splits s WHERE s.transaction_id = transactions.id)
+           AND (?1 IS NULL OR account_id = ?1)",
+        params![account],
+    )
+    .map_err(|e| e.to_string())
+}
+
 pub fn create_account(
     conn: &Conn,
     name: &str,

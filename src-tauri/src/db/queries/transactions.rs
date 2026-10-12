@@ -542,6 +542,32 @@ pub fn create_transfer(
     amount_cents: i64,
     notes: Option<&str>,
 ) -> Result<Transaction, String> {
+    create_transfer_named(conn, from_account_id, to_account_id, date, amount_cents, notes, TRANSFER_PAYEE)
+}
+
+/// The payee a transfer gets when none was typed, as Money fills it in.
+pub const TRANSFER_PAYEE: &str = "Transfer Money";
+
+/// The payee typed for a transfer, or Money's "Transfer Money" when the box
+/// was left blank.
+pub fn transfer_payee(typed: Option<&str>) -> &str {
+    match typed.map(str::trim) {
+        Some(p) if !p.is_empty() => p,
+        _ => TRANSFER_PAYEE,
+    }
+}
+
+/// `create_transfer` under the payee the register was given ("Store Card"
+/// for a card payment), on both halves.
+pub fn create_transfer_named(
+    conn: &Conn,
+    from_account_id: &str,
+    to_account_id: &str,
+    date: &str,
+    amount_cents: i64,
+    notes: Option<&str>,
+    payee: &str,
+) -> Result<Transaction, String> {
     if from_account_id == to_account_id {
         return Err("cannot transfer to the same account".to_string());
     }
@@ -549,7 +575,7 @@ pub fn create_transfer(
     let magnitude = magnitude(amount_cents)?;
 
     let tx = conn.unchecked_transaction().map_err(|e| e.to_string())?;
-    let (from_id, _to_id) = insert_transfer_pair(&tx, from_account_id, to_account_id, date, magnitude, notes)?;
+    let (from_id, _to_id) = insert_transfer_pair_named(&tx, from_account_id, to_account_id, date, magnitude, notes, payee)?;
     tx.commit().map_err(|e| e.to_string())?;
 
     conn.query_row(
@@ -574,19 +600,34 @@ pub fn create_transfer_between(
     received_cents: i64,
     notes: Option<&str>,
 ) -> Result<Transaction, String> {
+    create_transfer_between_named(conn, from_account_id, to_account_id, date, sent_cents, received_cents, notes, TRANSFER_PAYEE)
+}
+
+/// `create_transfer_between` under the payee the register was given.
+#[allow(clippy::too_many_arguments)]
+pub fn create_transfer_between_named(
+    conn: &Conn,
+    from_account_id: &str,
+    to_account_id: &str,
+    date: &str,
+    sent_cents: i64,
+    received_cents: i64,
+    notes: Option<&str>,
+    payee: &str,
+) -> Result<Transaction, String> {
     let (sent, received) = (magnitude(sent_cents)?, magnitude(received_cents)?);
     if account_currency(conn, from_account_id)? == account_currency(conn, to_account_id)? {
         if sent != received {
             return Err("Both accounts are kept in the same currency, so the amount sent and the amount received must be the same.".to_string());
         }
-        return create_transfer(conn, from_account_id, to_account_id, date, sent, notes);
+        return create_transfer_named(conn, from_account_id, to_account_id, date, sent, notes, payee);
     }
     if from_account_id == to_account_id {
         return Err("cannot transfer to the same account".to_string());
     }
     refuse_new_link_to_closed(conn, &[from_account_id, to_account_id])?;
     let tx = conn.unchecked_transaction().map_err(|e| e.to_string())?;
-    let (from_id, _) = insert_transfer_pair_amounts(&tx, from_account_id, to_account_id, date, sent, received, notes, "Transfer Money")?;
+    let (from_id, _) = insert_transfer_pair_amounts(&tx, from_account_id, to_account_id, date, sent, received, notes, payee)?;
     tx.commit().map_err(|e| e.to_string())?;
     conn.query_row(
         "SELECT id, account_id, date, payee, category_id, amount_cents, is_reconciled, notes
@@ -616,7 +657,7 @@ pub(super) fn insert_transfer_pair(
     magnitude: i64,
     notes: Option<&str>,
 ) -> Result<(String, String), String> {
-    insert_transfer_pair_named(tx, from_account_id, to_account_id, date, magnitude, notes, "Transfer Money")
+    insert_transfer_pair_named(tx, from_account_id, to_account_id, date, magnitude, notes, TRANSFER_PAYEE)
 }
 
 /// The pair with a payee of the caller's choosing — a scheduled transfer
@@ -739,6 +780,25 @@ pub fn update_transfer_amounts(
     other_amount_cents: Option<i64>,
     notes: Option<&str>,
 ) -> Result<Transaction, String> {
+    update_transfer_payee(conn, id, date, other_account_id, amount_cents, other_amount_cents, notes, None)
+}
+
+/// `update_transfer_amounts`, renaming both halves to `payee` in the same
+/// write when one is given and it differs from the payee this half has
+/// ("Store Card" typed over "Transfer Money"). None keeps the payees as
+/// they are — and so does the same name sent again, so an edit of the date
+/// does not copy this half's bank text onto the other half.
+#[allow(clippy::too_many_arguments)]
+pub fn update_transfer_payee(
+    conn: &Conn,
+    id: &str,
+    date: &str,
+    other_account_id: &str,
+    amount_cents: i64,
+    other_amount_cents: Option<i64>,
+    notes: Option<&str>,
+    payee: Option<&str>,
+) -> Result<Transaction, String> {
     magnitude(amount_cents)?;
     if let Some(o) = other_amount_cents.filter(|o| *o != 0) {
         magnitude(o)?;
@@ -833,6 +893,20 @@ pub fn update_transfer_amounts(
 
     adjust(&this_account, new_this)?;
     adjust(other_account_id, new_other)?;
+
+    if let Some(p) = payee {
+        let current: String = tx
+            .query_row("SELECT payee FROM transactions WHERE id = ?1", params![id], |r| r.get(0))
+            .map_err(|e| e.to_string())?;
+        if p != current {
+            let payee_id = payee_id_for(&tx, p, None)?;
+            tx.execute(
+                "UPDATE transactions SET payee = ?2, payee_id = ?3 WHERE id IN (?1, ?4)",
+                params![id, p, payee_id, other_id],
+            )
+            .map_err(|e| e.to_string())?;
+        }
+    }
 
     tx.commit().map_err(|e| e.to_string())?;
 
@@ -1376,6 +1450,36 @@ mod tests {
         assert_eq!(balance(&c, &chk), 75_000);
         assert_eq!(balance(&c, &sav), 75_000);
         assert_eq!(total_of_all_accounts(&c), before, "a transfer invented money");
+    }
+
+    #[test]
+    fn a_transfer_keeps_the_payee_typed_and_a_blank_one_is_transfer_money() {
+        let db = TestDb::new("transfer-payee");
+        let c = db.conn();
+        let chk = account(&c, "Checking", 100_000);
+        let card = account(&c, "Store Card", -30_000);
+        let payees = |c: &Conn| -> Vec<String> {
+            let mut s = c.prepare("SELECT payee FROM transactions WHERE transfer_id IS NOT NULL ORDER BY payee").unwrap();
+            s.query_map([], |r| r.get(0)).unwrap().map(|r| r.unwrap()).collect()
+        };
+
+        let t = create_transfer_named(&c, &chk, &card, "2026-08-01", 25_000, None, transfer_payee(Some(" Store Card "))).expect("transfer");
+        assert_eq!(t.payee, "Store Card");
+        assert_eq!(payees(&c), ["Store Card", "Store Card"]);
+
+        // An edit that renames it renames both halves.
+        update_transfer_payee(&c, &t.id, "2026-08-01", &card, -20_000, None, None, Some("Card payment")).expect("rename");
+        assert_eq!(payees(&c), ["Card payment", "Card payment"]);
+
+        // Halves named apart (a bank's own text on each) stay apart when
+        // an edit sends this half's name back unchanged.
+        let other = entered(&c, &card).into_iter().find(|r| r.amount_cents > 0).unwrap().id;
+        c.execute("UPDATE transactions SET payee = 'ONLINE XFER FROM CHK' WHERE id = ?1", params![other]).unwrap();
+        update_transfer_payee(&c, &t.id, "2026-08-02", &card, -20_000, None, None, Some("Card payment")).expect("edit");
+        assert_eq!(payees(&c), ["Card payment", "ONLINE XFER FROM CHK"]);
+
+        assert_eq!(transfer_payee(Some("  ")), "Transfer Money");
+        assert_eq!(transfer_payee(None), "Transfer Money");
     }
 
     #[test]

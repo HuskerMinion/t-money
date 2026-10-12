@@ -1338,6 +1338,9 @@ fn import_parsed(
         ));
     }
 
+    // A QIF file's own opening line (`L[ThisAccount]`) is written as a
+    // plain row; it is no more income than `create_account`'s is.
+    crate::db::queries::mark_opening_balances(&tx, Some(account_id))?;
     tx.commit().map_err(|e| e.to_string())?;
 
     // Say what was booked beside the plan's share rows, in money.
