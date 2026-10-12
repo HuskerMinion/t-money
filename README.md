@@ -171,12 +171,12 @@ If you want to be sure a file is the real one before you run it:
   downloaded; the result must match the line for that file.
 
   ```powershell
-  Get-FileHash .\T-Money_1.3.0_x64-setup.exe -Algorithm SHA256   # Windows, in PowerShell
+  Get-FileHash .\T-Money_1.4.0_x64-setup.exe -Algorithm SHA256   # Windows, in PowerShell
   ```
 
   ```sh
-  shasum -a 256 T-Money_1.3.0_universal.dmg      # Mac
-  sha256sum T-Money_1.3.0_amd64.AppImage         # Linux
+  shasum -a 256 T-Money_1.4.0_universal.dmg      # Mac
+  sha256sum T-Money_1.4.0_amd64.AppImage         # Linux
   ```
 
 - **Check where it was built.** Every download is built by GitHub from the public source in this
@@ -184,7 +184,7 @@ If you want to be sure a file is the real one before you run it:
   [GitHub CLI](https://cli.github.com/):
 
   ```sh
-  gh attestation verify T-Money_1.3.0_x64-setup.exe --repo HuskerMinion/t-money
+  gh attestation verify T-Money_1.4.0_x64-setup.exe --repo HuskerMinion/t-money
   ```
 
 ## Coming from Microsoft Money
