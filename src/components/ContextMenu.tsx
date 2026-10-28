@@ -68,6 +68,17 @@ export function keepsBrowserMenu(target: EventTarget | null, selection: string):
   return !!el?.closest(TEXT_FIELD);
 }
 
+/** Whether a right-click on a row should get the webview's menu instead of
+ *  the row's: in a text box inside the row (an inline rename), or on text
+ *  selected in THIS row, where Cut, Copy and Paste are what is wanted. A
+ *  selection left somewhere else on the page does not count, or it would
+ *  take the menu away from every row. */
+export function rowKeepsBrowserMenu(e: { target: EventTarget | null; currentTarget: Element }): boolean {
+  const sel = window.getSelection();
+  const selectedHere = sel?.anchorNode && e.currentTarget.contains(sel.anchorNode) ? sel.toString() : "";
+  return keepsBrowserMenu(e.target, selectedHere);
+}
+
 export default function ContextMenu({ x, y, items, onClose, label }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ x, y });
@@ -124,7 +135,8 @@ export default function ContextMenu({ x, y, items, onClose, label }: Props) {
         close(true);
         break;
       case "Tab":
-        // Back where it was, not lost on <body>: Tab goes on from there.
+        // Focus goes back where it was (the row), not lost on <body>;
+        // the next Tab moves on from there.
         close(true);
         break;
       default:
@@ -191,10 +203,7 @@ export function useContextMenu<T>() {
   return {
     menu,
     open: (e: React.MouseEvent, target: T) => {
-      // A text box inside the row (an inline rename), or text selected in
-      // it, keeps the webview's Cut, Copy and Paste; the row's menu is for
-      // the row.
-      if (keepsBrowserMenu(e.target, window.getSelection()?.toString() ?? "")) return;
+      if (rowKeepsBrowserMenu(e)) return;
       e.preventDefault();
       e.stopPropagation();
       setMenu({ target, ...menuPoint(e) });

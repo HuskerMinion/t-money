@@ -23,6 +23,7 @@ import { activityLabel, formatPrice, formatShares } from "../lib/shares";
 import { sortAscending, sortColumn } from "../lib/registerView";
 import type { RegisterSort, SortColumn } from "../lib/registerView";
 import type { RegisterRow } from "../lib/types";
+import { rowKeepsBrowserMenu } from "./ContextMenu";
 
 /** A titled block of rows. `label: null` renders the rows ungrouped. */
 export interface RegisterGroup {
@@ -368,8 +369,9 @@ function Row({
       }}
       onDoubleClick={() => onActivate?.(row.id)}
       onContextMenu={(e) => {
-        if (!onRowContextMenu) return;
-        e.preventDefault();
+        // Text selected in the row keeps the browser's Copy, and the row is
+        // left as it was (selecting it would save an open form).
+        if (!onRowContextMenu || rowKeepsBrowserMenu(e)) return;
         onSelect?.(row.id);
         onRowContextMenu(row.id, e);
       }}

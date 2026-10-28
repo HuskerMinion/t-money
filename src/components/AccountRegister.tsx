@@ -176,6 +176,10 @@ export default function AccountRegister() {
   // Right-click → Split… or Attachments…: the row opens for editing with
   // that window already up, the only place either lives.
   const [openPart, setOpenPart] = useState<"split" | "attachments" | null>(null);
+  // Counts those requests. It is in the edit row's key, so a new request
+  // opens the window even on the row already being edited; the part itself
+  // is not, so clearing it once taken never remounts the form.
+  const [openSeq, setOpenSeq] = useState(0);
   // "Mark reconciled through…" — the date, and how many rows it would touch.
   const [reconcileThrough, setReconcileThrough] = useState<string | null>(null);
   const [reconcileCount, setReconcileCount] = useState<number | null>(null);
@@ -1006,7 +1010,12 @@ export default function AccountRegister() {
 
   /** Open a row for editing with its split or attachments window up. */
   async function openWith(id: string, part: "split" | "attachments") {
-    if (await openForEdit(id)) setOpenPart(part);
+    // The row already open is opened again (its form remounts), so what
+    // was typed in it is saved first, as any other way out of a form does.
+    if (editingId === id && !(await leaveOpenForm())) return;
+    if (!(await openForEdit(id))) return;
+    setOpenPart(part);
+    setOpenSeq((n) => n + 1);
   }
 
   /** Contribution / Employer Contribution / Deposit / Withdrawal / Fee
@@ -1493,9 +1502,9 @@ export default function AccountRegister() {
             ) : (
               <TransactionEditRow
                 columnLabels={columnLabels}
-                // The window asked for is part of the key, so a row already
-                // open still opens it.
-                key={`${r.id}:${splitsLoad.token}:${openPart ?? ""}`}
+                // A new Split… / Attachments… request remounts the row with
+                // that window up (openSeq); nothing else about it does.
+                key={`${r.id}:${splitsLoad.token}:${openSeq}`}
                 columns={isInvestment ? 10 : 9}
                 goals={goalsFor(r.transfer_account_id)}
                 classifications={classifications}
@@ -1507,6 +1516,8 @@ export default function AccountRegister() {
                 onCreateCategory={createCategoryInline}
                 initialSplits={editingSplits}
                 openOnMount={openPart}
+                // Taken: a later remount (a reload of its lines) opens plain.
+                onOpenedOnMount={() => setOpenPart(null)}
                 // Open accounts, plus a closed one this row or its
                 // split lines already transfer to (N9).
                 transferTargets={pickableAccounts(accounts, [

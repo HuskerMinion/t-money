@@ -2414,6 +2414,40 @@ describe("register interactions", () => {
       expect(screen.queryByRole("dialog", { name: "Transaction with Multiple Categories" })).toBeNull();
     });
 
+    // The second review's finding: the window asked for was part of the
+    // form's key, so forgetting it remounted the form and lost what was typed.
+    it("after Split…, Edit on the same row keeps what was typed since", async () => {
+      with_([withdrawal]);
+      render(<AccountRegister />);
+      await screen.findByRole("table");
+      fireEvent.contextMenu(dataRows()[0]);
+      await userEvent.click(screen.getByRole("menuitem", { name: "Split…" }));
+      const split = await screen.findByRole("dialog", { name: "Transaction with Multiple Categories" });
+      await userEvent.click(within(split).getByRole("button", { name: "Cancel" }));
+      const payee = screen.getByLabelText("Payee");
+      await userEvent.clear(payee);
+      await userEvent.type(payee, "Corner Market");
+      // The toolbar's Edit, on the row already being edited.
+      await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+      expect(screen.getByLabelText("Payee")).toHaveValue("Corner Market");
+    });
+
+    it("text selected in a row keeps the browser's Copy, and leaves the row unselected", async () => {
+      with_([withdrawal]);
+      render(<AccountRegister />);
+      await screen.findByRole("table");
+      const cell = within(dataRows()[0]).getByText("Grocery Store");
+      const range = document.createRange();
+      range.selectNodeContents(cell);
+      window.getSelection()!.removeAllRanges();
+      window.getSelection()!.addRange(range);
+      const notPrevented = fireEvent.contextMenu(cell, { clientX: 10, clientY: 10 });
+      window.getSelection()!.removeAllRanges();
+      expect(notPrevented).toBe(true);
+      expect(screen.queryByRole("menu")).toBeNull();
+      expect(dataRows()[0]).toHaveAttribute("aria-selected", "false");
+    });
+
     it("a transfer offers no Split…", async () => {
       with_([transfer]);
       render(<AccountRegister />);

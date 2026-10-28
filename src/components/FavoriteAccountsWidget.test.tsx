@@ -50,3 +50,13 @@ describe("the favorite accounts card context menu", () => {
     expect(toggle).toHaveBeenCalledWith("a-1");
   });
 });
+
+describe("a favorite that cannot be changed", () => {
+  it("says so in the app-wide notice instead of doing nothing", async () => {
+    useAccountStore.setState({ toggleFavorite: vi.fn(async () => { throw "database is locked"; }), error: null });
+    render(<FavoriteAccountsWidget />);
+    fireEvent.contextMenu(screen.getByRole("button", { name: "Open Checking" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Remove from favorites" }));
+    await vi.waitFor(() => expect(useAccountStore.getState().error).toBe("Could not change favorites: database is locked"));
+  });
+});

@@ -170,3 +170,31 @@ describe("useContextMenu", () => {
     expect(screen.getByRole("menuitem", { name: "Open row-1" })).toBeInTheDocument();
   });
 });
+
+describe("selected text and the row's menu", () => {
+  function select(node: Node) {
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    const sel = window.getSelection()!;
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+
+  it("text selected in the row keeps the webview's Copy", () => {
+    render(<RowsWithInput />);
+    select(screen.getByText("Row 1"));
+    const notPrevented = fireEvent.contextMenu(screen.getByText("Row 1"), { clientX: 20, clientY: 30 });
+    expect(notPrevented).toBe(true);
+    expect(screen.queryByRole("menu")).toBeNull();
+    window.getSelection()!.removeAllRanges();
+  });
+
+  it("text left selected somewhere else does not take the menu away from the row", () => {
+    render(<><p>Elsewhere</p><RowsWithInput /></>);
+    select(screen.getByText("Elsewhere"));
+    const prevented = !fireEvent.contextMenu(screen.getByText("Row 1"), { clientX: 20, clientY: 30 });
+    expect(prevented).toBe(true);
+    expect(screen.getByRole("menuitem", { name: "Open row-1" })).toBeInTheDocument();
+    window.getSelection()!.removeAllRanges();
+  });
+});

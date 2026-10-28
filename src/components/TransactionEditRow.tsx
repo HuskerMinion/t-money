@@ -135,6 +135,8 @@ interface Props {
   /** Open straight into the split or attachments window: the register's
    *  right-click Split… and Attachments…. */
   openOnMount?: "split" | "attachments" | null;
+  /** Called once `openOnMount` has been acted on, so the caller can forget it. */
+  onOpenedOnMount?: () => void;
 }
 
 export type LeaveResult = "saved" | "clean" | "failed";
@@ -221,6 +223,7 @@ export default function TransactionEditRow({
   onEntered,
   onAttachmentsChanged,
   openOnMount = null,
+  onOpenedOnMount,
 }: Props) {
   const initial = seed(row, suggestedCheckNumber, defaultDate, preset);
 
@@ -304,6 +307,11 @@ export default function TransactionEditRow({
   // attach to; a new entry's button says so and stays disabled.
   const [showAttachments, setShowAttachments] = useState(openOnMount === "attachments" && !!row);
   const [attachmentCount, setAttachmentCount] = useState<number | null>(row?.attachment_count ?? null);
+  // The window asked for has opened (its state started open); say so once.
+  useEffect(() => {
+    if (openOnMount) onOpenedOnMount?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // Where the caret goes when the split dialog closes. The dialog
   // unmounts with the button that had focus, and a keydown on <body> never
   // reaches this row's handlers, which is why Enter did nothing after Done.

@@ -646,3 +646,18 @@ describe("the row menu", () => {
     confirm.mockRestore();
   });
 });
+
+describe("opened straight into Customize", () => {
+  // The gallery's right-click Customize… passes customizeOnOpen; the panel
+  // is up from the start, not after a second click.
+  it("shows the Customize panel without a click", async () => {
+    setup({ customizeOnOpen: true });
+    expect(await screen.findByRole("region", { name: "Customize report" })).toBeInTheDocument();
+  });
+
+  it("and without it, does not", async () => {
+    setup();
+    await screen.findByRole("button", { name: "Customize…" });
+    expect(screen.queryByRole("region", { name: "Customize report" })).not.toBeInTheDocument();
+  });
+});
