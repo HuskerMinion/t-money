@@ -705,6 +705,9 @@ pub fn cash_forecast_with(
     })
 }
 
+/// The most accounts one combined forecast will add up.
+const MAX_COMBINED_ACCOUNTS: usize = 200;
+
 /// Several accounts' forecasts as one: Money's forecast over all the cash
 /// you can spend, not one account at a time. *"project recurring and one off
 /// expense/income as cashflow into the future"* is about the money, and the
@@ -722,6 +725,11 @@ pub fn cash_forecast_combined(
     days: i64,
     include_detected: bool,
 ) -> Result<CashForecast, String> {
+    // Each account is a whole forecast of its own; a list no household has
+    // is refused rather than worked through.
+    if account_ids.len() > MAX_COMBINED_ACCOUNTS {
+        return Err(format!("A combined forecast can add up at most {MAX_COMBINED_ACCOUNTS} accounts."));
+    }
     let mut ids: Vec<&String> = Vec::new();
     for id in account_ids {
         if !ids.contains(&id) {
@@ -899,6 +907,8 @@ mod tests {
         assert_eq!(one.account_id, chk);
 
         assert!(cash_forecast_combined(&c, &[], today, 30, false).is_err());
+        // An absurd list is refused before any work is done.
+        assert!(cash_forecast_combined(&c, &vec![chk.clone(); 201], today, 30, false).is_err());
         // Pesos are not added to dollars.
         let mxn = account(&c, "Pesos", 1_000_000);
         c.execute("UPDATE accounts SET currency = 'MXN' WHERE id = ?1", params![mxn]).unwrap();
