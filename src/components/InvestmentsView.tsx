@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState } from "react";
 import Money from "./Money";
 import ContextMenu, { useContextMenu } from "./ContextMenu";
+import { runCommand } from "../lib/commands";
 import TmIcon from "./TmIcon";
 import Notice from "./Notice";
 import DateField from "./DateField";
@@ -324,9 +325,11 @@ export default function InvestmentsView({ onOpenAccount }: Props) {
             label={`${p.security_name} actions`}
             onClose={ctx.close}
             items={[
-              // Buys and sells are entered in the register, so that is the way
-              // to Buy and Sell from here.
-              onOpenAccount && { label: "Open register (Buy / Sell)", onSelect: () => onOpenAccount(p.account_id) },
+              // Buys and sells are entered in the register, which opens with
+              // the form already on this security. A sale needs shares to sell.
+              { label: "Buy more…", onSelect: () => runCommand("nav.account", { accountId: p.account_id, action: { kind: "buy", securityId: p.security_id } }) },
+              p.shares_micro > 0 && { label: "Sell…", onSelect: () => runCommand("nav.account", { accountId: p.account_id, action: { kind: "sell", securityId: p.security_id } }) },
+              onOpenAccount && { label: "Open register", onSelect: () => onOpenAccount(p.account_id) },
               { label: open === key ? "Hide lots" : "Show lots", onSelect: () => setOpen(open === key ? null : key) },
               {
                 label: "Update prices",

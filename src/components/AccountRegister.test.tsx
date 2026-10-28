@@ -20,6 +20,7 @@ import AccountRegister, {
 import RegisterGrid from "./RegisterGrid";
 import { runCommand } from "../lib/commands";
 import { takeScheduleDraft } from "../lib/scheduleDraft";
+import { requestRegisterAction, takeRegisterAction } from "../lib/registerRequest";
 import { useAccountStore } from "../stores/useAccountStore";
 import { useFileFormat } from "../lib/region";
 import { invokeCalls, resetIpc, setIpcHandlers } from "../test/tauriMock";
@@ -3762,5 +3763,100 @@ describe("a register in a German file", () => {
     await waitFor(() => expect(invokeCalls.some((c) => c.cmd === "update_transaction")).toBe(true));
     const call = invokeCalls.find((c) => c.cmd === "update_transaction")!;
     expect(JSON.stringify(call.args)).toContain('"amount_cents":-123456');
+  });
+});
+
+describe("an action parked by the account list or the Investments view", () => {
+  const home: Account = { ...checking, id: "acc-home", name: "27 Birch Lane", type: "home" };
+  const loan: Account = { ...checking, id: "acc-loan", name: "Car loan", type: "loan" };
+  const broker: Account = { ...checking, id: "acc-brk", name: "Brokerage", type: "investment" };
+  const fund = {
+    id: "s-1", name: "Total Market", symbol: "VTSAX", kind: "mutual_fund", notes: null,
+    updated_at: "", last_price_micro: null, price_date: null, price_source: null,
+  };
+
+  function mount(account: Account) {
+    setIpcHandlers({
+      get_register: () => [],
+      list_categories: () => [],
+      list_payees: () => [],
+      list_splits: () => [],
+      get_all_accounts: () => [account],
+      list_common_transactions: () => [],
+      list_classifications: () => [],
+      list_securities: () => [fund],
+      get_loan_terms: () => null,
+      get_open_statement: () => null,
+      get_last_statement: () => null,
+    });
+    useAccountStore.setState({ accounts: [account], selectedAccountId: account.id });
+    render(<AccountRegister />);
+  }
+
+  beforeEach(() => {
+    for (const id of ["acc-1", "acc-home", "acc-loan", "acc-brk"]) takeRegisterAction(id);
+  });
+
+  it("reconcile starts balancing the account", async () => {
+    requestRegisterAction({ accountId: "acc-1", action: { kind: "reconcile" } });
+    mount(checking);
+    await waitFor(() => expect(invokeCalls.some((c) => c.cmd === "get_open_statement")).toBe(true));
+  });
+
+  it("value opens Update value on an asset", async () => {
+    requestRegisterAction({ accountId: "acc-home", action: { kind: "value" } });
+    mount(home);
+    expect(await screen.findByRole("dialog", { name: "Update value" })).toBeInTheDocument();
+  });
+
+  it("value is dropped on an account that is not appraised", async () => {
+    requestRegisterAction({ accountId: "acc-1", action: { kind: "value" } });
+    mount(checking);
+    await screen.findByRole("table");
+    expect(screen.queryByRole("dialog", { name: "Update value" })).not.toBeInTheDocument();
+  });
+
+  it("terms opens Loan terms on a loan", async () => {
+    requestRegisterAction({ accountId: "acc-loan", action: { kind: "terms" } });
+    mount(loan);
+    expect(await screen.findByRole("dialog", { name: "Loan terms" })).toBeInTheDocument();
+  });
+
+  it("buy opens a new entry already set to a buy of that security", async () => {
+    requestRegisterAction({ accountId: "acc-brk", action: { kind: "buy", securityId: "s-1" } });
+    mount(broker);
+    expect(await screen.findByLabelText("Activity")).toHaveValue("buy");
+    expect(screen.getByRole("combobox", { name: "Investment" })).toHaveValue("Total Market (VTSAX)");
+  });
+
+  it("sell opens a new entry already set to a sale", async () => {
+    requestRegisterAction({ accountId: "acc-brk", action: { kind: "sell", securityId: "s-1" } });
+    mount(broker);
+    expect(await screen.findByLabelText("Activity")).toHaveValue("sell");
+  });
+
+  it("buy is dropped on an account that is not an investment account", async () => {
+    requestRegisterAction({ accountId: "acc-1", action: { kind: "buy", securityId: "s-1" } });
+    mount(checking);
+    await screen.findByRole("table");
+    expect(screen.queryByLabelText("Activity")).not.toBeInTheDocument();
+  });
+
+  it("leaves another account's request alone", async () => {
+    requestRegisterAction({ accountId: "acc-home", action: { kind: "value" } });
+    mount(checking);
+    await screen.findByRole("table");
+    expect(screen.queryByRole("dialog", { name: "Update value" })).not.toBeInTheDocument();
+    expect(takeRegisterAction("acc-home")).toEqual({ kind: "value" });
+  });
+
+  // The sidebar is beside the register: its menu can ask for the account
+  // already on screen, and that account never "changes" to pick it up.
+  it("a request for the account already open is acted on at once", async () => {
+    mount(loan);
+    await screen.findByRole("table");
+    act(() => requestRegisterAction({ accountId: "acc-loan", action: { kind: "terms" } }));
+    expect(await screen.findByRole("dialog", { name: "Loan terms" })).toBeInTheDocument();
+    expect(takeRegisterAction("acc-loan")).toBeNull();
   });
 });

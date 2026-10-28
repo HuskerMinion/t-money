@@ -7,6 +7,7 @@ vi.mock("@tauri-apps/api/core", () => import("../test/tauriMock"));
 
 import PayeesView from "./PayeesView";
 import { describeConditions } from "./PayeeRulesCard";
+import { registerCommand } from "../lib/commands";
 import { useAccountStore } from "../stores/useAccountStore";
 import { invokeCalls, resetIpc, setIpcHandlers } from "../test/tauriMock";
 import { forgetUndo, undoStatus } from "../lib/undo";
@@ -425,7 +426,31 @@ describe("the row menu", () => {
   it("lists Rename, Merge, rules and Delete", async () => {
     render(<PayeesView />);
     fireEvent.contextMenu((await screen.findByText("Kroger")).closest("tr")!);
-    expect(items()).toEqual(["Rename…", "Merge into…", "Payee rename rules…", "Delete"]);
+    expect(items()).toEqual(["Show transactions", "Rename…", "Merge into…", "Make a rename rule…", "Delete"]);
+  });
+
+  it("Show transactions opens that payee's report, and is grayed for an unused payee", async () => {
+    const seen: unknown[] = [];
+    const off = registerCommand("nav.report", (a) => void seen.push(a));
+    render(<PayeesView />);
+    fireEvent.contextMenu((await screen.findByText("Typo Payee")).closest("tr")!);
+    expect(screen.getByRole("menuitem", { name: "Show transactions" })).toBeDisabled();
+    await userEvent.keyboard("{Escape}");
+    fireEvent.contextMenu(screen.getByText("Kroger").closest("tr")!);
+    await userEvent.click(screen.getByRole("menuitem", { name: "Show transactions" }));
+    off();
+    expect(seen).toEqual([{ kind: "transactions_by_payee", payeeIds: ["p-1"], rangeId: "all_dates" }]);
+  });
+
+  it("Make a rename rule… fills the rule form and saves nothing", async () => {
+    render(<PayeesView />);
+    fireEvent.contextMenu((await screen.findByText("KROGER #442")).closest("tr")!);
+    await userEvent.click(screen.getByRole("menuitem", { name: "Make a rename rule…" }));
+    const card = screen.getByRole("region", { name: "Payee rename rules" });
+    expect(within(card).getByLabelText("Contains")).toHaveValue("KROGER #442");
+    expect(within(card).getByLabelText("Call it")).toHaveValue("KROGER #442");
+    expect(within(card).getByLabelText("Contains")).toHaveFocus();
+    expect(invokeCalls.some((c) => c.cmd === "create_payee_rule")).toBe(false);
   });
 
   it("Rename… loads the payee into the form", async () => {

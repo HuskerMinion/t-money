@@ -3,7 +3,7 @@
 // the register should say Netflix, and the subscriptions detector
 // should see one Netflix, not two. Rules run on every import; **Apply to
 // existing transactions** runs them over what is already in the file.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import CategorySelect from "./CategorySelect";
 import { api } from "../lib/ipc";
 import { noteChanged } from "../lib/undo";
@@ -15,6 +15,10 @@ interface Props {
   categories: readonly Category[];
   /** Called after Apply changed rows, so the caller can reload payees / registers. */
   onApplied?: (changed: number) => Promise<void> | void;
+  /** Text to put in the new-rule form. Each new `token` re-applies it, so
+   *  asking twice for the same payee still brings the form back. Nothing is
+   *  saved; the user presses Add rule. */
+  draft?: { match: string; rename: string; token: number } | null;
 }
 
 /** "$5.00 to $20.00 · memo has "prime" · in Visa", or "" when a rule
@@ -31,7 +35,7 @@ export function describeConditions(r: PayeeRule): string {
   return parts.join(" · ");
 }
 
-export default function PayeeRulesCard({ categories, onApplied }: Props) {
+export default function PayeeRulesCard({ categories, onApplied, draft }: Props) {
   const [rules, setRules] = useState<PayeeRule[]>([]);
   const [matchText, setMatchText] = useState("");
   const [payeeName, setPayeeName] = useState("");
@@ -45,6 +49,19 @@ export default function PayeeRulesCard({ categories, onApplied }: Props) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const cardRef = useRef<HTMLElement>(null);
+  const matchRef = useRef<HTMLInputElement>(null);
+
+  // Keyed on the token alone: the same text asked for twice must still scroll
+  // back, and re-running on every render would undo what is being typed.
+  useEffect(() => {
+    if (!draft) return;
+    setMatchText(draft.match);
+    setPayeeName(draft.rename);
+    cardRef.current?.scrollIntoView?.({ block: "start" });
+    matchRef.current?.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft?.token]);
 
   async function load() {
     try {
@@ -127,7 +144,7 @@ export default function PayeeRulesCard({ categories, onApplied }: Props) {
   }
 
   return (
-    <section className="aero-card" data-payee-rules aria-label="Payee rename rules">
+    <section ref={cardRef} className="aero-card" data-payee-rules aria-label="Payee rename rules">
       <div className="aero-card-title flex items-center justify-between gap-2">
         <span>Rename rules</span>
         <button
@@ -183,7 +200,7 @@ export default function PayeeRulesCard({ categories, onApplied }: Props) {
         >
           <label className="flex flex-col text-[11px]">
             Contains
-            <input className="aero-field" value={matchText} onChange={(e) => setMatchText(e.target.value)} placeholder="NETFLIX" style={{ width: 160 }} />
+            <input ref={matchRef} className="aero-field" value={matchText} onChange={(e) => setMatchText(e.target.value)} placeholder="NETFLIX" style={{ width: 160 }} />
           </label>
           <label className="flex flex-col text-[11px]">
             Call it

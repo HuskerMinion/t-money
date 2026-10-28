@@ -664,6 +664,7 @@ pub fn cash_forecast_with(
                 dates,
                 varies: sub.varies,
                 ignored_on_home,
+                account_name: None,
             });
         }
         detected.sort_by(|a, b| a.dates[0].cmp(&b.dates[0]).then(a.payee.to_lowercase().cmp(&b.payee.to_lowercase())));
@@ -697,6 +698,106 @@ pub fn cash_forecast_with(
         low_balance_cents: low,
         low_date,
         ending_balance_cents: running,
+        points,
+        upcoming,
+        detected,
+        covered_by_bills,
+    })
+}
+
+/// Several accounts' forecasts as one: Money's forecast over all the cash
+/// you can spend, not one account at a time. *"project recurring and one off
+/// expense/income as cashflow into the future"* is about the money, and the
+/// money is usually in more than one account.
+///
+/// Each account is projected on its own and the balances are added day by
+/// day. A scheduled transfer between two of them leaves one and arrives in
+/// the other on the same day, so it nets to nothing, which is what it does
+/// to the total. Amounts are only added within one currency: a set that
+/// mixes currencies is refused rather than added as if a peso were a dollar.
+pub fn cash_forecast_combined(
+    conn: &Conn,
+    account_ids: &[String],
+    from: NaiveDate,
+    days: i64,
+    include_detected: bool,
+) -> Result<CashForecast, String> {
+    let mut ids: Vec<&String> = Vec::new();
+    for id in account_ids {
+        if !ids.contains(&id) {
+            ids.push(id);
+        }
+    }
+    let Some(first) = ids.first() else {
+        return Err("Choose at least one account to forecast.".into());
+    };
+    let currency = account_currency(conn, first)?;
+    for id in &ids[1..] {
+        if account_currency(conn, id)? != currency {
+            return Err("These accounts are kept in different currencies, so their balances cannot be added together.".into());
+        }
+    }
+
+    let mut parts = Vec::with_capacity(ids.len());
+    for id in &ids {
+        parts.push(cash_forecast_with(conn, id, from, days, include_detected)?);
+    }
+    let several = parts.len() > 1;
+
+    // Every part walks the same days from the same `from`, so the points
+    // line up index for index.
+    let mut points = parts[0].points.clone();
+    for p in &parts[1..] {
+        for (sum, pt) in points.iter_mut().zip(&p.points) {
+            sum.delta_cents += pt.delta_cents;
+            sum.balance_cents += pt.balance_cents;
+        }
+    }
+    let starting: i64 = parts.iter().map(|p| p.starting_balance_cents).sum();
+    let mut low = starting;
+    let mut low_date = from.to_string();
+    for pt in &points {
+        if pt.balance_cents < low {
+            low = pt.balance_cents;
+            low_date = pt.date.clone();
+        }
+    }
+    let ending = points.last().map(|p| p.balance_cents).unwrap_or(starting);
+
+    // A transfer between two of the accounts is one occurrence seen from
+    // both sides; it is listed once.
+    let mut upcoming: Vec<Occurrence> = Vec::new();
+    let mut detected: Vec<DetectedCharge> = Vec::new();
+    let mut covered_by_bills: Vec<String> = Vec::new();
+    let mut names: Vec<String> = Vec::new();
+    for p in parts {
+        for o in p.upcoming {
+            if !upcoming.iter().any(|u| u.recurrence_id == o.recurrence_id && u.due_date == o.due_date) {
+                upcoming.push(o);
+            }
+        }
+        for mut d in p.detected {
+            if several {
+                d.account_name = Some(p.account_name.clone());
+            }
+            detected.push(d);
+        }
+        for c in p.covered_by_bills {
+            if !covered_by_bills.contains(&c) {
+                covered_by_bills.push(c);
+            }
+        }
+        names.push(p.account_name);
+    }
+    detected.sort_by(|a, b| a.dates[0].cmp(&b.dates[0]).then(a.payee.to_lowercase().cmp(&b.payee.to_lowercase())));
+
+    Ok(CashForecast {
+        account_id: if several { String::new() } else { ids[0].clone() },
+        account_name: names.join(", "),
+        starting_balance_cents: starting,
+        low_balance_cents: low,
+        low_date,
+        ending_balance_cents: ending,
         points,
         upcoming,
         detected,
@@ -765,6 +866,43 @@ mod tests {
         let occ = occurrences_between(&c, today, today + Duration::days(90), today).unwrap();
         let nov = occ.iter().find(|o| o.recurrence_id == r.id && o.due_date == "2026-11-15").unwrap();
         assert_eq!(nov.status, "due");
+    }
+
+    #[test]
+    fn a_combined_forecast_adds_the_accounts_and_a_transfer_between_them_nets_out() {
+        let db = TestDb::new("fc-combined");
+        let c = db.conn();
+        let chk = account(&c, "Checking", 500_000);
+        let sav = account(&c, "Savings", 100_000);
+        let rule = |payee: &str, amount: i64, to: Option<&str>| NewRecurrence {
+            payee: payee.into(), amount_cents: amount, account_id: Some(chk.clone()), category_id: None,
+            freq: "monthly".into(), interval_n: 1, start_date: "2026-09-15".into(), end_date: None, second_day: None,
+            weekend_rule: "none".into(), notes: None, transfer_account_id: to.map(str::to_string), goal_id: None,
+        };
+        let xfer = create_recurrence(&c, &rule("Monthly savings", -20_000, Some(&sav))).unwrap();
+        create_recurrence(&c, &rule("Rent", -150_000, None)).unwrap();
+        let today = NaiveDate::from_ymd_opt(2026, 9, 6).unwrap();
+
+        let both = cash_forecast_combined(&c, &[chk.clone(), sav.clone()], today, 30, false).unwrap();
+        assert_eq!(both.starting_balance_cents, 600_000);
+        // Rent leaves; the transfer only moves money between the two.
+        assert_eq!(both.ending_balance_cents, 450_000);
+        assert_eq!(both.low_balance_cents, 450_000);
+        assert_eq!(both.low_date, "2026-09-15");
+        assert_eq!(both.points.len(), 31);
+        // The transfer is one occurrence, not one per side.
+        assert_eq!(both.upcoming.iter().filter(|o| o.recurrence_id == xfer.id).count(), 1);
+
+        // One account, or the same one twice, is just that account.
+        let one = cash_forecast_combined(&c, &[chk.clone(), chk.clone()], today, 30, false).unwrap();
+        assert_eq!(one.ending_balance_cents, cash_forecast(&c, &chk, today, 30).unwrap().ending_balance_cents);
+        assert_eq!(one.account_id, chk);
+
+        assert!(cash_forecast_combined(&c, &[], today, 30, false).is_err());
+        // Pesos are not added to dollars.
+        let mxn = account(&c, "Pesos", 1_000_000);
+        c.execute("UPDATE accounts SET currency = 'MXN' WHERE id = ?1", params![mxn]).unwrap();
+        assert!(cash_forecast_combined(&c, &[chk.clone(), mxn], today, 30, false).is_err());
     }
 
     // ── scheduled bills: matching and the forecast ─────────────────

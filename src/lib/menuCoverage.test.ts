@@ -55,6 +55,11 @@ const commands = menuLeaves(
  *  the item that overpromised was removed. An empty list is the point. */
 const PENDING: string[] = [];
 
+/** Commands that are served but are not menu items, on purpose: each
+ *  carries an argument (which report; which account, and what to do there)
+ *  that a menu item has no way to give. The right-click menus run them. */
+const OFF_MENU = ["nav.report", "nav.account"];
+
 describe("every menu item has an owner", () => {
   it("nothing in the menus is unreachable from every screen", () => {
     const orphans = commands
@@ -67,7 +72,14 @@ describe("every menu item has an owner", () => {
     // The other direction: a command registered under a typo'd id is a
     // handler that can never run, and nothing else would ever notice.
     const registered = [...code.matchAll(/useCommand\("([^"]+)"/g)].map((m) => m[1]);
-    const unknown = [...new Set(registered)].filter((c) => !commands.includes(c));
+    const unknown = [...new Set(registered)].filter((c) => !commands.includes(c) && !OFF_MENU.includes(c));
     expect(unknown, `registered but in no menu: ${unknown.join(", ")}`).toEqual([]);
+  });
+
+  it("and every off-menu command is both served and run from somewhere", () => {
+    for (const c of OFF_MENU) {
+      expect(code, `${c} is not registered`).toContain(`useCommand("${c}"`);
+      expect(code, `${c} is never run`).toContain(`runCommand("${c}"`);
+    }
   });
 });

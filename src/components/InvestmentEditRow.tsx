@@ -75,6 +75,9 @@ interface Props {
   defaultDate?: string | null;
   /** Save-on-leave, as TransactionEditRow. */
   leaveRef?: React.MutableRefObject<(() => Promise<LeaveResult>) | null>;
+  /** A new entry that starts as a Buy or Sell of this security (from the
+   *  Investments view). Ignored when editing a row. */
+  preset?: { activity: "buy" | "sell"; securityId: string } | null;
   securities: readonly Security[];
   categories: readonly Category[];
   /** Bank accounts a buy can be paid from / a sale swept to. */
@@ -120,10 +123,11 @@ export default function InvestmentEditRow({
   onToggleCleared,
   defaultDate = null,
   leaveRef,
+  preset: seed = null,
 }: Props) {
   const [date, setDate] = useState(row?.date ?? defaultDate ?? today());
-  const [activity, setActivity] = useState<InvestmentActivity | "transfer_shares">(row?.activity ?? "buy");
-  const [securityId, setSecurityId] = useState(row?.security_id ?? "");
+  const [activity, setActivity] = useState<InvestmentActivity | "transfer_shares">(row?.activity ?? seed?.activity ?? "buy");
+  const [securityId, setSecurityId] = useState(row?.security_id ?? seed?.securityId ?? "");
   const [shares, setShares] = useState(row?.shares_micro ? formatShares(row.shares_micro) : "");
   const [price, setPrice] = useState(row?.price_micro ? formatPriceInput(row.price_micro) : "");
   const [total, setTotal] = useState(row?.gross_cents ? amountInput(row.gross_cents) : "");

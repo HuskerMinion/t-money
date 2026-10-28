@@ -27,7 +27,7 @@ import { groupFor, pickableAccounts } from "../lib/accountTypes";
 import ForecastChart from "./ForecastChart";
 import { api } from "../lib/ipc";
 import { useCommand } from "../lib/useCommand";
-import { describeStatus, isOpen, pickForecastAccount } from "../lib/bills";
+import { ALL_CASH, describeStatus, isOpen, pickForecastAccount, spendableAccounts } from "../lib/bills";
 import { takeScheduleDraft } from "../lib/scheduleDraft";
 import ContextMenu, { useContextMenu } from "./ContextMenu";
 import BillCalendar, { monthRange } from "./BillCalendar";
@@ -204,6 +204,14 @@ export default function PaymentsView() {
   // A scheduled transfer moves one amount: only an account in the same
   // currency can receive it (the backend refuses the others).
   const sameCurrency = (id: string) => fromCurrency === undefined || currencyFor(id) === fromCurrency;
+  // "All bank and cash accounts": offered once there are two to add up.
+  const spendableIds = useMemo(
+    () => spendableAccounts(accounts, currencyOf, homeCurrency()).map((a) => a.id),
+    [accounts]
+  );
+  const allCash = forecastAccount === ALL_CASH;
+  /** Is this account part of what is being forecast? */
+  const inForecast = (id: string | null | undefined) => !!id && (allCash ? spendableIds.includes(id) : id === forecastAccount);
 
   async function load() {
     const [rs, accts, cats, gs] = await Promise.all([
@@ -258,8 +266,10 @@ export default function PaymentsView() {
     // accounts quickly could otherwise let the first, slower forecast land
     // last and draw Checking's projection under "Savings".
     let canceled = false;
-    api
-      .getCashForecast(forecastAccount, horizon, includeDetected)
+    (forecastAccount === ALL_CASH
+      ? api.getCashForecastCombined(spendableIds, horizon, includeDetected)
+      : api.getCashForecast(forecastAccount, horizon, includeDetected)
+    )
       .then((f) => {
         if (!canceled) setForecast(f);
       })
@@ -269,7 +279,10 @@ export default function PaymentsView() {
     return () => {
       canceled = true;
     };
-  }, [forecastAccount, upcoming, includeDetected, horizon]);
+    // The ids as one string: a new array with the same accounts is not a
+    // reason to ask again.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [forecastAccount, upcoming, includeDetected, horizon, spendableIds.join(",")]);
 
   /** Run a write, then refresh. Returns whether it succeeded, so a form can
    *  keep what the user typed when it did not. */
@@ -383,7 +396,7 @@ export default function PaymentsView() {
    *  puts it where the forecast is being read. */
   function startOneTime() {
     resetForm();
-    setDraft({ ...BLANK, freq: "once", start_date: today(), account_id: forecastAccount || null });
+    setDraft({ ...BLANK, freq: "once", start_date: today(), account_id: forecastAccount && !allCash ? forecastAccount : null });
     formRef.current?.scrollIntoView?.({ block: "nearest" });
     payeeRef.current?.focus();
   }
@@ -451,11 +464,15 @@ export default function PaymentsView() {
   // Scoped to the account being forecast: "still to come" beside a
   // per-account projection has to mean the same account, or the two numbers
   // quietly disagree.
-  const dueTotal = open
-    .filter((o) => o.account_id === forecastAccount)
-    .reduce((s, o) => s + o.amount_cents, 0);
-  // The forecast is one account's, in that account's currency.
-  const fc = currencyFor(forecastAccount);
+  // A scheduled transfer counts for the side being forecast: out of the
+  // paying account, into the receiving one, and nothing when both are in.
+  const dueTotal = open.reduce(
+    (s, o) => s + (inForecast(o.account_id) ? o.amount_cents : 0) - (inForecast(o.transfer_account_id) ? o.amount_cents : 0),
+    0
+  );
+  // In the forecast account's currency; all the cash accounts share the
+  // file's own.
+  const fc = allCash ? homeCurrency() : currencyFor(forecastAccount);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -492,6 +509,7 @@ export default function PaymentsView() {
             value={forecastAccount}
             onChange={(e) => setForecastAccount(e.target.value)}
           >
+            {spendableIds.length > 1 && <option value={ALL_CASH}>All bank and cash accounts</option>}
             {/* N9: a closed account is not forecast. */}
             {pickableAccounts(accounts, [forecastAccount]).map((a) => (
               <option key={a.id} value={a.id}>
@@ -554,14 +572,14 @@ export default function PaymentsView() {
                   </span>
                 )}
                 {includeDetected && detected.length === 0 && (
-                  <span className="tm-text-muted"> — none found in this account</span>
+                  <span className="tm-text-muted"> — none found in {allCash ? "these accounts" : "this account"}</span>
                 )}
               </label>
               {includeDetected && detected.length > 0 && (
                 <ul className="pl-5 pt-1 tm-text-muted" aria-label="Recurring charges projected">
                   {detected.map((d) => (
-                    <li key={d.payee}>
-                      {d.payee} · every {d.cadence} · <Money cents={d.amount_cents} tone="neutral" currency={fc} />
+                    <li key={`${d.account_name ?? ""}|${d.payee}`}>
+                      {d.payee}{d.account_name ? ` (${d.account_name})` : ""} · every {d.cadence} · <Money cents={d.amount_cents} tone="neutral" currency={fc} />
                       {d.varies ? " (amount varies; a typical recent one)" : ""} · next {formatDateUS(d.dates[0])}
                       {d.ignored_on_home ? " · ignored on the Home page's Subscriptions card, still projected here" : ""}
                       {d.dates.length > 1 ? ` and ${d.dates.length - 1} more` : ""}

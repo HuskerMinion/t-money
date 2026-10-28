@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import AccountsPane from "./AccountsPane";
 import type { Account } from "../lib/types";
 import { useFileFormat } from "../lib/region";
+import { registerCommand, resetCommands } from "../lib/commands";
 
 function acct(id: string, name: string, balance_cents: number, over: Partial<Account> = {}): Account {
   return {
@@ -48,12 +49,35 @@ describe("the account context menu", () => {
     render(<AccountsPane accounts={[acct("a-chk", "Checking", 100)]} selectedId={null} onSelect={onSelect} onToggleFavorite={onToggleFavorite} />);
     const row = screen.getByRole("button", { name: /Checking/ });
     fireEvent.contextMenu(row);
-    expect(screen.getAllByRole("menuitem").map((i) => i.textContent)).toEqual(["Open register", "Add to favorites"]);
+    expect(screen.getAllByRole("menuitem").map((i) => i.textContent)).toEqual(["Open register", "Balance this account…", "Add to favorites"]);
     await userEvent.click(screen.getByRole("menuitem", { name: "Open register" }));
     expect(onSelect).toHaveBeenCalledWith("a-chk");
     fireEvent.contextMenu(row);
     await userEvent.click(screen.getByRole("menuitem", { name: "Add to favorites" }));
     expect(onToggleFavorite).toHaveBeenCalledWith("a-chk");
+  });
+});
+
+describe("the account context menu's register actions", () => {
+  beforeEach(() => resetCommands());
+
+  it.each([
+    ["checking", ["Balance this account…"], { kind: "reconcile" }],
+    ["home", ["Update value…"], { kind: "value" }],
+    ["mortgage", ["Balance this account…", "Loan terms…"], { kind: "terms" }],
+  ] as const)("a %s account offers %j and sends the action to its register", async (type, labels, action) => {
+    const nav = vi.fn();
+    const off = registerCommand("nav.account", nav);
+    render(<AccountsPane accounts={[acct("a-1", "Thing", 100, { type })]} selectedId={null} onSelect={() => {}} />);
+    fireEvent.contextMenu(screen.getByRole("button", { name: /Thing/ }));
+    const shown = screen.getAllByRole("menuitem").map((i) => i.textContent);
+    for (const l of labels) expect(shown).toContain(l);
+    for (const l of ["Balance this account…", "Update value…", "Loan terms…"]) {
+      if (!(labels as readonly string[]).includes(l)) expect(shown).not.toContain(l);
+    }
+    await userEvent.click(screen.getByRole("menuitem", { name: labels[labels.length - 1] }));
+    expect(nav).toHaveBeenCalledWith({ accountId: "a-1", action });
+    off();
   });
 });
 

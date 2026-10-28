@@ -9,6 +9,7 @@ import MenuBar, { useMenuAccelerators } from "./components/MenuBar";
 import { buildMenus } from "./lib/menus";
 import { useCommand } from "./lib/useCommand";
 import { runCommand } from "./lib/commands";
+import { requestRegisterAction, type RegisterRequest } from "./lib/registerRequest";
 import { forgetUndo, onUndoChange, redoLast, refreshUndo, undoLast, undoStatus } from "./lib/undo";
 import KeyPromptDialog from "./components/KeyPromptDialog";
 import NoKeyringDialog from "./components/NoKeyringDialog";
@@ -370,6 +371,21 @@ export default function App() {
   useCommand("new.recurrence", () => {
     setSide("bills");
     goTab("Bills");
+  }, fileOpen);
+  // Right-click navigation. Not on the menu bar: these carry an argument,
+  // which a menu item has none of.
+  // A report, scoped: Categories → Show transactions, Payees → Show transactions.
+  useCommand("nav.report", (arg) => {
+    if (!arg) return;
+    setReportOpen({ ...(arg as ReportOpen) });
+    goTab("Reports");
+  }, fileOpen);
+  // An account's register, to do one thing there (registerRequest.ts).
+  useCommand("nav.account", (arg) => {
+    const req = arg as RegisterRequest | undefined;
+    if (!req) return;
+    requestRegisterAction(req);
+    openAccountRegister(req.accountId);
   }, fileOpen);
   useCommand("tools.payee.rules", () => {
     setSide("payees");

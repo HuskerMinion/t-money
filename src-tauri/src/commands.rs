@@ -2823,6 +2823,20 @@ pub fn get_cash_forecast(
     queries::cash_forecast_with(&conn, &account_id, today, days, include_detected.unwrap_or(true))
 }
 
+/// Several accounts projected as one balance — Bills → forecast → All
+/// cash accounts. They must share a currency.
+#[tauri::command(rename_all = "camelCase")]
+pub fn get_cash_forecast_combined(
+    state: State<AppState>,
+    account_ids: Vec<String>,
+    days: i64,
+    include_detected: Option<bool>,
+) -> Result<CashForecast, String> {
+    let (_g, conn) = with_conn(&state)?;
+    let today = chrono::Local::now().date_naive();
+    queries::cash_forecast_combined(&conn, &account_ids, today, days, include_detected.unwrap_or(true))
+}
+
 // ── Common Transactions ──────────────────────────────────────────────
 
 /// The saved entry-form templates, most-used first.

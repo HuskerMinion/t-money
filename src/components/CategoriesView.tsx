@@ -16,6 +16,7 @@ import ContextMenu, { useContextMenu } from "./ContextMenu";
 import { useAccountStore } from "../stores/useAccountStore";
 import { api } from "../lib/ipc";
 import { useCommand } from "../lib/useCommand";
+import { runCommand } from "../lib/commands";
 import type { Category, CategoryKind, MergePreview } from "../lib/types";
 import { keys } from "../lib/keys";
 
@@ -515,6 +516,17 @@ export default function CategoriesView() {
           label="Category actions"
           onClose={rowMenu.close}
           items={[
+            // A parent's id also selects its subcategories (the report engine
+            // expands it), so one id is enough.
+            {
+              label: "Show transactions",
+              onSelect: () =>
+                void runCommand("nav.report", {
+                  kind: "transactions_by_category",
+                  categoryIds: [rowMenu.menu!.target.id],
+                  rangeId: "all_dates",
+                }),
+            },
             { label: "Rename…", onSelect: () => editField(rowMenu.menu!.target, "Category name") },
             // Two levels only: a subcategory cannot have children of its own.
             rowMenu.menu.target.parent_id === null && {

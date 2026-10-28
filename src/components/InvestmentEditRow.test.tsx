@@ -57,6 +57,22 @@ beforeEach(() => {
   setIpcHandlers({ list_lots: () => lots, get_disposals: () => [] });
 });
 
+describe("a preset from the Investments view", () => {
+  it.each(["buy", "sell"] as const)("starts a new entry as a %s of that security", (activity) => {
+    setup({ preset: { activity, securityId: "s-1" } });
+    expect(screen.getByLabelText("Activity")).toHaveValue(activity);
+    expect(screen.getByRole("combobox", { name: "Investment" })).toHaveValue("Total Market (VTSAX)");
+  });
+
+  it("does not touch an existing row", () => {
+    setup({
+      preset: { activity: "sell", securityId: "s-1" },
+      row: { id: "t-9", date: "2026-01-02", activity: "dividend", security_id: null } as never,
+    });
+    expect(screen.getByLabelText("Activity")).toHaveValue("dividend");
+  });
+});
+
 describe("a buy", () => {
   it("derives the total from quantity x price and previews the cash effect", async () => {
     const { onCommit } = setup();

@@ -25,6 +25,10 @@ export interface ReportOpen {
    *  row carries the whole spec, so it is resolved here rather than
    *  reconstructed from a kind. */
   savedId?: string;
+  /** Only these payees: Payees → Show transactions. */
+  payeeIds?: string[];
+  /** A RANGE_OPTIONS id, when `from`/`to` are not given ("all_dates"). */
+  rangeId?: string;
 }
 
 interface Props {
@@ -60,11 +64,12 @@ export function specFor(kind: string, rangeId = defaultRangeFor(kind)): ReportSp
 
 /** `specFor`, with the scope and dates an opener asked for. */
 export function specForOpen(o: ReportOpen): ReportSpec {
-  const base = specFor(o.kind);
+  const base = o.rangeId && o.rangeId !== "custom" ? specFor(o.kind, o.rangeId) : specFor(o.kind);
   if (o.from && o.to) {
     base.rangeId = "custom";
     base.range = { from: o.from, to: o.to };
   }
+  if (o.payeeIds) base.payeeIds = o.payeeIds;
   if (o.categoryIds) base.categoryIds = o.categoryIds;
   if (o.accountIds) base.accountIds = o.accountIds;
   if (o.taxScope) base.taxScope = true;

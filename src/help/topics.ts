@@ -126,7 +126,7 @@ Type in the box at the top right and press Enter. Search looks through every acc
 
 # In the register
 
-- **Click** a row to select it; **click it again** or **double-click** to edit it. **Right-click** (or Shift+F10) for the row's menu: edit, split, attachments, find others with the same payee, go to the other side of a transfer, schedule it as a bill or deposit, cleared, void, tax line, delete. Most other lists have one too: accounts, bills, categories, payees, holdings, goals and reports.
+- **Click** a row to select it; **click it again** or **double-click** to edit it. **Right-click** (or Shift+F10) for the row's menu: edit, split, attachments, find others with the same payee, go to the other side of a transfer, schedule it as a bill or deposit, cleared, void, tax line, delete. Most other lists have one too: accounts, bills, categories, payees, holdings, goals and reports. Right-click an account in the Account List or the sidebar for **Balance this account…**, **Update value…** (a house, a car) or **Loan terms…**, which open its register with that window up; a holding on the Investing tab for **Buy more…** or **Sell…**, which opens the entry form on that investment; a category or payee for **Show transactions**, a report of every transaction with it; and a payee for **Make a rename rule…**, which fills in the rule form for you to check and add.
 - **↓ ↑** move the selection up and down the register, in the order the rows are on screen. They stop at the ends rather than wrapping. While a transaction form is open — or the caret is in any field — the arrows belong to whatever you are typing in, not to the list.
 - **Ctrl+M** marks the selected row cleared, or uncleared.
 - **Enter** or **Space** on the entry line at the bottom starts a new transaction.
@@ -446,7 +446,7 @@ Switch to **Calendar** to see the month with each bill on its day, colored by st
 
 # Cash forecast
 
-The chart projects the chosen account's balance from its scheduled bills and deposits (both sides of a scheduled transfer count), and shows the lowest point, so an overdraft is visible before it happens. **Next** at the top picks how far ahead: 30 days, 90 days, 6 months, 1 year or 2 years. The bill list reaches as far as the chart, and the choice is kept with the file.
+The chart projects the chosen account's balance from its scheduled bills and deposits (both sides of a scheduled transfer count), and shows the lowest point, so an overdraft is visible before it happens. **Next** at the top picks how far ahead: 30 days, 90 days, 6 months, 1 year or 2 years. The bill list reaches as far as the chart, and the choice is kept with the file. The account picker's first choice, **All bank and cash accounts**, adds up your open checking, savings and cash accounts kept in the file's own currency: the money there is to spend. A scheduled transfer between two of them nets to nothing, as it does to the total. Credit cards and accounts in another currency are left out.
 
 **One-time item…** adds something that happens once, a tax refund, a car repair, a bonus, so you can see what it does to the balance. It is a schedule that repeats **Once**: it stays in the forecast until you enter or skip it. To turn something already in a register into a schedule, right-click it there → **Schedule this transaction…**. The **Scheduled bills** and **Upcoming bills and deposits** reports list the same rules.
 

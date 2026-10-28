@@ -14,7 +14,8 @@
 // together, so it is in the home currency at today's rate.
 import Money from "./Money";
 import ContextMenu, { useContextMenu } from "./ContextMenu";
-import { accountWorth, placedFirst } from "../lib/accountTypes";
+import { runCommand } from "../lib/commands";
+import { accountWorth, isAmortizable, isValuedAsset, placedFirst } from "../lib/accountTypes";
 import { currencyOf, homeName, rateOf, worthHome } from "../lib/currency";
 import type { Account } from "../lib/types";
 
@@ -91,6 +92,20 @@ export default function AccountsPane({ accounts, selectedId, onSelect, onToggleF
           onClose={ctx.close}
           items={[
             { label: "Open register", onSelect: () => onSelect(ctx.menu!.target.id) },
+            // Dialogs that live in the register: it opens on this account and
+            // starts them. A valued asset has no statement to balance.
+            !isValuedAsset(ctx.menu.target.type) && {
+              label: "Balance this account…",
+              onSelect: () => runCommand("nav.account", { accountId: ctx.menu!.target.id, action: { kind: "reconcile" } }),
+            },
+            isValuedAsset(ctx.menu.target.type) && {
+              label: "Update value…",
+              onSelect: () => runCommand("nav.account", { accountId: ctx.menu!.target.id, action: { kind: "value" } }),
+            },
+            isAmortizable(ctx.menu.target.type) && {
+              label: "Loan terms…",
+              onSelect: () => runCommand("nav.account", { accountId: ctx.menu!.target.id, action: { kind: "terms" } }),
+            },
             onToggleFavorite && {
               label: ctx.menu.target.is_favorite ? "Remove from favorites" : "Add to favorites",
               onSelect: () => onToggleFavorite(ctx.menu!.target.id),

@@ -643,6 +643,7 @@ pub fn run() {
             commands::skip_occurrence,
             commands::clear_occurrence,
             commands::get_cash_forecast,
+            commands::get_cash_forecast_combined,
             // Investments
             commands::list_securities,
             commands::create_security,

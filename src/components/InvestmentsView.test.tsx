@@ -8,6 +8,7 @@ vi.mock("@tauri-apps/api/core", () => import("../test/tauriMock"));
 import InvestmentsView from "./InvestmentsView";
 import { pctFromBps } from "./InvestmentsView";
 import { useFileFormat } from "../lib/region";
+import { registerCommand, resetCommands } from "../lib/commands";
 import { invokeCalls, resetIpc, setIpcHandlers } from "../test/tauriMock";
 import type { Portfolio, Position, Security } from "../lib/types";
 
@@ -87,7 +88,10 @@ describe("InvestmentsView — symbol in place", () => {
 });
 
 describe("the holdings context menu", () => {
-  beforeEach(() => resetIpc());
+  beforeEach(() => {
+    resetIpc();
+    resetCommands();
+  });
 
   function stubPortfolio(extra: Record<string, (a: Record<string, unknown>) => unknown> = {}) {
     setIpcHandlers({
@@ -111,8 +115,36 @@ describe("the holdings context menu", () => {
     const row = await holdingRow();
     expect(row).toHaveAttribute("tabindex", "0");
     fireEvent.contextMenu(row);
-    await userEvent.click(screen.getByRole("menuitem", { name: "Open register (Buy / Sell)" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Open register" }));
     expect(onOpenAccount).toHaveBeenCalledWith("a-1");
+  });
+
+  it("sends Buy more… and Sell… to the account's register with the security", async () => {
+    stubPortfolio();
+    const nav = vi.fn();
+    registerCommand("nav.account", nav);
+    render(<InvestmentsView />);
+    const row = await holdingRow();
+    fireEvent.contextMenu(row);
+    await userEvent.click(screen.getByRole("menuitem", { name: "Buy more…" }));
+    expect(nav).toHaveBeenLastCalledWith({ accountId: "a-1", action: { kind: "buy", securityId: "s-1" } });
+    fireEvent.contextMenu(row);
+    await userEvent.click(screen.getByRole("menuitem", { name: "Sell…" }));
+    expect(nav).toHaveBeenLastCalledWith({ accountId: "a-1", action: { kind: "sell", securityId: "s-1" } });
+  });
+
+  it("offers no Sell when the position has no shares", async () => {
+    setIpcHandlers({
+      get_portfolio: async () => ({ ...portfolio, positions: [{ ...position, symbol: "VTSAX", shares_micro: 0 }] }),
+      list_securities: async () => [{ ...fund, symbol: "VTSAX" }],
+      get_roi: async () => [],
+      get_performance: async () => [],
+      price_status: async () => ({ oldest_date: null, newest_date: null, missing: 0 }),
+    });
+    render(<InvestmentsView />);
+    fireEvent.contextMenu(await holdingRow());
+    expect(screen.getByRole("menuitem", { name: "Buy more…" })).toBeTruthy();
+    expect(screen.queryByRole("menuitem", { name: "Sell…" })).toBeNull();
   });
 
   it("shows and hides the lots, and leaves out the register item without a way to open it", async () => {

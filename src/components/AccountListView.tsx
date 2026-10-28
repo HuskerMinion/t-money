@@ -6,7 +6,8 @@
 import { Fragment, useEffect, useState } from "react";
 import Money from "./Money";
 import ContextMenu, { useContextMenu } from "./ContextMenu";
-import { ACCOUNT_GROUPS, accountWorth, groupFor, isValuedAsset, labelFor, placedFirst, type AccountGroup } from "../lib/accountTypes";
+import { runCommand } from "../lib/commands";
+import { ACCOUNT_GROUPS, accountWorth, groupFor, isAmortizable, isValuedAsset, labelFor, placedFirst, type AccountGroup } from "../lib/accountTypes";
 import { maskNumber } from "./AccountDetailsDialog";
 import { currencyOf, homeName, isForeign, rateOf, worthHome } from "../lib/currency";
 import { api } from "../lib/ipc";
@@ -212,6 +213,22 @@ export default function AccountListView({
           items={[
             { label: "Open register", onSelect: () => onOpen(ctx.menu!.target.id) },
             { label: "Account details…", onSelect: () => onEditDetails(ctx.menu!.target.id) },
+            // Dialogs that live in the register: it opens on this account and
+            // starts them. A valued asset has no statement to balance.
+            !isValuedAsset(ctx.menu.target.type) && {
+              label: "Balance this account…",
+              separatorBefore: true,
+              onSelect: () => runCommand("nav.account", { accountId: ctx.menu!.target.id, action: { kind: "reconcile" } }),
+            },
+            isValuedAsset(ctx.menu.target.type) && {
+              label: "Update value…",
+              separatorBefore: true,
+              onSelect: () => runCommand("nav.account", { accountId: ctx.menu!.target.id, action: { kind: "value" } }),
+            },
+            isAmortizable(ctx.menu.target.type) && {
+              label: "Loan terms…",
+              onSelect: () => runCommand("nav.account", { accountId: ctx.menu!.target.id, action: { kind: "terms" } }),
+            },
             onToggleFavorite && {
               label: ctx.menu.target.is_favorite ? "Remove from favorites" : "Add to favorites",
               onSelect: () => onToggleFavorite(ctx.menu!.target.id),

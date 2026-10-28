@@ -43,6 +43,19 @@ describe("PayeeRulesCard", () => {
     expect(within(card).getByLabelText("Contains")).toHaveValue("AMAZON");
   });
 
+  it("a draft fills the form, re-applies on a new token, and saves nothing", async () => {
+    const { rerender } = render(<PayeeRulesCard categories={[]} draft={{ match: "ACME #1", rename: "ACME #1", token: 1 }} />);
+    const card = await screen.findByRole("region", { name: "Payee rename rules" });
+    expect(within(card).getByLabelText("Contains")).toHaveValue("ACME #1");
+    expect(within(card).getByLabelText("Call it")).toHaveValue("ACME #1");
+    expect(within(card).getByLabelText("Contains")).toHaveFocus();
+    await userEvent.clear(within(card).getByLabelText("Call it"));
+    await userEvent.type(within(card).getByLabelText("Call it"), "Acme");
+    rerender(<PayeeRulesCard categories={[]} draft={{ match: "ACME #1", rename: "ACME #1", token: 2 }} />);
+    expect(within(card).getByLabelText("Call it")).toHaveValue("ACME #1");
+    expect(invokeCalls.some((c) => c.cmd === "create_payee_rule")).toBe(false);
+  });
+
   it("Apply to existing asks for the undo label once the rows are renamed", async () => {
     const onApplied = vi.fn();
     render(<PayeeRulesCard categories={[]} onApplied={onApplied} />);

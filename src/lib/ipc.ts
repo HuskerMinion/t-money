@@ -233,6 +233,9 @@ export const api = {
    *  detector has noticed in the account; the Bills tab has the switch. */
   getCashForecast: (accountId: string, days: number, includeDetected = true) =>
     invoke<CashForecast>("get_cash_forecast", { accountId, days, includeDetected }),
+  /** Several accounts as one balance; they must share a currency. */
+  getCashForecastCombined: (accountIds: string[], days: number, includeDetected = true) =>
+    invoke<CashForecast>("get_cash_forecast_combined", { accountIds, days, includeDetected }),
 
   // Common Transactions — saved entry-form templates.
   listCommonTransactions: () =>

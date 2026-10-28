@@ -1719,6 +1719,10 @@ pub struct DetectedCharge {
     pub varies: bool,
     /// On the Home card's ignore list; projected all the same.
     pub ignored_on_home: bool,
+    /// The account it comes out of, named only when the forecast covers
+    /// several accounts and the payee alone would not say which.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub account_name: Option<String>,
 }
 
 /// Payload for creating or updating a rule.

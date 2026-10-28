@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@tauri-apps/api/core", () => import("../test/tauriMock"));
 
 import CategoriesView, { movesList, treeOf } from "./CategoriesView";
+import { registerCommand } from "../lib/commands";
 import { useAccountStore } from "../stores/useAccountStore";
 import { invokeCalls, resetIpc, setIpcHandlers } from "../test/tauriMock";
 import type { Category, MergePreview } from "../lib/types";
@@ -501,10 +502,21 @@ describe("the row menu", () => {
     render(<CategoriesView />);
     await screen.findByText("Groceries");
     fireEvent.contextMenu(screen.getByRole("row", { name: "Automobile" }));
-    expect(items()).toEqual(["Rename…", "New subcategory…", "Change parent…", "Tax line…", "Merge into…", "Delete…"]);
+    expect(items()).toEqual(["Show transactions", "Rename…", "New subcategory…", "Change parent…", "Tax line…", "Merge into…", "Delete…"]);
     await userEvent.keyboard("{Escape}");
     fireEvent.contextMenu(screen.getByText(/Gasoline/).closest("tr")!);
-    expect(items()).toEqual(["Rename…", "Change parent…", "Tax line…", "Merge into…", "Delete…"]);
+    expect(items()).toEqual(["Show transactions", "Rename…", "Change parent…", "Tax line…", "Merge into…", "Delete…"]);
+  });
+
+  it("Show transactions opens that category's report over all dates", async () => {
+    const seen: unknown[] = [];
+    const off = registerCommand("nav.report", (a) => void seen.push(a));
+    render(<CategoriesView />);
+    await screen.findByText("Groceries");
+    fireEvent.contextMenu(screen.getByRole("row", { name: "Automobile" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Show transactions" }));
+    off();
+    expect(seen).toEqual([{ kind: "transactions_by_category", categoryIds: ["e-1"], rangeId: "all_dates" }]);
   });
 
   it("Rename… selects the row and moves to the name box", async () => {

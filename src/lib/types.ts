@@ -1315,6 +1315,8 @@ export interface DetectedCharge {
   varies: boolean;
   /** On the Home page's Subscriptions ignore list; projected all the same. */
   ignored_on_home: boolean;
+  /** The account it comes out of; only set when several accounts are forecast together. */
+  account_name?: string;
 }
 
 export interface NewRecurrence {

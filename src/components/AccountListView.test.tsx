@@ -10,6 +10,7 @@ import AccountListView from "./AccountListView";
 import { resetIpc, setIpcHandlers } from "../test/tauriMock";
 import type { Account } from "../lib/types";
 import { useFileFormat } from "../lib/region";
+import { registerCommand, resetCommands } from "../lib/commands";
 
 function acct(id: string, name: string, type: Account["type"], balance_cents: number, over: Partial<Account> = {}): Account {
   return {
@@ -23,6 +24,7 @@ function acct(id: string, name: string, type: Account["type"], balance_cents: nu
 const noop = () => {};
 
 beforeEach(() => {
+  resetCommands();
   resetIpc();
   // What is owed comes from the backend in the home currency.
   setIpcHandlers({ debts_by_asset: () => ({ "a-flat": 10_000_000 }) });
@@ -67,7 +69,7 @@ describe("the account row context menu", () => {
     setup();
     await act(async () => {});
     expect(screen.getAllByRole("menuitem").map((i) => i.textContent)).toEqual([
-      "Open register", "Account details…", "Add to favorites", "Merge…", "Delete account…",
+      "Open register", "Account details…", "Balance this account…", "Add to favorites", "Merge…", "Delete account…",
     ]);
   });
 
@@ -81,6 +83,26 @@ describe("the account row context menu", () => {
     const fns = setup();
     await userEvent.click(screen.getByRole("menuitem", { name: label }));
     expect(fns[fn]).toHaveBeenCalledWith("a-1");
+  });
+
+  it.each([
+    ["checking", ["Balance this account…"], { kind: "reconcile" }],
+    ["credit", ["Balance this account…"], { kind: "reconcile" }],
+    ["home", ["Update value…"], { kind: "value" }],
+    ["mortgage", ["Balance this account…", "Loan terms…"], { kind: "terms" }],
+  ] as const)("a %s account offers %j and sends the action to its register", async (type, labels, action) => {
+    const nav = vi.fn();
+    const off = registerCommand("nav.account", nav);
+    render(<AccountListView accounts={[acct("a-1", "Thing", type, 1000)]} onAddAccount={noop} onOpen={noop} onEditDetails={noop} onDeleteAccount={noop} onMergeAccount={noop} />);
+    fireEvent.contextMenu(screen.getByRole("button", { name: "Thing" }).closest("tr")!);
+    const shown = screen.getAllByRole("menuitem").map((i) => i.textContent);
+    for (const l of labels) expect(shown).toContain(l);
+    for (const l of ["Balance this account…", "Update value…", "Loan terms…"]) {
+      if (!(labels as readonly string[]).includes(l)) expect(shown).not.toContain(l);
+    }
+    await userEvent.click(screen.getByRole("menuitem", { name: labels[labels.length - 1] }));
+    expect(nav).toHaveBeenCalledWith({ accountId: "a-1", action });
+    off();
   });
 
   it("offers to remove a favorite", () => {

@@ -115,9 +115,10 @@ describe("A closed account on the Bills screen", () => {
   it("is not in the forecast's account picker", async () => {
     render(<PaymentsView />);
     const picker = await screen.findByLabelText("Forecast account");
-    await waitFor(() => expect(within(picker).getAllByRole("option").length).toBe(2));
+    await waitFor(() => expect(within(picker).getAllByRole("option").length).toBe(3));
     const names = within(picker).getAllByRole("option").map((o) => o.textContent);
-    expect(names).toEqual(["Demo Checking", "Demo Savings"]);
+    // Two open bank accounts bring "All"; the closed one is not offered.
+    expect(names).toEqual(["All bank and cash accounts", "Demo Checking", "Demo Savings"]);
   });
 
   it("a schedule that already transfers to it still shows it when edited", async () => {
@@ -567,5 +568,46 @@ describe("Schedule this transaction, arriving from the register", () => {
     // Taken once: the next visit starts blank.
     const { takeScheduleDraft } = await import("../lib/scheduleDraft");
     expect(takeScheduleDraft()).toBeNull();
+  });
+});
+
+describe("All bank and cash accounts", () => {
+  const acct = (id: string, name: string, type: string, currency = "USD"): Account => ({
+    id, name, type, balance_cents: 0, holdings_value_cents: 0, tax_included: true,
+    is_favorite: false, is_closed: false, updated_at: "", institution: null, account_number: null,
+    routing_number: null, opened_on: null, credit_limit_cents: null, contact_phone: null,
+    contact_email: null, website: null, address: null, account_notes: null, currency,
+  } as Account);
+  let combined: unknown[];
+
+  beforeEach(() => {
+    combined = [];
+    resetIpc();
+    setIpcHandlers({
+      list_recurrences: () => [],
+      get_upcoming: () => [],
+      get_all_accounts: () => [
+        acct("a-chk", "Checking", "checking"),
+        acct("a-sav", "Savings", "savings"),
+        acct("a-visa", "Visa", "credit"),
+        acct("a-eur", "Euro checking", "checking", "EUR"),
+      ],
+      list_categories: () => [],
+      list_goals: () => [],
+      get_ui_setting: () => null,
+      get_cash_forecast: () => null,
+      get_cash_forecast_combined: (a) => {
+        combined.push(a.accountIds);
+        return null;
+      },
+    });
+  });
+
+  it("adds up the bank accounts in the file's currency, not the card or the euros", async () => {
+    render(<PaymentsView />);
+    const picker = await screen.findByLabelText("Forecast account");
+    await waitFor(() => expect(within(picker).getByRole("option", { name: "All bank and cash accounts" })).toBeInTheDocument());
+    await userEvent.selectOptions(picker, "All bank and cash accounts");
+    await waitFor(() => expect(combined).toContainEqual(["a-chk", "a-sav"]));
   });
 });

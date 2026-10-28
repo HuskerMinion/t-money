@@ -43,6 +43,8 @@ export default function PayeesView() {
     true,
     10
   );
+  // A rule form to prefill; the token makes a repeat request count.
+  const [ruleDraft, setRuleDraft] = useState<{ match: string; rename: string; token: number } | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [categoryId, setCategoryId] = useState("");
@@ -322,6 +324,7 @@ export default function PayeesView() {
       </section>
 
       <PayeeRulesCard
+        draft={ruleDraft}
         categories={categories}
         onApplied={async () => {
           await loadPayees();
@@ -335,6 +338,17 @@ export default function PayeesView() {
           label="Payee actions"
           onClose={rowMenu.close}
           items={[
+            {
+              label: "Show transactions",
+              disabled: rowMenu.menu.target.usage_count === 0,
+              title: rowMenu.menu.target.usage_count === 0 ? "No transactions use this payee" : undefined,
+              onSelect: () =>
+                void runCommand("nav.report", {
+                  kind: "transactions_by_payee",
+                  payeeIds: [rowMenu.menu!.target.id],
+                  rangeId: "all_dates",
+                }),
+            },
             {
               label: "Rename…",
               onSelect: () => {
@@ -351,9 +365,12 @@ export default function PayeesView() {
               },
             },
             {
-              label: "Payee rename rules…",
-              title: "Go to the rules that rewrite downloaded payee names",
-              onSelect: () => void runCommand("tools.payee.rules"),
+              label: "Make a rename rule…",
+              title: "Start a rule that files downloaded text under this payee's name",
+              onSelect: () => {
+                const name = rowMenu.menu!.target.name;
+                setRuleDraft((d) => ({ match: name, rename: name, token: (d?.token ?? 0) + 1 }));
+              },
             },
             {
               label: "Delete",

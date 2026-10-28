@@ -46,6 +46,23 @@ export function pickForecastAccount<
   )[0];
 }
 
+/** The forecast picker's "All bank and cash accounts". */
+export const ALL_CASH = "__all_cash__";
+
+/** What "All bank and cash accounts" adds up: open bank accounts and cash,
+ *  the money there is to spend, in the currency the file is kept in. A credit
+ *  card is a debt being run up, not money to spend, and a balance in another
+ *  currency cannot be added to these (the backend refuses it). */
+export function spendableAccounts<T extends { type: string; is_closed?: boolean }>(
+  accounts: readonly T[],
+  currencyOf: (a: T) => string,
+  home: string
+): T[] {
+  return accounts.filter(
+    (a) => !a.is_closed && ["bank", "checking", "savings", "cash"].includes(a.type) && currencyOf(a) === home
+  );
+}
+
 /** Still going to happen, so still worth acting on. */
 export function isOpen(o: Occurrence): boolean {
   return o.status === "due" || o.status === "overdue";

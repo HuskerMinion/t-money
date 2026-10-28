@@ -13,6 +13,7 @@ import { categoryKey } from "./CategoryCombo";
 import ContextMenu, { useContextMenu, type MenuEntry } from "./ContextMenu";
 import FindInRegisterDialog from "./FindInRegisterDialog";
 import TransactionEditRow, { type TransactionDraft } from "./TransactionEditRow";
+import { onRegisterRequest, takeRegisterAction } from "../lib/registerRequest";
 import InvestmentEditRow, { type ShareTransferDraft } from "./InvestmentEditRow";
 import UpdateHoldingsDialog from "./UpdateHoldingsDialog";
 import UpdateValueDialog from "./UpdateValueDialog";
@@ -146,6 +147,10 @@ export default function AccountRegister() {
   const [newKind, setNewKind] = useState<"investment" | "cash">("investment");
   // A cash entry started from the investment Activity list arrives with
   // its payee and category already chosen.
+  // A Buy more… / Sell… from the Investments view: the new entry opens with
+  // the activity and the security already chosen. Like cashPreset it is for
+  // one form, and goes when that form closes or saves.
+  const [entryPreset, setEntryPreset] = useState<{ activity: "buy" | "sell"; securityId: string } | null>(null);
   const [cashPreset, setCashPreset] = useState<{ payee: string; categoryId: string | null; side: "deposit" | "payment" } | null>(null);
   const [updatingHoldings, setUpdatingHoldings] = useState(false);
   // Find duplicate transactions.
@@ -274,6 +279,33 @@ export default function AccountRegister() {
     setSort(DEFAULT_VIEW.sort);
   }, [selectedAccountId, loadRegister]);
 
+  // A right-click on the account list asked for something specific
+  // (Balance this account…, Update value…, Loan terms…) or the Investments
+  // view for a Buy / Sell. Taken once the account is the current one;
+  // `take` removes the request before anything runs, so a StrictMode second
+  // pass finds nothing. An action this account does not offer is dropped.
+  const actionAccountId = account?.id ?? null;
+  const runParked = useRef<() => void>(() => {});
+  runParked.current = () => {
+    if (!actionAccountId) return;
+    const action = takeRegisterAction(actionAccountId);
+    if (!action) return;
+    if (action.kind === "reconcile") {
+      if (stage === null) void beginReconcile();
+    } else if (action.kind === "value") {
+      if (isAsset) setValuing(true);
+    } else if (action.kind === "terms") {
+      if (isLoan) setEditingTerms(true);
+    } else if (isInvestment) {
+      void startNew("investment", { activity: action.kind, securityId: action.securityId });
+    }
+  };
+  // Taken when this account becomes the current one…
+  useEffect(() => runParked.current(), [actionAccountId]);
+  // …and when a request arrives for the account already open (the sidebar
+  // is beside the register, so its menu can ask for the account on screen).
+  useEffect(() => onRegisterRequest(() => runParked.current()), []);
+
   // The register opens at the bottom, where the newest rows and the
   // entry line are — unless a search hit asked for a particular row.
   // Also after balancing ends or the view changes: the grouped
@@ -367,6 +399,7 @@ export default function AccountRegister() {
       await loadSecurities();
       setEditingId(null);
       setAddingNew(false);
+      setEntryPreset(null);
     } finally {
       setBusy(false);
     }
@@ -912,6 +945,7 @@ export default function AccountRegister() {
   function closeForm() {
     setEditingId(null);
     setAddingNew(false);
+    setEntryPreset(null);
   }
 
   /** Double-click, or a click on an already-selected row, opens editing —
@@ -957,9 +991,10 @@ export default function AccountRegister() {
     setShowForms(true);
   }
 
-  async function startNew(kind: "investment" | "cash" = "investment") {
+  async function startNew(kind: "investment" | "cash" = "investment", preset: typeof entryPreset = null) {
     if (!(await leaveOpenForm())) return;
     setCashPreset(null);
+    setEntryPreset(preset);
     setNewKind(kind);
     setEditingId(null);
     setAddingNew(true);
@@ -1452,6 +1487,7 @@ export default function AccountRegister() {
                       accountId={account.id}
                       leaveRef={leaveRef}
                       defaultDate={lastEntryDate}
+                      preset={entryPreset}
                       securities={securities}
                       categories={categories}
                       fundingAccounts={pickableAccounts(accounts).filter((a) => a.id !== selectedAccountId)}
