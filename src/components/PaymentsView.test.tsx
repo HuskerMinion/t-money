@@ -4,7 +4,7 @@
 // directly is how an occurrence's state is PRESENTED, because that is where a
 // user-visible lie would live — a bill that says "Due" when the register
 // already has it, or one that offers Enter when it has been paid.
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 
@@ -389,5 +389,183 @@ describe("Scheduled transfers and other currencies", () => {
     render(<PaymentsView />);
     const row = (await screen.findByRole("cell", { name: "Euro checking" })).closest("tr")!;
     expect(row).toHaveTextContent("(€50.00)");
+  });
+});
+
+// "missing forecast cashflow beyond 90 days. This is a core function in
+// MSmoney allows user to project recurring and one off expense/income as
+// cashflow into the future."
+describe("The forecast's horizon", () => {
+  const acct: Account = {
+    id: "a-chk", name: "Demo Checking", type: "checking", balance_cents: 100_000, holdings_value_cents: 0, tax_included: true,
+    is_favorite: false, is_closed: false, updated_at: "", institution: null, account_number: null,
+    routing_number: null, opened_on: null, credit_limit_cents: null, contact_phone: null,
+    contact_email: null, website: null, address: null, account_notes: null,
+  };
+  const forecast = {
+    account_id: "a-chk", account_name: "Demo Checking", starting_balance_cents: 100_000,
+    points: [{ date: "2026-10-28", balance_cents: 100_000 }, { date: "2026-11-01", balance_cents: 50_000 }],
+    low_balance_cents: 50_000, low_date: "2026-11-01", ending_balance_cents: 50_000,
+    upcoming: [], detected: [], covered_by_bills: [],
+  };
+  let calls: { upcoming: unknown[]; forecast: unknown[]; settings: Array<[unknown, unknown]> };
+
+  function stub(savedHorizon: string | null = null, upcoming: Occurrence[] = []) {
+    calls = { upcoming: [], forecast: [], settings: [] };
+    resetIpc();
+    setIpcHandlers({
+      list_recurrences: () => [],
+      get_upcoming: (a) => {
+        calls.upcoming.push(a.days);
+        return upcoming;
+      },
+      get_all_accounts: () => [acct],
+      list_categories: () => [],
+      list_goals: () => [],
+      get_ui_setting: (a) => (a.key === "forecast.horizon" ? savedHorizon : null),
+      set_ui_setting: (a) => {
+        calls.settings.push([a.key, a.value]);
+      },
+      get_cash_forecast: (a) => {
+        calls.forecast.push(a.days);
+        return forecast;
+      },
+    });
+  }
+
+  it("reaches a year when asked, in the forecast and the bill list both, and remembers it", async () => {
+    stub();
+    render(<PaymentsView />);
+    const picker = await screen.findByLabelText("Forecast period");
+    expect(picker).toHaveValue("90");
+    await userEvent.selectOptions(picker, "365");
+    await waitFor(() => expect(calls.forecast).toContain(365));
+    expect(calls.upcoming).toContain(365);
+    expect(calls.settings).toContainEqual(["forecast.horizon", "365"]);
+    expect(await screen.findByText("In 1 year")).toBeInTheDocument();
+  });
+
+  it("opens on the horizon picked last time", async () => {
+    stub("730");
+    render(<PaymentsView />);
+    await waitFor(() => expect(screen.getByLabelText("Forecast period")).toHaveValue("730"));
+    await waitFor(() => expect(calls.forecast).toContain(730));
+  });
+
+  it("past three months, heads the bill list by month", async () => {
+    stub("365", [
+      occ({ recurrence_id: "r-a", due_date: "2026-11-03", account_id: "a-chk" }),
+      occ({ recurrence_id: "r-b", due_date: "2026-11-20", account_id: "a-chk" }),
+      occ({ recurrence_id: "r-c", due_date: "2027-01-03", account_id: "a-chk" }),
+    ]);
+    render(<PaymentsView />);
+    expect(await screen.findByText("November 2026")).toBeInTheDocument();
+    expect(screen.getByText("January 2027")).toBeInTheDocument();
+    // One heading per month, not per bill.
+    expect(screen.getAllByText("November 2026")).toHaveLength(1);
+  });
+
+  it("One-time item… starts a Once schedule in the account being forecast", async () => {
+    stub();
+    render(<PaymentsView />);
+    await screen.findByLabelText("Forecast period");
+    await waitFor(() => expect(calls.forecast.length).toBeGreaterThan(0));
+    await userEvent.click(screen.getByRole("button", { name: "One-time item…" }));
+    expect(screen.getByLabelText("Repeats")).toHaveValue("once");
+    expect(screen.getByLabelText("Account")).toHaveValue("Demo Checking");
+    expect(screen.getByLabelText("Payee")).toHaveFocus();
+  });
+});
+
+describe("Right-click on a bill", () => {
+  const rule: Recurrence = {
+    id: "r-1", payee: "Anytown Properties", amount_cents: -145_000, account_id: "acc-1", account_name: "Checking",
+    category_id: null, category_name: null, freq: "monthly", interval_n: 1, start_date: "2026-01-01",
+    end_date: null, second_day: null, weekend_rule: "none", notes: null, is_active: true, updated_at: "",
+  };
+  let entered: unknown[];
+  let skipped: unknown[];
+  let paused: unknown[];
+
+  beforeEach(() => {
+    entered = [];
+    skipped = [];
+    paused = [];
+    resetIpc();
+    setIpcHandlers({
+      list_recurrences: () => [rule],
+      get_upcoming: () => [occ()],
+      get_all_accounts: () => [],
+      list_categories: () => [],
+      list_goals: () => [],
+      get_ui_setting: () => null,
+      get_cash_forecast: () => null,
+      get_accounts: () => [],
+      enter_occurrence: (a) => {
+        entered.push(a.recurrenceId);
+      },
+      skip_occurrence: (a) => {
+        skipped.push(a.recurrenceId);
+      },
+      set_recurrence_active: (a) => {
+        paused.push(a.active);
+      },
+    });
+  });
+
+  async function openMenu() {
+    render(<PaymentsView />);
+    const cell = await screen.findByText("Anytown Properties", { selector: "td" });
+    fireEvent.contextMenu(cell, { clientX: 10, clientY: 10 });
+    return screen.getByRole("menu");
+  }
+
+  it("offers what the row's buttons do, and more of the schedule", async () => {
+    const menu = await openMenu();
+    const items = within(menu).getAllByRole("menuitem").map((b) => b.textContent);
+    expect(items).toEqual(["Enter in the register", "Skip this one", "Edit the schedule…", "Pause the schedule", "Delete the schedule…"]);
+  });
+
+  it("Enter and Skip do what the buttons do", async () => {
+    let menu = await openMenu();
+    await userEvent.click(within(menu).getByRole("menuitem", { name: "Enter in the register" }));
+    await waitFor(() => expect(entered).toEqual(["r-1"]));
+    fireEvent.contextMenu(screen.getByText("Anytown Properties", { selector: "td" }), { clientX: 10, clientY: 10 });
+    menu = screen.getByRole("menu");
+    await userEvent.click(within(menu).getByRole("menuitem", { name: "Skip this one" }));
+    await waitFor(() => expect(skipped).toEqual(["r-1"]));
+  });
+
+  it("Pause stops the schedule", async () => {
+    const menu = await openMenu();
+    await userEvent.click(within(menu).getByRole("menuitem", { name: "Pause the schedule" }));
+    await waitFor(() => expect(paused).toEqual([false]));
+  });
+});
+
+describe("Schedule this transaction, arriving from the register", () => {
+  it("fills the form with the draft the register parked", async () => {
+    const { requestSchedule } = await import("../lib/scheduleDraft");
+    resetIpc();
+    setIpcHandlers({
+      list_recurrences: () => [],
+      get_upcoming: () => [],
+      get_all_accounts: () => [],
+      list_categories: () => [],
+      list_goals: () => [],
+      get_ui_setting: () => null,
+      get_cash_forecast: () => null,
+    });
+    requestSchedule({
+      payee: "City Water", amount_cents: -4_210, account_id: null, category_id: null, freq: "monthly",
+      interval_n: 1, start_date: "2026-11-15", end_date: null, second_day: null, weekend_rule: "none", notes: null,
+    });
+    render(<PaymentsView />);
+    await waitFor(() => expect(screen.getByLabelText("Payee")).toHaveValue("City Water"));
+    expect(screen.getByLabelText("Amount")).toHaveValue("42.10");
+    expect(screen.getByLabelText("Direction")).toHaveValue("out");
+    // Taken once: the next visit starts blank.
+    const { takeScheduleDraft } = await import("../lib/scheduleDraft");
+    expect(takeScheduleDraft()).toBeNull();
   });
 });

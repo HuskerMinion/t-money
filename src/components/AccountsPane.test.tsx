@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 // The Three-pane account column: rows in their own currency, group totals in the home currency.
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
 import AccountsPane from "./AccountsPane";
 import type { Account } from "../lib/types";
 import { useFileFormat } from "../lib/region";
@@ -37,6 +38,22 @@ describe("the accounts pane", () => {
     expect(screen.getByRole("button", { name: /Pound account/ })).toHaveTextContent("£700.00");
     const total = screen.getByTitle(/Leaves out Pound account — no rate for GBP/);
     expect(total).toHaveTextContent("$1,000.00*");
+  });
+});
+
+describe("the account context menu", () => {
+  it("opens the register or toggles the favorite", async () => {
+    const onSelect = vi.fn();
+    const onToggleFavorite = vi.fn();
+    render(<AccountsPane accounts={[acct("a-chk", "Checking", 100)]} selectedId={null} onSelect={onSelect} onToggleFavorite={onToggleFavorite} />);
+    const row = screen.getByRole("button", { name: /Checking/ });
+    fireEvent.contextMenu(row);
+    expect(screen.getAllByRole("menuitem").map((i) => i.textContent)).toEqual(["Open register", "Add to favorites"]);
+    await userEvent.click(screen.getByRole("menuitem", { name: "Open register" }));
+    expect(onSelect).toHaveBeenCalledWith("a-chk");
+    fireEvent.contextMenu(row);
+    await userEvent.click(screen.getByRole("menuitem", { name: "Add to favorites" }));
+    expect(onToggleFavorite).toHaveBeenCalledWith("a-chk");
   });
 });
 

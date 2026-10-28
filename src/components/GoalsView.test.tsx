@@ -1,5 +1,5 @@
 // Goals that watch an account: the breakdown, linking, contributing.
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -125,5 +125,38 @@ describe("a goal that watches an account in another currency", () => {
     const from = screen.getByLabelText("From account");
     const names = within(from).getAllByRole("option").map((o) => o.textContent);
     expect(names).toEqual(["(choose)", "Euro checking"]);
+  });
+});
+
+describe("the row menu", () => {
+  const items = () => screen.getAllByRole("menuitem").map((i) => i.textContent);
+
+  it("offers Contribute only for a goal that watches an account", async () => {
+    render(<GoalsView />);
+    fireEvent.contextMenu((await screen.findByText("New Roof")).closest("tr")!);
+    expect(items()).toEqual(["Edit", "Contribute…", "Delete"]);
+    await userEvent.keyboard("{Escape}");
+    fireEvent.contextMenu(screen.getByText("Alaska cruise").closest("tr")!);
+    expect(items()).toEqual(["Edit", "Delete"]);
+  });
+
+  it("Edit loads the goal into the form, Contribute… opens its form", async () => {
+    render(<GoalsView />);
+    fireEvent.contextMenu((await screen.findByText("New Roof")).closest("tr")!);
+    await userEvent.click(screen.getByRole("menuitem", { name: "Edit" }));
+    expect(screen.getByDisplayValue("New Roof")).toBeInTheDocument();
+    fireEvent.contextMenu(screen.getByText("New Roof").closest("tr")!);
+    await userEvent.click(screen.getByRole("menuitem", { name: "Contribute…" }));
+    expect(await screen.findByRole("button", { name: "Move to Savings" })).toBeInTheDocument();
+  });
+
+  it("Delete asks first, then deletes", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    setIpcHandlers({ list_goals: () => [cruise], get_all_accounts: () => accounts, delete_goal: () => null });
+    render(<GoalsView />);
+    fireEvent.contextMenu((await screen.findByText("Alaska cruise")).closest("tr")!);
+    await userEvent.click(screen.getByRole("menuitem", { name: "Delete" }));
+    await waitFor(() => expect(invokeCalls.find((c) => c.cmd === "delete_goal")?.args).toMatchObject({ id: "g-cruise" }));
+    confirm.mockRestore();
   });
 });

@@ -2,6 +2,8 @@
 // with their balances (red-paren negatives).
 import MarketWatermark from "./MarketWatermark";
 import Money from "./Money";
+import ContextMenu, { useContextMenu } from "./ContextMenu";
+import type { Account } from "../lib/types";
 import { accountWorth } from "../lib/accountTypes";
 import { currencyOf } from "../lib/currency";
 import TmIcon from "./TmIcon";
@@ -24,6 +26,8 @@ interface Props {
 export default function FavoriteAccountsWidget({ onOpen }: Props) {
   const favorites = useAccountStore((s) => s.favorites);
   const selectAccount = useAccountStore((s) => s.selectAccount);
+  const toggleFavorite = useAccountStore((s) => s.toggleFavorite);
+  const ctx = useContextMenu<Account>();
 
   function open(id: string) {
     if (onOpen) onOpen(id);
@@ -61,6 +65,7 @@ export default function FavoriteAccountsWidget({ onOpen }: Props) {
                   aria-label={`Open ${a.name}`}
                   title={`Open ${a.name}`}
                   onClick={() => open(a.id)}
+                  onContextMenu={(e) => ctx.open(e, a)}
                   onKeyDown={(e) => {
                     // A row that only responds to a mouse is not a control.
                     if (e.key === "Enter" || e.key === " ") {
@@ -84,6 +89,21 @@ export default function FavoriteAccountsWidget({ onOpen }: Props) {
           </table>
         )}
       </div>
+      {ctx.menu && (
+        <ContextMenu
+          x={ctx.menu.x}
+          y={ctx.menu.y}
+          label={`${ctx.menu.target.name} actions`}
+          onClose={ctx.close}
+          items={[
+            { label: "Open register", onSelect: () => open(ctx.menu!.target.id) },
+            // Everything on this card is a favorite, so the one change on
+            // offer is taking it off. A refused write has nowhere to show on
+            // a card; the star in Banking reports it.
+            { label: "Remove from favorites", onSelect: () => void toggleFavorite(ctx.menu!.target.id).catch(() => {}) },
+          ]}
+        />
+      )}
     </section>
   );
 }

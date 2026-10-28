@@ -12,6 +12,7 @@ import { useEffect, useRef, useState } from "react";
 import TaxLinePicker from "./TaxLinePicker";
 import TmIcon from "./TmIcon";
 import Notice from "./Notice";
+import ContextMenu, { useContextMenu } from "./ContextMenu";
 import { useAccountStore } from "../stores/useAccountStore";
 import { api } from "../lib/ipc";
 import { useCommand } from "../lib/useCommand";
@@ -61,6 +62,7 @@ export default function CategoriesView() {
   const seedStandardCategories = useAccountStore((s) => s.seedStandardCategories);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const rowMenu = useContextMenu<Category>();
   const nameRef = useRef<HTMLInputElement>(null);
   // File → New → Category. Registered at priority 10 so that when this
   // screen is already open the menu item does the thing here rather than the
@@ -268,10 +270,43 @@ export default function CategoriesView() {
     });
   }
 
+  /** Select a row and put the cursor in one of the form's fields. The menu's
+   *  Rename, Change parent and Tax line all edit through the same form as a
+   *  click does, so they only choose the row and say where to type. After a
+   *  frame: the form is re-rendered by `select` first. */
+  function editField(c: Category, fieldLabel: string) {
+    select(c);
+    requestAnimationFrame(() => document.querySelector<HTMLElement>(`[aria-label="${fieldLabel}"]`)?.focus());
+  }
+
+  function startMerge(c: Category) {
+    setMerging(c);
+    setMergeInto("");
+    setDeleting(null);
+  }
+
+  function startDelete(c: Category) {
+    setDeleting(c);
+    setReassignTo("");
+    setMerging(null);
+  }
+
+  /** A new category with its parent already chosen: the same blank form as
+   *  File → New → Category, with "Subcategory of" filled in. */
+  function newSubcategory(parent: Category) {
+    clearForm();
+    setParentId(parent.id);
+    setKind(parent.kind);
+    requestAnimationFrame(() => nameRef.current?.focus());
+  }
+
   function row(c: Category, isChild: boolean) {
     return (
       <tr
         key={c.id}
+        tabIndex={0}
+        aria-label={c.full_name}
+        onContextMenu={(e) => rowMenu.open(e, c)}
         data-category-row={c.id}
         className={c.id === selectedId ? "tm-row-selected" : undefined}
         style={c.id === selectedId ? { background: "var(--tm-ms-row-active)" } : undefined}
@@ -289,9 +324,7 @@ export default function CategoriesView() {
             className="aero-btn"
             onClick={(e) => {
               e.stopPropagation();
-              setMerging(c);
-              setMergeInto("");
-              setDeleting(null);
+              startMerge(c);
             }}
           >
             Merge…
@@ -301,9 +334,7 @@ export default function CategoriesView() {
             className="aero-btn"
             onClick={(e) => {
               e.stopPropagation();
-              setDeleting(c);
-              setReassignTo("");
-              setMerging(null);
+              startDelete(c);
             }}
           >
             Delete…
@@ -476,6 +507,27 @@ export default function CategoriesView() {
           )}
         </form>
       </section>
+
+      {rowMenu.menu && (
+        <ContextMenu
+          x={rowMenu.menu.x}
+          y={rowMenu.menu.y}
+          label="Category actions"
+          onClose={rowMenu.close}
+          items={[
+            { label: "Rename…", onSelect: () => editField(rowMenu.menu!.target, "Category name") },
+            // Two levels only: a subcategory cannot have children of its own.
+            rowMenu.menu.target.parent_id === null && {
+              label: "New subcategory…",
+              onSelect: () => newSubcategory(rowMenu.menu!.target),
+            },
+            { label: "Change parent…", onSelect: () => editField(rowMenu.menu!.target, "Parent category") },
+            { label: "Tax line…", onSelect: () => editField(rowMenu.menu!.target, "Tax line") },
+            { label: "Merge into…", separatorBefore: true, onSelect: () => startMerge(rowMenu.menu!.target) },
+            { label: "Delete…", onSelect: () => startDelete(rowMenu.menu!.target) },
+          ]}
+        />
+      )}
 
       {deleting && (
         <>

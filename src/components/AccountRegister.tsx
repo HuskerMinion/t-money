@@ -10,6 +10,7 @@
 import { useEffect, useRef, useState } from "react";
 import RegisterGrid, { type RegisterGroup } from "./RegisterGrid";
 import { categoryKey } from "./CategoryCombo";
+import ContextMenu, { useContextMenu, type MenuEntry } from "./ContextMenu";
 import FindInRegisterDialog from "./FindInRegisterDialog";
 import TransactionEditRow, { type TransactionDraft } from "./TransactionEditRow";
 import InvestmentEditRow, { type ShareTransferDraft } from "./InvestmentEditRow";
@@ -48,8 +49,10 @@ import { isAmortizable, isValuedAsset, pickableAccounts, registerColumnLabels } 
 import { api } from "../lib/ipc";
 import { samePicks } from "./ClassPicker";
 import { noteChanged } from "../lib/undo";
-import type { Classification, ClearedState, CommonTransaction, Goal, NewInvestmentTransaction, NewSplit, Security, Statement } from "../lib/types";
+import type { Classification, NewRecurrence, RegisterRow, ClearedState, CommonTransaction, Goal, NewInvestmentTransaction, NewSplit, Security, Statement } from "../lib/types";
 import { keys } from "../lib/keys";
+import { requestSchedule } from "../lib/scheduleDraft";
+import { runCommand } from "../lib/commands";
 
 /** Money's register views. `view` is the Show
  *  half; dates and sort ride alongside in `viewOpts`. Reconcile drives the
@@ -58,6 +61,30 @@ export type RegisterView = RegisterShow;
 
 /** Fill the viewport with empty rows, as Money does. */
 const MIN_ROWS = 24;
+
+/** The Bills form's starting point for a register row: the same payee, amount
+ *  and sign, one month on, so a one-off becomes a monthly bill or deposit. */
+function scheduleDraftFor(row: RegisterRow): NewRecurrence {
+  const [y, m, d] = row.date.split("-").map(Number);
+  // Jan 31 -> Feb 28, not Mar 3.
+  const last = new Date(y, m + 1, 0).getDate();
+  const next = new Date(y, m, Math.min(d, last));
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return {
+    payee: row.payee,
+    amount_cents: row.amount_cents,
+    account_id: useAccountStore.getState().selectedAccountId,
+    category_id: row.category_id,
+    transfer_account_id: row.transfer_account_id,
+    freq: "monthly",
+    interval_n: 1,
+    start_date: `${next.getFullYear()}-${pad(next.getMonth() + 1)}-${pad(next.getDate())}`,
+    end_date: null,
+    second_day: null,
+    weekend_rule: "none",
+    notes: row.notes,
+  };
+}
 
 export default function AccountRegister() {
   const selectedAccountId = useAccountStore((s) => s.selectedAccountId);
@@ -125,6 +152,12 @@ export default function AccountRegister() {
   const [dupesOpen, setDupesOpen] = useState(false);
   // Find in this register — Money's Edit → Find, over the register.
   const [findOpen, setFindOpen] = useState(false);
+  // Right-click → Find transactions with this payee: Find opens already
+  // looking for it.
+  const [findPayee, setFindPayee] = useState<string | null>(null);
+  // Right-click → Split… or Attachments…: the row opens for editing with
+  // that window already up, the only place either lives.
+  const [openPart, setOpenPart] = useState<"split" | "attachments" | null>(null);
   // "Mark reconciled through…" — the date, and how many rows it would touch.
   const [reconcileThrough, setReconcileThrough] = useState<string | null>(null);
   const [reconcileCount, setReconcileCount] = useState<number | null>(null);
@@ -181,7 +214,7 @@ export default function AccountRegister() {
   const [splitsLoad, setSplitsLoad] = useState<{ id: string; token: number; lines: NewSplit[] } | null>(null);
   const splitsToken = useRef(0);
   const editingSplits = splitsLoad && splitsLoad.id === editingId ? splitsLoad.lines : [];
-  const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+  const rowMenu = useContextMenu<string>();
   // --- reconcile ---
   const [stage, setStage] = useState<ReconcileStage | null>(null);
   const [statement, setStatement] = useState<Statement | null>(null);
@@ -799,7 +832,6 @@ export default function AccountRegister() {
       setRefusal(String(e));
     } finally {
       setBusy(false);
-      setMenu(null);
     }
   }
 
@@ -885,11 +917,18 @@ export default function AccountRegister() {
   /** Double-click, or a click on an already-selected row, opens editing —
    *  Money's register edits in place without needing the toolbar. */
   async function openForEdit(id: string) {
-    if (editingId !== id && !(await leaveOpenForm())) return;
+    if (editingId !== id && !(await leaveOpenForm())) return false;
+    setOpenPart(null);
     setSelectedRowId(id);
     setAddingNew(false);
     setEditingId(id);
     setShowForms(true);
+    return true;
+  }
+
+  /** Open a row for editing with its split or attachments window up. */
+  async function openWith(id: string, part: "split" | "attachments") {
+    if (await openForEdit(id)) setOpenPart(part);
   }
 
   /** Contribution / Employer Contribution / Deposit / Withdrawal / Fee
@@ -996,7 +1035,6 @@ export default function AccountRegister() {
       setRefusal(String(e));
     } finally {
       setBusy(false);
-      setMenu(null);
     }
   }
 
@@ -1109,9 +1147,10 @@ export default function AccountRegister() {
       // — the guards above are exactly that condition — so this is the same
       // move without the round trip.
       setSelectedRowId(next.id);
-      scrollRef.current
-        ?.querySelector(`[data-row-id="${next.id}"]`)
-        ?.scrollIntoView?.({ block: "nearest" });
+      const el = scrollRef.current?.querySelector<HTMLElement>(`[data-row-id="${next.id}"]`);
+      el?.scrollIntoView?.({ block: "nearest" });
+      // Focus follows the selection, so Shift+F10 opens the menu on this row.
+      el?.focus?.({ preventScroll: true });
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -1338,7 +1377,7 @@ export default function AccountRegister() {
             clearable={stage === "clearing"}
             onToggleCleared={toggleCleared}
             onActivate={(id) => void openForEdit(id)}
-            onRowContextMenu={(id, x, y) => setMenu({ id, x, y })}
+            onRowContextMenu={(id, e) => rowMenu.open(e, id)}
             onEmptyRowClick={() => void startNew()}
             entryRow
             entryNum={lastWasCheck ? nextCheckNumber(register) : null}
@@ -1375,7 +1414,9 @@ export default function AccountRegister() {
             ) : (
               <TransactionEditRow
                 columnLabels={columnLabels}
-                key={`${r.id}:${splitsLoad.token}`}
+                // The window asked for is part of the key, so a row already
+                // open still opens it.
+                key={`${r.id}:${splitsLoad.token}:${openPart ?? ""}`}
                 columns={isInvestment ? 10 : 9}
                 goals={goalsFor(r.transfer_account_id)}
                 classifications={classifications}
@@ -1386,6 +1427,7 @@ export default function AccountRegister() {
                 payees={payees}
                 onCreateCategory={createCategoryInline}
                 initialSplits={editingSplits}
+                openOnMount={openPart}
                 // Open accounts, plus a closed one this row or its
                 // split lines already transfer to (N9).
                 transferTargets={pickableAccounts(accounts, [
@@ -1468,6 +1510,9 @@ export default function AccountRegister() {
           and closing it leaves that row selected. */}
       {findOpen && account && (
         <FindInRegisterDialog
+          key={findPayee ?? ""}
+          initialQuery={findPayee ?? ""}
+          initialField={findPayee ? "payee" : "any"}
           accountName={account.name}
           currency={currencyOf(account)}
           rows={shown}
@@ -1478,7 +1523,10 @@ export default function AccountRegister() {
               ?.querySelector(`[data-row-id="${id}"]`)
               ?.scrollIntoView?.({ block: "center" });
           }}
-          onClose={() => setFindOpen(false)}
+          onClose={() => {
+            setFindOpen(false);
+            setFindPayee(null);
+          }}
         />
       )}
 
@@ -1829,93 +1877,98 @@ export default function AccountRegister() {
       )}
 
       {/* Right-click menu on a register row. */}
-      {menu && (
-        <>
-          <div className="tm-dialog-backdrop" style={{ background: "transparent" }}
-               onClick={() => setMenu(null)} onContextMenu={(e) => { e.preventDefault(); setMenu(null); }} />
-          <div className="tm-context-menu" role="menu" style={{ top: menu.y, left: menu.x }}>
-            <button role="menuitem" type="button" onClick={() => { void openForEdit(menu.id); setMenu(null); }}>
-              Edit transaction
-            </button>
-            {(() => {
-              const row = register.find((r) => r.id === menu.id);
-              if (!row) return null;
-              const voidItem = (
-                <button
-                  role="menuitem"
-                  type="button"
-                  onClick={() => void toggleVoid(menu.id)}
-                  title={
-                    row.is_void
-                      ? undefined
-                      : "Keeps the transaction in the register but removes it from every balance."
-                  }
-                >
-                  {row.is_void ? "Un-void transaction" : "Void transaction"}
-                </button>
-              );
-              if (row.is_void) return voidItem;
-              const label =
-                row.cleared_state === "R"
-                  ? "Unreconcile (was balanced on a statement)"
-                  : row.cleared_state === "C"
-                    ? "Mark as uncleared"
-                    : keys("Mark as cleared (Ctrl+M)");
-              return (
-                <>
-                <button
-                  role="menuitem"
-                  type="button"
-                  title={
-                    row.cleared_state === "R"
-                      ? "The next reconcile will start from a balance that no longer matches the last statement."
-                      : undefined
-                  }
-                  onClick={() => {
-                    void toggleCleared(menu.id);
-                    setMenu(null);
-                  }}
-                >
-                  {label}
-                </button>
-                {row.cleared_state !== "R" && !row.is_void && (
-                  <button
-                    role="menuitem"
-                    type="button"
-                    title="Mark this one transaction R without a statement"
-                    onClick={() => {
-                      void api
-                        .setCleared(menu.id, "R")
-                        .then(() => {
-                          if (selectedAccountId) void loadRegister(selectedAccountId);
-                        })
-                        // A refusal said nothing at all.
-                        .catch((e) => setRefusal(String(e)));
-                      setMenu(null);
-                    }}
-                  >
-                    Mark as reconciled
-                  </button>
-                )}
-                {voidItem}
-                </>
-              );
-            })()}
-            {(() => {
-              const row = register.find((r) => r.id === menu.id);
-              if (!row || row.is_void || row.transfer_account_id) return null;
-              return (
-                <button role="menuitem" type="button" onClick={() => { setTaxLineFor(menu.id); setTaxLineError(null); setMenu(null); }} title="Put this one transaction on a tax line, or take it off its category's">
-                  Tax line…
-                </button>
-              );
-            })()}
-            <button role="menuitem" type="button" onClick={() => deleteTransaction(menu.id)}>
-              Delete transaction
-            </button>
-          </div>
-        </>
-      )}
+      {rowMenu.menu && (() => {
+        const row = register.find((r) => r.id === rowMenu.menu!.target);
+        if (!row) return null;
+        const other = row.transfer_account_id ? accounts.find((a) => a.id === row.transfer_account_id) : undefined;
+        const cashRow = !row.activity && !row.security_id;
+        const clearedLabel =
+          row.cleared_state === "R"
+            ? "Unreconcile (was balanced on a statement)"
+            : row.cleared_state === "C"
+              ? "Mark as uncleared"
+              : keys("Mark as cleared (Ctrl+M)");
+        const items: MenuEntry[] = [
+          { label: "Edit transaction", onSelect: () => void openForEdit(row.id) },
+          cashRow && !row.is_void && !row.transfer_account_id && {
+            label: "Split…",
+            title: "Divide this transaction among several categories",
+            onSelect: () => void openWith(row.id, "split"),
+          },
+          cashRow && {
+            label: row.attachment_count ? `Attachments (${row.attachment_count})…` : "Attachments…",
+            title: "Receipts and statements kept with this transaction",
+            onSelect: () => void openWith(row.id, "attachments"),
+          },
+          !!row.payee.trim() && {
+            label: `Find transactions with ${row.payee}`,
+            onSelect: () => {
+              setFindPayee(row.payee);
+              setFindOpen(true);
+            },
+          },
+          // Money's "Go to transfer": the other half of this one lives in
+          // the other account's register.
+          !!row.transfer_account_id && {
+            label: `Go to ${row.transfer_account_name ?? other?.name ?? "the other account"}`,
+            onSelect: () => void useAccountStore.getState().selectAccount(row.transfer_account_id!),
+          },
+          // The bills form takes the draft, so the user checks the date and
+          // frequency there rather than a series being created blind.
+          cashRow && !row.is_void && {
+            label: "Schedule this transaction…",
+            disabled: !!row.transfer_account_id && row.amount_cents > 0,
+            title:
+              row.transfer_account_id && row.amount_cents > 0
+                ? "A scheduled transfer is set up from the account the money leaves."
+                : "Repeat this one monthly as a bill or deposit",
+            onSelect: () => {
+              requestSchedule(scheduleDraftFor(row));
+              runCommand("new.recurrence");
+            },
+          },
+          !row.is_void && {
+            label: clearedLabel,
+            separatorBefore: true,
+            title:
+              row.cleared_state === "R"
+                ? "The next reconcile will start from a balance that no longer matches the last statement."
+                : undefined,
+            onSelect: () => void toggleCleared(row.id),
+          },
+          !row.is_void &&
+            row.cleared_state !== "R" && {
+              label: "Mark as reconciled",
+              title: "Mark this one transaction R without a statement",
+              onSelect: () => {
+                void api
+                  .setCleared(row.id, "R")
+                  .then(() => {
+                    if (selectedAccountId) void loadRegister(selectedAccountId);
+                  })
+                  // A refusal said nothing at all.
+                  .catch((e) => setRefusal(String(e)));
+              },
+            },
+          {
+            label: row.is_void ? "Un-void transaction" : "Void transaction",
+            separatorBefore: row.is_void,
+            title: row.is_void ? undefined : "Keeps the transaction in the register but removes it from every balance.",
+            onSelect: () => void toggleVoid(row.id),
+          },
+          !row.is_void &&
+            !row.transfer_account_id && {
+              label: "Tax line…",
+              title: "Put this one transaction on a tax line, or take it off its category's",
+              onSelect: () => {
+                setTaxLineFor(row.id);
+                setTaxLineError(null);
+              },
+            },
+          { label: "Delete transaction", separatorBefore: true, onSelect: () => deleteTransaction(row.id) },
+        ];
+        return <ContextMenu x={rowMenu.menu.x} y={rowMenu.menu.y} items={items} onClose={rowMenu.close} label="Transaction actions" />;
+      })()}
 
       {taxLineFor && account && (() => {
         const row = register.find((r) => r.id === taxLineFor);

@@ -1,6 +1,6 @@
 // Categories manager — the tree, and the two operations that
 // move existing transactions.
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -491,5 +491,58 @@ describe("The form after a merge, a create or a delete", () => {
     await userEvent.click(screen.getByRole("button", { name: "Create" }));
     expect(await screen.findByText("Category created.")).toBeInTheDocument();
     expect(screen.getByLabelText("Category name")).toHaveValue("");
+  });
+});
+
+describe("the row menu", () => {
+  const items = () => screen.getAllByRole("menuitem").map((i) => i.textContent);
+
+  it("offers New subcategory only on a top-level row", async () => {
+    render(<CategoriesView />);
+    await screen.findByText("Groceries");
+    fireEvent.contextMenu(screen.getByRole("row", { name: "Automobile" }));
+    expect(items()).toEqual(["Rename…", "New subcategory…", "Change parent…", "Tax line…", "Merge into…", "Delete…"]);
+    await userEvent.keyboard("{Escape}");
+    fireEvent.contextMenu(screen.getByText(/Gasoline/).closest("tr")!);
+    expect(items()).toEqual(["Rename…", "Change parent…", "Tax line…", "Merge into…", "Delete…"]);
+  });
+
+  it("Rename… selects the row and moves to the name box", async () => {
+    render(<CategoriesView />);
+    await screen.findByText("Groceries");
+    fireEvent.contextMenu(screen.getByRole("row", { name: "Groceries" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Rename…" }));
+    expect(screen.getByLabelText("Category name")).toHaveValue("Groceries");
+    await waitFor(() => expect(screen.getByLabelText("Category name")).toHaveFocus());
+  });
+
+  it("Tax line… selects the row and moves to the tax line", async () => {
+    render(<CategoriesView />);
+    await screen.findByText("Groceries");
+    fireEvent.contextMenu(screen.getByRole("row", { name: "Groceries" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Tax line…" }));
+    await waitFor(() => expect(screen.getByLabelText("Tax line")).toHaveFocus());
+  });
+
+  it("New subcategory… starts a blank form under that parent", async () => {
+    render(<CategoriesView />);
+    await screen.findByText("Groceries");
+    fireEvent.contextMenu(screen.getByRole("row", { name: "Automobile" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "New subcategory…" }));
+    expect(screen.getByLabelText("Category name")).toHaveValue("");
+    expect(screen.getByLabelText("Parent category")).toHaveValue("e-1");
+    expect(screen.getByRole("button", { name: "Create" })).toBeInTheDocument();
+  });
+
+  it("Merge into… and Delete… open their dialogs for that row", async () => {
+    render(<CategoriesView />);
+    await screen.findByText("Groceries");
+    fireEvent.contextMenu(screen.getByRole("row", { name: "Groceries" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Merge into…" }));
+    expect(within(screen.getByRole("dialog", { name: "Merge category" })).getAllByText("Groceries").length).toBeGreaterThan(0);
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    fireEvent.contextMenu(screen.getByRole("row", { name: "Salary" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Delete…" }));
+    expect(within(screen.getByRole("dialog", { name: "Delete category" })).getByText("Salary")).toBeInTheDocument();
   });
 });

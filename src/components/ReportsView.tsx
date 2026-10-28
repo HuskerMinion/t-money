@@ -2,9 +2,10 @@
 // groups, Monthly reports for the last twelve months, and one viewer for
 // whichever report is open.
 import { useEffect, useState } from "react";
-import ReportViewer, { specFromSaved, type ReportSpec } from "./ReportViewer";
+import ReportViewer, { savedFromSpec, specFromSaved, type ReportSpec } from "./ReportViewer";
 import TmIcon from "./TmIcon";
 import Notice from "./Notice";
+import ContextMenu, { useContextMenu } from "./ContextMenu";
 import { api } from "../lib/ipc";
 import { today } from "../lib/format";
 import { monthRange, monthTitle, recentMonths, resolveRange } from "../lib/reportRanges";
@@ -80,6 +81,10 @@ export default function ReportsView({ initialOpen = null, onOpenAccount, onOpenT
   // saved list to arrive. Null once it has been resolved (or was never asked).
   const [pendingSavedId, setPendingSavedId] = useState<string | null>(initialOpen?.savedId ?? null);
   const [error, setError] = useState<string | null>(null);
+  // Open straight into Customize, from the gallery's right-click menu.
+  const [customizeFirst, setCustomizeFirst] = useState(false);
+  const favMenu = useContextMenu<SavedReport>();
+  const galleryMenu = useContextMenu<ReportGalleryEntry>();
   const loadCategories = useAccountStore((s) => s.loadCategories);
   const loadAccounts = useAccountStore((s) => s.loadAccounts);
 
@@ -135,14 +140,59 @@ export default function ReportsView({ initialOpen = null, onOpenAccount, onOpenT
     }
   }, [pendingSavedId, favorites, favoritesLoaded]);
 
+  function openReport(next: ReportSpec, customize = false) {
+    setCustomizeFirst(customize);
+    setSpec(next);
+  }
+
+  /** Ask for a new name, then store the report under it. The saved row carries
+   *  its whole spec, so renaming is a save with the same id. */
+  async function renameFavorite(r: SavedReport) {
+    const name = window.prompt("Rename this favorite report", r.name)?.trim();
+    if (!name || name === r.name) return;
+    try {
+      await api.saveReport({ ...r, name });
+      await loadFavorites();
+      onSavedReportsChanged?.();
+    } catch (e) {
+      setError(`Could not rename it: ${e}`);
+    }
+  }
+
+  async function removeFavorite(r: SavedReport) {
+    if (!window.confirm(`Remove "${r.name}" from My favorites?`)) return;
+    try {
+      await api.deleteSavedReport(r.id);
+      await loadFavorites();
+      onSavedReportsChanged?.();
+    } catch (e) {
+      setError(`Could not remove it from My favorites: ${e}`);
+    }
+  }
+
+  /** A gallery report, with its usual range, kept under its own name. */
+  async function addToFavorites(e: ReportGalleryEntry) {
+    try {
+      await api.saveReport(savedFromSpec(specFor(e.kind), e.label));
+      await loadFavorites();
+      onSavedReportsChanged?.();
+    } catch (err) {
+      setError(`Could not add it to My favorites: ${err}`);
+    }
+  }
+
   if (spec) {
     return (
       <ReportViewer
+        customizeOnOpen={customizeFirst}
         spec={spec}
         onSpec={setSpec}
         onOpenAccount={onOpenAccount}
         onOpenTransaction={onOpenTransaction}
-        onBack={() => setSpec(null)}
+        onBack={() => {
+          setCustomizeFirst(false);
+          setSpec(null);
+        }}
         onSave={async (r) => {
           const stored = await api.saveReport(r);
           await loadFavorites();
@@ -172,6 +222,33 @@ export default function ReportsView({ initialOpen = null, onOpenAccount, onOpenT
           {error}
         </Notice>
       )}
+      {favMenu.menu && (
+        <ContextMenu
+          x={favMenu.menu.x}
+          y={favMenu.menu.y}
+          label="Favorite report actions"
+          onClose={favMenu.close}
+          items={[
+            { label: "Open", onSelect: () => openReport(specFromSaved(favMenu.menu!.target)) },
+            { label: "Customize…", onSelect: () => openReport(specFromSaved(favMenu.menu!.target), true) },
+            { label: "Rename…", separatorBefore: true, onSelect: () => void renameFavorite(favMenu.menu!.target) },
+            { label: "Remove from my favorites", onSelect: () => void removeFavorite(favMenu.menu!.target) },
+          ]}
+        />
+      )}
+      {galleryMenu.menu && (
+        <ContextMenu
+          x={galleryMenu.menu.x}
+          y={galleryMenu.menu.y}
+          label="Report actions"
+          onClose={galleryMenu.close}
+          items={[
+            { label: "Open", onSelect: () => openReport(specFor(galleryMenu.menu!.target.kind)) },
+            { label: "Customize…", onSelect: () => openReport(specFor(galleryMenu.menu!.target.kind), true) },
+            { label: "Add to my favorite reports", separatorBefore: true, onSelect: () => void addToFavorites(galleryMenu.menu!.target) },
+          ]}
+        />
+      )}
       <div className="tm-report-gallery pt-2">
         <section className="aero-card">
           <div className="aero-card-title">My favorites</div>
@@ -183,7 +260,7 @@ export default function ReportsView({ initialOpen = null, onOpenAccount, onOpenT
             )}
             {favorites.map((r) => (
               <li key={r.id}>
-                <button type="button" onClick={() => setSpec(specFromSaved(r))}>{r.name}</button>
+                <button type="button" onClick={() => openReport(specFromSaved(r))} onContextMenu={(e) => favMenu.open(e, r)}>{r.name}</button>
               </li>
             ))}
           </ul>
@@ -194,7 +271,7 @@ export default function ReportsView({ initialOpen = null, onOpenAccount, onOpenT
             <ul>
               {gallery.filter((e) => e.group === g).map((e) => (
                 <li key={e.kind}>
-                  <button type="button" onClick={() => setSpec(specFor(e.kind))}>{e.label}</button>
+                  <button type="button" onClick={() => openReport(specFor(e.kind))} onContextMenu={(ev) => galleryMenu.open(ev, e)}>{e.label}</button>
                 </li>
               ))}
             </ul>

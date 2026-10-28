@@ -10,10 +10,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import TmIcon from "./TmIcon";
 import Notice from "./Notice";
+import ContextMenu, { useContextMenu } from "./ContextMenu";
 import CategorySelect from "./CategorySelect";
 import PayeeRulesCard from "./PayeeRulesCard";
 import { useAccountStore } from "../stores/useAccountStore";
 import { useCommand } from "../lib/useCommand";
+import { runCommand } from "../lib/commands";
 import type { Payee } from "../lib/types";
 
 export default function PayeesView() {
@@ -27,6 +29,7 @@ export default function PayeesView() {
   const removePayee = useAccountStore((s) => s.removePayee);
 
   const [filter, setFilter] = useState("");
+  const rowMenu = useContextMenu<Payee>();
   const newRef = useRef<HTMLInputElement>(null);
   // File → New → Payee, when this screen is the one in front (command
   // priority). Off screen, the shell brings you here first.
@@ -266,6 +269,9 @@ export default function PayeesView() {
                 {shown.map((p) => (
                   <tr
                     key={p.id}
+                    tabIndex={0}
+                    aria-label={p.name}
+                    onContextMenu={(e) => rowMenu.open(e, p)}
                     onClick={() => select(p)}
                     style={
                       p.id === selectedId
@@ -322,6 +328,43 @@ export default function PayeesView() {
           await useAccountStore.getState().reloadAll();
         }}
       />
+      {rowMenu.menu && (
+        <ContextMenu
+          x={rowMenu.menu.x}
+          y={rowMenu.menu.y}
+          label="Payee actions"
+          onClose={rowMenu.close}
+          items={[
+            {
+              label: "Rename…",
+              onSelect: () => {
+                const p = rowMenu.menu!.target;
+                select(p);
+                requestAnimationFrame(() => { const box = document.querySelector<HTMLInputElement>('[aria-label="Payee name"]'); box?.focus(); box?.select(); });
+              },
+            },
+            {
+              label: "Merge into…",
+              onSelect: () => {
+                setMerging(rowMenu.menu!.target);
+                setMergeInto("");
+              },
+            },
+            {
+              label: "Payee rename rules…",
+              title: "Go to the rules that rewrite downloaded payee names",
+              onSelect: () => void runCommand("tools.payee.rules"),
+            },
+            {
+              label: "Delete",
+              separatorBefore: true,
+              disabled: busy || rowMenu.menu.target.usage_count > 0,
+              title: rowMenu.menu.target.usage_count > 0 ? "Used by transactions — merge it instead" : "Delete this payee",
+              onSelect: () => void remove(rowMenu.menu!.target),
+            },
+          ]}
+        />
+      )}
       {merging && (
         <>
           <div className="tm-dialog-backdrop" onClick={() => !busy && setMerging(null)} />

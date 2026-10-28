@@ -13,6 +13,7 @@
 // Each row is in its own account's currency; a group total adds accounts
 // together, so it is in the home currency at today's rate.
 import Money from "./Money";
+import ContextMenu, { useContextMenu } from "./ContextMenu";
 import { accountWorth, placedFirst } from "../lib/accountTypes";
 import { currencyOf, homeName, rateOf, worthHome } from "../lib/currency";
 import type { Account } from "../lib/types";
@@ -21,6 +22,8 @@ interface Props {
   accounts: Account[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  /** Star or unstar the account. Left out, the item is not offered. */
+  onToggleFavorite?: (id: string) => void;
 }
 
 const GROUPS: [string, string[]][] = [
@@ -30,7 +33,8 @@ const GROUPS: [string, string[]][] = [
   ["Owed", ["credit", "line_of_credit", "loan", "mortgage", "home_equity_line_of_credit", "liability"]],
 ];
 
-export default function AccountsPane({ accounts, selectedId, onSelect }: Props) {
+export default function AccountsPane({ accounts, selectedId, onSelect, onToggleFavorite }: Props) {
+  const ctx = useContextMenu<Account>();
   const open = accounts.filter((a) => !a.is_closed);
   const seen = new Set<string>();
 
@@ -61,7 +65,7 @@ export default function AccountsPane({ accounts, selectedId, onSelect }: Props) 
               </span>
             </div>
             {rows.map((a) => (
-              <Row key={a.id} account={a} active={a.id === selectedId} onSelect={onSelect} />
+              <Row key={a.id} account={a} active={a.id === selectedId} onSelect={onSelect} onMenu={ctx.open} />
             ))}
           </div>
         );
@@ -75,21 +79,47 @@ export default function AccountsPane({ accounts, selectedId, onSelect }: Props) 
           {open
             .filter((a) => !seen.has(a.id))
             .map((a) => (
-              <Row key={a.id} account={a} active={a.id === selectedId} onSelect={onSelect} />
+              <Row key={a.id} account={a} active={a.id === selectedId} onSelect={onSelect} onMenu={ctx.open} />
             ))}
         </div>
+      )}
+      {ctx.menu && (
+        <ContextMenu
+          x={ctx.menu.x}
+          y={ctx.menu.y}
+          label={`${ctx.menu.target.name} actions`}
+          onClose={ctx.close}
+          items={[
+            { label: "Open register", onSelect: () => onSelect(ctx.menu!.target.id) },
+            onToggleFavorite && {
+              label: ctx.menu.target.is_favorite ? "Remove from favorites" : "Add to favorites",
+              onSelect: () => onToggleFavorite(ctx.menu!.target.id),
+            },
+          ]}
+        />
       )}
     </nav>
   );
 }
 
-function Row({ account, active, onSelect }: { account: Account; active: boolean; onSelect: (id: string) => void }) {
+function Row({
+  account,
+  active,
+  onSelect,
+  onMenu,
+}: {
+  account: Account;
+  active: boolean;
+  onSelect: (id: string) => void;
+  onMenu: (e: React.MouseEvent, a: Account) => void;
+}) {
   return (
     <button
       type="button"
       className={`tm-accounts-item${active ? " active" : ""}`}
       aria-current={active ? "true" : undefined}
       onClick={() => onSelect(account.id)}
+      onContextMenu={(e) => onMenu(e, account)}
       title={`Open ${account.name}`}
     >
       <span className="tm-accounts-line">

@@ -2,7 +2,7 @@
 //
 // The viewer is stubbed: what is under test is ReportsView's own state — which
 // spec is open, and what makes it change — not the report engine.
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -134,5 +134,61 @@ describe("Saving a favorite does not reset the open report", () => {
       render(view({ kind: "", savedId: "gone" }));
     });
     expect(await screen.findByRole("alert")).toHaveTextContent("no longer in this file");
+  });
+});
+
+describe("the gallery menus", () => {
+  const items = () => screen.getAllByRole("menuitem").map((i) => i.textContent);
+
+  beforeEach(() => {
+    setIpcHandlers({
+      list_reports: () => [{ kind: "net_worth", label: "Net worth", group: "Net worth and balances" }],
+      list_saved_reports: () => [...saved],
+      list_categories: () => [],
+      get_all_accounts: () => [],
+      save_report: (args) => {
+        const r = { ...(args.report as SavedReport), id: (args.report as SavedReport).id || "saved-new" };
+        saved = [...saved.filter((s) => s.id !== r.id), r];
+        return r;
+      },
+      delete_saved_report: (args) => {
+        saved = saved.filter((s) => s.id !== args.id);
+        return null;
+      },
+    });
+  });
+
+  it("a gallery report: Open, Customize…, Add to my favorite reports", async () => {
+    render(view(null));
+    fireEvent.contextMenu(await screen.findByRole("button", { name: "Net worth" }));
+    expect(items()).toEqual(["Open", "Customize…", "Add to my favorite reports"]);
+    await userEvent.click(screen.getByRole("menuitem", { name: "Add to my favorite reports" }));
+    await waitFor(() => expect(saved.map((s) => s.name)).toEqual(["Net worth"]));
+  });
+
+  it("Open opens the report", async () => {
+    render(view(null));
+    fireEvent.contextMenu(await screen.findByRole("button", { name: "Net worth" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Open" }));
+    expect(await screen.findByRole("heading", { name: "net_worth" })).toBeInTheDocument();
+  });
+
+  it("a favorite: Open, Customize…, Rename…, Remove", async () => {
+    saved = [{ ...savedFromSpec(specFor("net_worth"), "Mine"), id: "fav-1" }];
+    render(view(null));
+    fireEvent.contextMenu(await screen.findByRole("button", { name: "Mine" }));
+    expect(items()).toEqual(["Open", "Customize…", "Rename…", "Remove from my favorites"]);
+
+    const prompt = vi.spyOn(window, "prompt").mockReturnValue("Renamed");
+    await userEvent.click(screen.getByRole("menuitem", { name: "Rename…" }));
+    await waitFor(() => expect(saved[0].name).toBe("Renamed"));
+    expect(saved[0].id).toBe("fav-1");
+    prompt.mockRestore();
+
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    fireEvent.contextMenu(await screen.findByRole("button", { name: "Renamed" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Remove from my favorites" }));
+    await waitFor(() => expect(saved).toHaveLength(0));
+    confirm.mockRestore();
   });
 });

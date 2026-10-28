@@ -1,4 +1,4 @@
-// The 90-day balance projection.
+// The balance projection, over whatever horizon the Bills screen picked.
 //
 // The first version was 91 saturated bars anchored to a zero line, and when
 // the selected account was already negative every bar was full-height red —
@@ -56,7 +56,7 @@ export function domainOf(values: readonly number[]): {
 }
 
 /** A balance that never moves is a number, not a chart — the form heuristic's
- *  first question. Drawing 90 days of an unchanging line says nothing and
+ *  first question. Drawing months of an unchanging line says nothing and
  *  fills the panel doing it. */
 export function isFlat(values: readonly number[]): boolean {
   return values.length > 0 && values.every((v) => v === values[0]);

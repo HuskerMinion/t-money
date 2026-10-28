@@ -5,6 +5,7 @@
 // (open an investment account); this page is what they add up to.
 import { useEffect, useRef, useState } from "react";
 import Money from "./Money";
+import ContextMenu, { useContextMenu } from "./ContextMenu";
 import TmIcon from "./TmIcon";
 import Notice from "./Notice";
 import DateField from "./DateField";
@@ -50,6 +51,7 @@ export default function InvestmentsView({ onOpenAccount }: Props) {
   const [perfAccount, setPerfAccount] = useState("");
   const [perfFor, setPerfFor] = useState("");
   const [perfSerial, setPerfSerial] = useState(0);
+  const ctx = useContextMenu<Position>();
   // A failed performance load is its own state. It used to become an
   // empty list, which read "Nothing held long enough to measure" — a claim
   // about the holdings, made when nothing had been measured at all.
@@ -255,7 +257,7 @@ export default function InvestmentsView({ onOpenAccount }: Props) {
                       const key = `${p.account_id}|${p.security_id}`;
                       const isOpen = open === key;
                       return (
-                        <PositionRows key={key} p={p} open={isOpen} onToggle={() => setOpen(isOpen ? null : key)} onSetSymbol={setSymbol} rounding={p.rounding ?? portfolio?.rounding ?? "nearest"} />
+                        <PositionRows key={key} p={p} open={isOpen} onToggle={() => setOpen(isOpen ? null : key)} onSetSymbol={setSymbol} onMenu={ctx.open} rounding={p.rounding ?? portfolio?.rounding ?? "nearest"} />
                       );
                     })}
                     <tr>
@@ -311,6 +313,31 @@ export default function InvestmentsView({ onOpenAccount }: Props) {
           )}
         </div>
       </section>
+
+      {ctx.menu && (() => {
+        const p = ctx.menu.target;
+        const key = `${p.account_id}|${p.security_id}`;
+        return (
+          <ContextMenu
+            x={ctx.menu.x}
+            y={ctx.menu.y}
+            label={`${p.security_name} actions`}
+            onClose={ctx.close}
+            items={[
+              // Buys and sells are entered in the register, so that is the way
+              // to Buy and Sell from here.
+              onOpenAccount && { label: "Open register (Buy / Sell)", onSelect: () => onOpenAccount(p.account_id) },
+              { label: open === key ? "Hide lots" : "Show lots", onSelect: () => setOpen(open === key ? null : key) },
+              {
+                label: "Update prices",
+                separatorBefore: true,
+                disabled: refreshing || securities.length === 0,
+                onSelect: () => void refreshPrices(),
+              },
+            ]}
+          />
+        );
+      })()}
 
       {panel === "securities" && <SecuritiesPanel securities={securities} onChanged={load} />}
 
@@ -518,12 +545,14 @@ function PositionRows({
   open,
   onToggle,
   onSetSymbol,
+  onMenu,
   rounding,
 }: {
   p: Position;
   open: boolean;
   onToggle: () => void;
   onSetSymbol: (securityId: string, symbol: string) => Promise<void>;
+  onMenu: (e: React.MouseEvent, p: Position) => void;
   rounding: HoldingRounding;
 }) {
   const t = today();
@@ -531,6 +560,9 @@ function PositionRows({
     <>
       <tr
         onClick={onToggle}
+        onContextMenu={(e) => onMenu(e, p)}
+        // Focusable so Shift+F10 and the Menu key can open the menu.
+        tabIndex={0}
         style={{ cursor: "pointer" }}
         aria-expanded={open}
         title={p.price_date ? `Price from ${formatDateUS(p.price_date)}` : "Never priced — valued at cost"}

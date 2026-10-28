@@ -13,6 +13,7 @@
 import { useEffect, useRef, useState } from "react";
 import TmIcon from "./TmIcon";
 import Notice from "./Notice";
+import ContextMenu, { useContextMenu } from "./ContextMenu";
 import { api } from "../lib/ipc";
 import { noteChanged } from "../lib/undo";
 import { useCommand } from "../lib/useCommand";
@@ -32,6 +33,7 @@ export function valueTree(
 
 export default function ClassificationsView() {
   const [axes, setAxes] = useState<Classification[]>([]);
+  const valueMenu = useContextMenu<ClassificationValue>();
   const [selectedAxis, setSelectedAxis] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -163,7 +165,7 @@ export default function ClassificationsView() {
   function valueRow(v: ClassificationValue, isChild: boolean) {
     const editing = renaming?.kind === "value" && renaming.id === v.id;
     return (
-      <tr key={v.id}>
+      <tr key={v.id} tabIndex={0} aria-label={v.full_name} onContextMenu={(e) => valueMenu.open(e, v)}>
         <td className="py-1 pl-1" style={{ paddingLeft: isChild ? 22 : 4 }}>
           {editing ? (
             <input
@@ -392,6 +394,31 @@ export default function ClassificationsView() {
             </section>
           )}
         </>
+      )}
+
+      {valueMenu.menu && (
+        <ContextMenu
+          x={valueMenu.menu.x}
+          y={valueMenu.menu.y}
+          label="Value actions"
+          onClose={valueMenu.close}
+          items={[
+            {
+              label: "Rename…",
+              onSelect: () => {
+                const v = valueMenu.menu!.target;
+                setRenaming({ kind: "value", id: v.id, name: v.name });
+              },
+            },
+            {
+              label: "Delete…",
+              onSelect: () => {
+                const v = valueMenu.menu!.target;
+                setDeleting({ kind: "value", id: v.id, label: v.full_name, links: v.usage_count });
+              },
+            },
+          ]}
+        />
       )}
 
       {deleting && (

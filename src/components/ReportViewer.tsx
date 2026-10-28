@@ -10,6 +10,7 @@ import PickList from "./PickList";
 import TmIcon from "./TmIcon";
 import Notice from "./Notice";
 import DateField from "./DateField";
+import ContextMenu, { useContextMenu } from "./ContextMenu";
 import { api } from "../lib/ipc";
 import { useCommand } from "../lib/useCommand";
 import { save } from "@tauri-apps/plugin-dialog";
@@ -157,6 +158,8 @@ interface Props {
    *  it came from). Resolves to the stored copy. */
   onSave: (report: SavedReport) => Promise<SavedReport>;
   onDeleteSaved?: (id: string) => Promise<void>;
+  /** Open with Customize already showing (the gallery's right-click Customize…). */
+  customizeOnOpen?: boolean;
 }
 
 /** Cents as the amount boxes show them once left: "50.00" ("50,00" in a
@@ -257,13 +260,14 @@ export function drillFor(spec: ReportSpec, row: ReportLine): Partial<ReportSpec>
   }
 }
 
-export default function ReportViewer({ spec, onSpec, onOpenAccount, onOpenTransaction, onBack, onSave, onDeleteSaved }: Props) {
+export default function ReportViewer({ spec, onSpec, onOpenAccount, onOpenTransaction, onBack, onSave, onDeleteSaved, customizeOnOpen }: Props) {
   const accounts = useAccountStore((s) => s.accounts);
   const categories = useAccountStore((s) => s.categories);
   const [report, setReport] = useState<Report | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<"table" | "chart">("table");
   const [customize, setCustomize] = useState(false);
+  const rowMenu = useContextMenu<ReportLine>();
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveName, setSaveName] = useState("");
@@ -301,6 +305,11 @@ export default function ReportViewer({ spec, onSpec, onOpenAccount, onOpenTransa
     setAmountText({ min: centsText(spec.minCents), max: centsText(spec.maxCents) });
     setCustomize(true);
   }
+  // Only on arrival: a later Apply or Cancel must be able to close it.
+  useEffect(() => {
+    if (customizeOnOpen) openCustomize();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   /** The report Customize describes, as Apply would run it. */
   function draftSpec(d: ReportSpec): ReportSpec {
     // A half-filled comparison is no comparison. Clearing one of
@@ -540,6 +549,24 @@ export default function ReportViewer({ spec, onSpec, onOpenAccount, onOpenTransa
     if (drill) onSpec({ ...spec, ...drill, compare: null, savedId: undefined, savedName: undefined });
   }
 
+  function toggleSaving() {
+    setSaveName(spec.savedName ?? (report?.title ?? ""));
+    setSaveError(null);
+    setSaving((v) => !v);
+  }
+
+  function removeFavorite() {
+    if (!onDeleteSaved || !spec.savedId) return;
+    if (window.confirm(`Remove "${spec.savedName}" from My favorites?`)) {
+      // A refused remove used to vanish into an unhandled
+      // rejection, and the report simply stayed.
+      setError(null);
+      onDeleteSaved(spec.savedId)
+        .then(onBack)
+        .catch((e) => setError(`Could not remove it from My favorites: ${e}`));
+    }
+  }
+
   // File → Export → This report to CSV. The button on the rail has
   // done this all along; the menu item named it and nothing served it, so it
   // was grayed out even while a report was on screen.
@@ -592,11 +619,7 @@ export default function ReportViewer({ spec, onSpec, onOpenAccount, onOpenTransa
         <button
           className="tm-rail-link"
           type="button"
-          onClick={() => {
-            setSaveName(spec.savedName ?? (report?.title ?? ""));
-            setSaveError(null);
-            setSaving((v) => !v);
-          }}
+          onClick={toggleSaving}
           aria-expanded={saving}
         >
           {spec.savedId ? "Save changes to this report…" : "Add to my favorite reports…"}
@@ -605,16 +628,7 @@ export default function ReportViewer({ spec, onSpec, onOpenAccount, onOpenTransa
           <button
             className="tm-rail-link"
             type="button"
-            onClick={() => {
-              if (window.confirm(`Remove "${spec.savedName}" from My favorites?`)) {
-                // A refused remove used to vanish into an unhandled
-                // rejection, and the report simply stayed.
-                setError(null);
-                onDeleteSaved(spec.savedId!)
-                  .then(onBack)
-                  .catch((e) => setError(`Could not remove it from My favorites: ${e}`));
-              }
-            }}
+            onClick={removeFavorite}
           >
             Remove from my favorites
           </button>
@@ -631,6 +645,39 @@ export default function ReportViewer({ spec, onSpec, onOpenAccount, onOpenTransa
       </aside>
 
       <section className="flex-1 min-w-0">
+        {rowMenu.menu && (() => {
+          const row = rowMenu.menu.target;
+          const drills =
+            !!row.key && ["category", "payee", "class_value"].includes(row.key_kind ?? "") && !!drillFor(spec, row);
+          const opens = !!row.key && (row.key_kind === "account" || row.key_kind === "transaction");
+          return (
+            <ContextMenu
+              x={rowMenu.menu.x}
+              y={rowMenu.menu.y}
+              label="Report row actions"
+              onClose={rowMenu.close}
+              items={[
+                drills && { label: "Show transactions", onSelect: () => click(row) },
+                opens && {
+                  label: row.key_kind === "account" ? "Open account" : "Open transaction",
+                  onSelect: () => click(row),
+                },
+                { label: "Customize…", separatorBefore: drills || opens, onSelect: () => (customize ? undefined : openCustomize()) },
+                {
+                  label: spec.savedId ? "Save changes to this report…" : "Add to my favorite reports…",
+                  // Opens the save box; choosing it again must not close it.
+                  onSelect: () => {
+                    if (!saving) toggleSaving();
+                  },
+                },
+                !!spec.savedId && !!onDeleteSaved && { label: "Remove from my favorites", onSelect: removeFavorite },
+                { label: "Print this report", separatorBefore: true, onSelect: () => window.print() },
+                { label: "Copy as CSV (for Excel)", onSelect: () => void copyCsv() },
+                { label: "Save as CSV file…", onSelect: () => void saveCsv() },
+              ]}
+            />
+          );
+        })()}
         <h1 className="tm-report-title">{spec.savedName ?? report?.title ?? "…"}</h1>
         <div className="tm-report-subtitle">
           {report?.subtitle}
@@ -1137,7 +1184,10 @@ export default function ReportViewer({ spec, onSpec, onOpenAccount, onOpenTransa
                         clickable ? "tm-report-link" : "",
                       ].filter(Boolean).join(" ") || undefined}
                       onClick={clickable ? () => click(r) : undefined}
-                      tabIndex={clickable ? 0 : undefined}
+                      // Every row is a stop, so Shift+F10 can open the menu
+                      // on a total as well as on a row that drills.
+                      tabIndex={0}
+                      onContextMenu={(e) => rowMenu.open(e, r)}
                       onKeyDown={clickable ? (e) => { if (e.key === "Enter") click(r); } : undefined}
                       aria-label={clickable ? `Open ${r.label}` : undefined}
                     >

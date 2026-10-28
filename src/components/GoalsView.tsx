@@ -10,6 +10,7 @@ import { Fragment, useEffect, useState, useRef } from "react";
 import Money from "./Money";
 import TmIcon from "./TmIcon";
 import Notice from "./Notice";
+import ContextMenu, { useContextMenu } from "./ContextMenu";
 import DateField from "./DateField";
 import { useCommand } from "../lib/useCommand";
 import { api } from "../lib/ipc";
@@ -32,6 +33,7 @@ export default function GoalsView() {
   const [accountId, setAccountId] = useState("");
   // Contribute…: which goal is taking one, and the form.
   const [contributing, setContributing] = useState<string | null>(null);
+  const rowMenu = useContextMenu<Goal>();
   const [fromAccount, setFromAccount] = useState("");
   const [contribAmount, setContribAmount] = useState("");
   const [contribDate, setContribDate] = useState(today());
@@ -162,6 +164,21 @@ export default function GoalsView() {
     }
   }
 
+  function toggleContribute(g: Goal) {
+    // A new form for a different goal starts
+    // empty. "From" carried over, and a From that was
+    // THIS goal's own account is filtered out of its
+    // list: the picker read "(choose)" while the state
+    // still said Savings, and Move sent Savings to
+    // Savings.
+    if (contributing !== g.id) {
+      setFromAccount("");
+      setContribAmount("");
+    }
+    setContributing(contributing === g.id ? null : g.id);
+    setContribMsg(null);
+  }
+
   async function remove(g: Goal) {
     if (!window.confirm(`Delete goal "${g.name}"?`)) return;
     try {
@@ -175,6 +192,26 @@ export default function GoalsView() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      {rowMenu.menu && (
+        <ContextMenu
+          x={rowMenu.menu.x}
+          y={rowMenu.menu.y}
+          label="Goal actions"
+          onClose={rowMenu.close}
+          items={[
+            { label: "Edit", onSelect: () => startEdit(rowMenu.menu!.target) },
+            // Only a goal that watches an account has somewhere to move money.
+            rowMenu.menu.target.account_id && {
+              label: "Contribute…",
+              // Opens it; choosing it again must not close the open form.
+              onSelect: () => {
+                if (contributing !== rowMenu.menu!.target.id) toggleContribute(rowMenu.menu!.target);
+              },
+            },
+            { label: "Delete", separatorBefore: true, onSelect: () => void remove(rowMenu.menu!.target) },
+          ]}
+        />
+      )}
       {/* Goals list */}
       <section className="aero-card lg:col-span-2">
         <div className="aero-card-title flex items-center gap-2">
@@ -219,7 +256,7 @@ export default function GoalsView() {
                   const cur = watched ? currencyOf(watched) : undefined;
                   return (
                     <Fragment key={g.id}>
-                    <tr title={g.notes ?? undefined}>
+                    <tr title={g.notes ?? undefined} tabIndex={0} aria-label={g.name} onContextMenu={(e) => rowMenu.open(e, g)}>
                       <td>
                         {g.name}
                         {done && (
@@ -267,20 +304,7 @@ export default function GoalsView() {
                           {g.account_id && (
                             <button
                               className="aero-btn !py-0 !px-1.5 text-[11px]"
-                              onClick={() => {
-                                // A new form for a different goal starts
-                                // empty. "From" carried over, and a From that was
-                                // THIS goal's own account is filtered out of its
-                                // list: the picker read "(choose)" while the state
-                                // still said Savings, and Move sent Savings to
-                                // Savings.
-                                if (contributing !== g.id) {
-                                  setFromAccount("");
-                                  setContribAmount("");
-                                }
-                                setContributing(contributing === g.id ? null : g.id);
-                                setContribMsg(null);
-                              }}
+                              onClick={() => toggleContribute(g)}
                               title={`Move money into ${g.account_name} for this goal`}
                             >
                               Contribute…

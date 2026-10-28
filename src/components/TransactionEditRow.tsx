@@ -132,6 +132,9 @@ interface Props {
   /** An attachment was added or removed on this row, so the register
    *  can refresh its 📎 count. */
   onAttachmentsChanged?: () => void;
+  /** Open straight into the split or attachments window: the register's
+   *  right-click Split… and Attachments…. */
+  openOnMount?: "split" | "attachments" | null;
 }
 
 export type LeaveResult = "saved" | "clean" | "failed";
@@ -217,6 +220,7 @@ export default function TransactionEditRow({
   classifications = [],
   onEntered,
   onAttachmentsChanged,
+  openOnMount = null,
 }: Props) {
   const initial = seed(row, suggestedCheckNumber, defaultDate, preset);
 
@@ -295,10 +299,10 @@ export default function TransactionEditRow({
   const [categoryId, setCategoryId] = useState<string>(initial.categoryId);
   const [notes, setNotes] = useState(initial.notes);
   const [error, setError] = useState<string | null>(null);
-  const [showSplit, setShowSplit] = useState(false);
+  const [showSplit, setShowSplit] = useState(openOnMount === "split");
   // The files attached to this row. Only a SAVED row has an id to
   // attach to; a new entry's button says so and stays disabled.
-  const [showAttachments, setShowAttachments] = useState(false);
+  const [showAttachments, setShowAttachments] = useState(openOnMount === "attachments" && !!row);
   const [attachmentCount, setAttachmentCount] = useState<number | null>(row?.attachment_count ?? null);
   // Where the caret goes when the split dialog closes. The dialog
   // unmounts with the button that had focus, and a keydown on <body> never

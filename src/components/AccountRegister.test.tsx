@@ -19,6 +19,7 @@ import AccountRegister, {
   nextCheckNumber, groupByDepositsAndWithdrawals } from "./AccountRegister";
 import RegisterGrid from "./RegisterGrid";
 import { runCommand } from "../lib/commands";
+import { takeScheduleDraft } from "../lib/scheduleDraft";
 import { useAccountStore } from "../stores/useAccountStore";
 import { useFileFormat } from "../lib/region";
 import { invokeCalls, resetIpc, setIpcHandlers } from "../test/tauriMock";
@@ -2255,6 +2256,159 @@ describe("register interactions", () => {
     await waitFor(() =>
       expect(invokeCalls).toContainEqual({ cmd: "delete_transaction", args: { id: "t-2" } })
     );
+  });
+
+  describe("row context menu", () => {
+    const transfer: RegisterRow = {
+      ...withdrawal,
+      id: "t-9",
+      date: "2026-01-31",
+      payee: "Move to savings",
+      category_id: null,
+      category_name: null,
+      transfer_account_id: "acc-2",
+      transfer_account_name: "Everyday Savings 5678",
+      notes: "monthly top-up",
+    };
+
+    function with_(r: RegisterRow[]) {
+      setIpcHandlers({
+        get_register: () => r,
+        list_categories: () => [],
+        list_payees: () => [],
+        list_splits: () => [],
+        get_all_accounts: () => [checking],
+        list_common_transactions: () => [],
+      });
+    }
+
+    it("groups the items and leaves out what does not apply", async () => {
+      render(<AccountRegister />);
+      await screen.findByRole("table");
+      fireEvent.contextMenu(dataRows()[1]);
+      const menu = screen.getByRole("menu", { name: "Transaction actions" });
+      const names = within(menu).getAllByRole("menuitem").map((b) => b.textContent);
+      expect(names).toEqual([
+        "Edit transaction",
+        "Split…",
+        "Attachments…",
+        "Find transactions with Grocery Store",
+        "Schedule this transaction…",
+        "Mark as cleared (Ctrl+M)",
+        "Mark as reconciled",
+        "Void transaction",
+        "Tax line…",
+        "Delete transaction",
+      ]);
+      expect(within(menu).getAllByRole("separator").length).toBeGreaterThan(0);
+    });
+
+    it("Schedule this transaction… parks a monthly draft one month on", async () => {
+      with_([transfer]);
+      render(<AccountRegister />);
+      await screen.findByRole("table");
+      fireEvent.contextMenu(dataRows()[0]);
+      await userEvent.click(screen.getByRole("menuitem", { name: "Schedule this transaction…" }));
+      expect(takeScheduleDraft()).toEqual({
+        payee: "Move to savings",
+        amount_cents: -4250,
+        account_id: useAccountStore.getState().selectedAccountId,
+        category_id: null,
+        transfer_account_id: "acc-2",
+        freq: "monthly",
+        interval_n: 1,
+        // Jan 31 has no February 31.
+        start_date: "2026-02-28",
+        end_date: null,
+        second_day: null,
+        weekend_rule: "none",
+        notes: "monthly top-up",
+      });
+    });
+
+    it("Schedule this transaction… is unavailable on money coming into a transfer", async () => {
+      with_([{ ...transfer, amount_cents: 4250 }]);
+      render(<AccountRegister />);
+      await screen.findByRole("table");
+      fireEvent.contextMenu(dataRows()[0]);
+      expect(screen.getByRole("menuitem", { name: "Schedule this transaction…" })).toBeDisabled();
+    });
+
+    it("Go to the other account opens its register, only on a transfer", async () => {
+      with_([transfer, withdrawal]);
+      render(<AccountRegister />);
+      await screen.findByRole("table");
+      const select = vi.fn(async () => {});
+      useAccountStore.setState({ selectAccount: select });
+      fireEvent.contextMenu(dataRows()[1]);
+      expect(screen.queryByRole("menuitem", { name: /^Go to/ })).toBeNull();
+      fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
+      fireEvent.contextMenu(dataRows()[0]);
+      await userEvent.click(screen.getByRole("menuitem", { name: "Go to Everyday Savings 5678" }));
+      expect(select).toHaveBeenCalledWith("acc-2");
+    });
+
+    it("a voided row offers only Edit, Un-void and Delete", async () => {
+      with_([{ ...withdrawal, is_void: true }]);
+      render(<AccountRegister />);
+      await screen.findByRole("table");
+      fireEvent.contextMenu(dataRows()[0]);
+      const names = within(screen.getByRole("menu")).getAllByRole("menuitem").map((b) => b.textContent);
+      expect(names).toEqual(["Edit transaction", "Attachments…", "Find transactions with Grocery Store", "Un-void transaction", "Delete transaction"]);
+    });
+
+    it("Split… opens the row with the split window already up", async () => {
+      with_([withdrawal]);
+      render(<AccountRegister />);
+      await screen.findByRole("table");
+      fireEvent.contextMenu(dataRows()[0]);
+      await userEvent.click(screen.getByRole("menuitem", { name: "Split…" }));
+      expect(await screen.findByRole("dialog", { name: "Transaction with Multiple Categories" })).toBeInTheDocument();
+    });
+
+    it("a transfer offers no Split…", async () => {
+      with_([transfer]);
+      render(<AccountRegister />);
+      await screen.findByRole("table");
+      fireEvent.contextMenu(dataRows()[0]);
+      expect(screen.queryByRole("menuitem", { name: "Split…" })).toBeNull();
+    });
+
+    it("Attachments… opens the row's attachments, and says how many there are", async () => {
+      setIpcHandlers({
+        get_register: () => [{ ...withdrawal, attachment_count: 2 }],
+        list_categories: () => [],
+        list_payees: () => [],
+        list_splits: () => [],
+        get_all_accounts: () => [checking],
+        list_common_transactions: () => [],
+        list_attachments: () => [],
+      });
+      render(<AccountRegister />);
+      await screen.findByRole("table");
+      fireEvent.contextMenu(dataRows()[0]);
+      await userEvent.click(screen.getByRole("menuitem", { name: "Attachments (2)…" }));
+      expect(await screen.findByRole("dialog", { name: "Attachments" })).toBeInTheDocument();
+    });
+
+    it("Find transactions with this payee opens Find already looking for it", async () => {
+      with_([withdrawal]);
+      render(<AccountRegister />);
+      await screen.findByRole("table");
+      fireEvent.contextMenu(dataRows()[0]);
+      await userEvent.click(screen.getByRole("menuitem", { name: "Find transactions with Grocery Store" }));
+      const dlg = screen.getByRole("dialog", { name: "Find in this register" });
+      expect(within(dlg).getByLabelText("Find:")).toHaveValue("Grocery Store");
+      expect(within(dlg).getByLabelText("in")).toHaveValue("payee");
+    });
+
+    it("the selected row is the register's one tab stop, so Shift+F10 has a row to open the menu on", async () => {
+      render(<AccountRegister />);
+      await screen.findByRole("table");
+      await userEvent.click(dataRows()[1]);
+      expect(dataRows()[1]).toHaveAttribute("tabindex", "0");
+      expect(dataRows()[0]).toHaveAttribute("tabindex", "-1");
+    });
   });
 
   it("Tax line… on a row takes it out of the tax reports or puts it on a line", async () => {

@@ -51,8 +51,8 @@ interface RegisterGridProps {
   renderNewRow?: () => React.ReactNode;
   /** Double-click (or single click on an already-selected row) opens editing. */
   onActivate?: (id: string) => void;
-  /** Right-click a row — Money offers Delete from the context menu. */
-  onRowContextMenu?: (id: string, x: number, y: number) => void;
+  /** Right-click (or Shift+F10 on) a row; the event is handed over so the menu can open at the pointer or at the row. */
+  onRowContextMenu?: (id: string, e: React.MouseEvent) => void;
   /** Clicking an empty filler row starts a new transaction, as Money does. */
   onEmptyRowClick?: () => void;
   /** The sort in force, so its column can carry the marker. Omitted in
@@ -258,7 +258,7 @@ function GroupBlock({
   editingId?: string | null;
   renderEdit?: (row: RegisterRow) => React.ReactNode;
   onActivate?: (id: string) => void;
-  onRowContextMenu?: (id: string, x: number, y: number) => void;
+  onRowContextMenu?: (id: string, e: React.MouseEvent) => void;
   hideBalance?: boolean;
   investment?: boolean;
 }) {
@@ -315,7 +315,7 @@ function Row({
   cleared: boolean;
   onToggleCleared?: (id: string) => void;
   onActivate?: (id: string) => void;
-  onRowContextMenu?: (id: string, x: number, y: number) => void;
+  onRowContextMenu?: (id: string, e: React.MouseEvent) => void;
   hideBalance?: boolean;
   investment?: boolean;
 }) {
@@ -356,6 +356,10 @@ function Row({
         .filter(Boolean)
         .join(" ") || undefined}
       aria-selected={selected}
+      // One row is a tab stop (the selected one), so Shift+F10 or the Menu
+      // key has a row to open the context menu on without Tab crossing
+      // every row of a long register.
+      tabIndex={onRowContextMenu && selected ? 0 : -1}
       onClick={() => {
         // Clicking a row that is already selected opens it, so a second click
         // edits without needing the toolbar — Money behaves this way too.
@@ -367,7 +371,7 @@ function Row({
         if (!onRowContextMenu) return;
         e.preventDefault();
         onSelect?.(row.id);
-        onRowContextMenu(row.id, e.clientX, e.clientY);
+        onRowContextMenu(row.id, e);
       }}
       title={row.notes ?? undefined}
     >

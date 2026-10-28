@@ -5,7 +5,7 @@
 // value must be deletable, and the delete must say how many lines it will
 // untag BEFORE it happens rather than refusing forever once the value has
 // been used.
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -187,5 +187,23 @@ describe("The parent picker follows the classification", () => {
     await user.click(screen.getByRole("button", { name: "Delete…" }));
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).queryByText(/deleting a category/)).toBeNull();
+  });
+});
+
+describe("the value row menu", () => {
+  it("Rename… opens the inline editor on that value", async () => {
+    render(<ClassificationsView />);
+    const row = await screen.findByRole("row", { name: "Birch Lane" });
+    fireEvent.contextMenu(row);
+    expect(screen.getAllByRole("menuitem").map((i) => i.textContent)).toEqual(["Rename…", "Delete…"]);
+    await userEvent.click(screen.getByRole("menuitem", { name: "Rename…" }));
+    expect(screen.getByLabelText("Rename Birch Lane")).toHaveValue("Birch Lane");
+  });
+
+  it("Delete… opens the confirmation for that value", async () => {
+    render(<ClassificationsView />);
+    fireEvent.contextMenu(await screen.findByRole("row", { name: "Birch Lane" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Delete…" }));
+    expect(screen.getByRole("dialog", { name: "Delete Birch Lane" })).toBeInTheDocument();
   });
 });

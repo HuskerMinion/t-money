@@ -80,11 +80,14 @@ interface Props {
   /** Select this row in the register and scroll to it. The window stays. */
   onPick: (id: string) => void;
   onClose: () => void;
+  /** What to look for as it opens: right-click → Find transactions with this payee. */
+  initialQuery?: string;
+  initialField?: FindField;
 }
 
-export default function FindInRegisterDialog({ accountName, currency, rows, selectedId, onPick, onClose }: Props) {
-  const [query, setQuery] = useState("");
-  const [field, setField] = useState<FindField>("any");
+export default function FindInRegisterDialog({ accountName, currency, rows, selectedId, onPick, onClose, initialQuery = "", initialField = "any" }: Props) {
+  const [query, setQuery] = useState(initialQuery);
+  const [field, setField] = useState<FindField>(initialField);
   const inputRef = useRef<HTMLInputElement>(null);
   const matches = findInRegister(rows, query, field);
   const at = matches.findIndex((m) => m.id === selectedId);

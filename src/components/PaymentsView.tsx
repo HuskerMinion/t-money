@@ -16,7 +16,7 @@
 // Every amount here belongs to one account and is in that account's
 // currency. A scheduled transfer moves one amount, so both its accounts
 // must be in the same currency — the picker offers only those.
-import { useEffect, useMemo, useState, useRef } from "react";
+import { Fragment, useEffect, useMemo, useState, useRef } from "react";
 import TmIcon from "./TmIcon";
 import Notice from "./Notice";
 import DateField from "./DateField";
@@ -28,6 +28,8 @@ import ForecastChart from "./ForecastChart";
 import { api } from "../lib/ipc";
 import { useCommand } from "../lib/useCommand";
 import { describeStatus, isOpen, pickForecastAccount } from "../lib/bills";
+import { takeScheduleDraft } from "../lib/scheduleDraft";
+import ContextMenu, { useContextMenu } from "./ContextMenu";
 import BillCalendar, { monthRange } from "./BillCalendar";
 import { useAccountStore } from "../stores/useAccountStore";
 import { formatDateUS, parseMoneyToCents, today } from "../lib/format";
@@ -43,8 +45,27 @@ import type {
   Recurrence,
 } from "../lib/types";
 
-/** The horizon the user asked for. */
-const HORIZON_DAYS = 90;
+/** How far ahead the forecast and the bill list reach. It was a fixed 90
+ *  days. *"missing forecast cashflow beyond 90 days. This is a core function
+ *  in MSmoney"*: the projection itself was never limited (the backend takes
+ *  up to ten years), only this screen was. */
+export const HORIZONS = [
+  { days: 30, label: "30 days" },
+  { days: 90, label: "90 days" },
+  { days: 183, label: "6 months" },
+  { days: 365, label: "1 year" },
+  { days: 730, label: "2 years" },
+] as const;
+const DEFAULT_HORIZON = 90;
+/** The horizon picked last, kept with the file like the detected switch. */
+export const HORIZON_KEY = "forecast.horizon";
+/** Past this, the bill list is broken up by month: a year of weekly
+ *  paychecks is a hundred rows. */
+const MONTH_HEADERS_AFTER = 90;
+
+export function horizonLabel(days: number): string {
+  return HORIZONS.find((h) => h.days === days)?.label ?? `${days} days`;
+}
 /** Whether the forecast also projects detected recurring charges;
  *  "off" turns it off, anything else (or nothing) leaves it on. */
 export const DETECTED_KEY = "forecast.detected";
@@ -98,6 +119,10 @@ export default function PaymentsView() {
   // On by default; the choice follows the file (a UI setting), like the
   // Home card's ignore list it respects.
   const [includeDetected, setIncludeDetected] = useState(true);
+  const [horizon, setHorizonState] = useState<number>(DEFAULT_HORIZON);
+  // Read by `act`, which can outlive the render that made it.
+  const horizonRef = useRef(horizon);
+  horizonRef.current = horizon;
   useEffect(() => {
     api
       .getUiSetting(DETECTED_KEY)
@@ -107,10 +132,23 @@ export default function PaymentsView() {
       .catch(() => {
         // The default stands.
       });
+    api
+      .getUiSetting(HORIZON_KEY)
+      .then((raw) => {
+        const days = Number(raw);
+        if (HORIZONS.some((h) => h.days === days)) setHorizonState(days);
+      })
+      .catch(() => {
+        // The default stands.
+      });
   }, []);
   function setDetected(on: boolean) {
     setIncludeDetected(on);
     void api.setUiSetting(DETECTED_KEY, on ? "on" : "off").catch(() => {});
+  }
+  function setHorizon(days: number) {
+    setHorizonState(days);
+    void api.setUiSetting(HORIZON_KEY, String(days)).catch(() => {});
   }
   // A forecast from an older build (or a stub) may carry no list at all.
   const detected = forecast?.detected ?? [];
@@ -168,15 +206,13 @@ export default function PaymentsView() {
   const sameCurrency = (id: string) => fromCurrency === undefined || currencyFor(id) === fromCurrency;
 
   async function load() {
-    const [rs, up, accts, cats, gs] = await Promise.all([
+    const [rs, accts, cats, gs] = await Promise.all([
       api.listRecurrences(),
-      api.getUpcoming(HORIZON_DAYS),
       api.getAllAccounts(),
       api.listCategories(),
       api.listGoals().catch(() => [] as Goal[]),
     ]);
     setRules(rs);
-    setUpcoming(up);
     setAccounts(accts);
     setCategories(cats);
     setGoals(gs);
@@ -193,7 +229,28 @@ export default function PaymentsView() {
         if (accts.length) setForecastAccount((cur) => cur || pickForecastAccount(accts, rs).id);
       })
       .catch((e) => setMsg(String(e), "forecast"));
+    // "Schedule this transaction…" from the register parked a draft and
+    // brought the user here.
+    const parked = takeScheduleDraft();
+    if (parked) fill(parked);
   }, []);
+
+  // The bill list reaches as far as the forecast, so every item the chart
+  // counts can be found, and entered or skipped, in the list.
+  useEffect(() => {
+    let canceled = false;
+    api
+      .getUpcoming(horizon)
+      .then((up) => {
+        if (!canceled) setUpcoming(up);
+      })
+      .catch((e) => {
+        if (!canceled) setMsg(String(e), "list");
+      });
+    return () => {
+      canceled = true;
+    };
+  }, [horizon]);
 
   useEffect(() => {
     if (!forecastAccount) return;
@@ -202,7 +259,7 @@ export default function PaymentsView() {
     // last and draw Checking's projection under "Savings".
     let canceled = false;
     api
-      .getCashForecast(forecastAccount, HORIZON_DAYS, includeDetected)
+      .getCashForecast(forecastAccount, horizon, includeDetected)
       .then((f) => {
         if (!canceled) setForecast(f);
       })
@@ -212,7 +269,7 @@ export default function PaymentsView() {
     return () => {
       canceled = true;
     };
-  }, [forecastAccount, upcoming, includeDetected]);
+  }, [forecastAccount, upcoming, includeDetected, horizon]);
 
   /** Run a write, then refresh. Returns whether it succeeded, so a form can
    *  keep what the user typed when it did not. */
@@ -221,7 +278,7 @@ export default function PaymentsView() {
     setMsg(null);
     try {
       await fn();
-      setUpcoming(await api.getUpcoming(HORIZON_DAYS));
+      setUpcoming(await api.getUpcoming(horizonRef.current));
       setRules(await api.listRecurrences());
       // Entering a bill writes a transaction and moves a balance that the
       // sidebar and Account List are showing.
@@ -257,15 +314,21 @@ export default function PaymentsView() {
     // calendar re-reads then too.
   }, [billsView, calMonth, upcoming]);
 
+  /** Put a schedule into the form: the amount as typed text, the sign
+   *  as the direction. */
+  function fill(d: NewRecurrence) {
+    setDirection(d.amount_cents < 0 ? "out" : "in");
+    setAmount(d.amount_cents === 0 ? "" : (Math.abs(d.amount_cents) / 100).toFixed(2).replace(".", currentRegion().decimal));
+    setIntervalText(String(d.interval_n));
+    setDraft(d);
+  }
+
   function startEdit(r: Recurrence) {
     setEditingId(r.id);
-    setDirection(r.amount_cents < 0 ? "out" : "in");
-    setAmount((Math.abs(r.amount_cents) / 100).toFixed(2).replace(".", currentRegion().decimal));
-    setIntervalText(String(r.interval_n));
     // A twice-a-month rule saved with no second day (the form used to
     // show 15 while sending nothing) is loaded as it is: the box stays empty
     // with a note, so the user sees it runs once a month and can fix it.
-    setDraft({
+    fill({
       payee: r.payee,
       amount_cents: r.amount_cents,
       account_id: r.account_id,
@@ -307,11 +370,23 @@ export default function PaymentsView() {
     "new.recurrence",
     () => {
       resetForm();
+      const parked = takeScheduleDraft();
+      if (parked) fill(parked);
       payeeRef.current?.focus();
     },
     true,
     10
   );
+
+  /** A what-if: one amount on one day, in the forecast until it is
+   *  entered or skipped. The form already did this as Repeats → Once; this
+   *  puts it where the forecast is being read. */
+  function startOneTime() {
+    resetForm();
+    setDraft({ ...BLANK, freq: "once", start_date: today(), account_id: forecastAccount || null });
+    formRef.current?.scrollIntoView?.({ block: "nearest" });
+    payeeRef.current?.focus();
+  }
 
   function resetForm() {
     setEditingId(null);
@@ -362,6 +437,15 @@ export default function PaymentsView() {
     if (ok) resetForm();
   }
 
+  // One occurrence's actions, shared by its row's buttons and its
+  // right-click menu.
+  const enter = (o: Occurrence) =>
+    void act(() => api.enterOccurrence(o.recurrence_id, o.due_date, o.due_date, null, null), `Entered ${o.payee}.`, "list");
+  const skip = (o: Occurrence) =>
+    void act(() => api.skipOccurrence(o.recurrence_id, o.due_date), `Skipped ${o.payee}.`, "list");
+  const putBack = (o: Occurrence) => void act(() => api.clearOccurrence(o.recurrence_id, o.due_date), undefined, "list");
+  const rowMenu = useContextMenu<Occurrence>();
+
   const open = useMemo(() => upcoming.filter(isOpen), [upcoming]);
   const settled = useMemo(() => upcoming.filter((o) => !isOpen(o)), [upcoming]);
   // Scoped to the account being forecast: "still to come" beside a
@@ -379,8 +463,29 @@ export default function PaymentsView() {
       <section className="aero-card lg:col-span-3">
         <div className="aero-card-title flex items-center justify-between gap-2">
           <span className="inline-flex items-center gap-2">
-            <TmIcon name="calendar" size={15} /> Next {HORIZON_DAYS} days
+            <TmIcon name="calendar" size={15} /> Next
+            <select
+              className="aero-field"
+              aria-label="Forecast period"
+              value={horizon}
+              onChange={(e) => setHorizon(Number(e.target.value))}
+            >
+              {HORIZONS.map((h) => (
+                <option key={h.days} value={h.days}>
+                  {h.label}
+                </option>
+              ))}
+            </select>
           </span>
+          <span className="flex-1" />
+          <button
+            type="button"
+            className="aero-btn !py-0 !px-2 text-[11px]"
+            title="One amount on one day, such as a tax refund or a car repair. It is in the forecast until you enter or skip it."
+            onClick={startOneTime}
+          >
+            One-time item…
+          </button>
           <select
             className="aero-field"
             aria-label="Forecast account"
@@ -414,7 +519,7 @@ export default function PaymentsView() {
                 currency={fc}
                 emphasis
               />
-              <Stat label={`In ${HORIZON_DAYS} days`} cents={forecast.ending_balance_cents} currency={fc} />
+              <Stat label={`In ${horizonLabel(horizon)}`} cents={forecast.ending_balance_cents} currency={fc} />
               <div>
                 <div className="text-[11px] text-slate-600">Still to come</div>
                 <div className="text-[13px] tabular-nums">
@@ -445,7 +550,7 @@ export default function PaymentsView() {
                 Also project recurring charges T-Money has noticed
                 {includeDetected && detected.length > 0 && (
                   <span className="tm-text-muted">
-                    {" "}— {detected.length}, <Money cents={detected.reduce((n, d) => n + d.amount_cents * d.dates.length, 0)} tone="neutral" currency={fc} /> over the {HORIZON_DAYS} days
+                    {" "}— {detected.length}, <Money cents={detected.reduce((n, d) => n + d.amount_cents * d.dates.length, 0)} tone="neutral" currency={fc} /> over the next {horizonLabel(horizon)}
                   </span>
                 )}
                 {includeDetected && detected.length === 0 && (
@@ -527,12 +632,27 @@ export default function PaymentsView() {
                 </tr>
               </thead>
               <tbody>
-                {[...open, ...settled].map((o) => {
+                {[...open, ...settled].map((o, i, all) => {
                   const s = describeStatus(o);
+                  // A month heading over the open items once the list
+                  // runs past three months, so "what is due in March" can be
+                  // found without reading every date.
+                  const month = o.due_date.slice(0, 7);
+                  const heading =
+                    horizon > MONTH_HEADERS_AFTER && isOpen(o) && (i === 0 || all[i - 1].due_date.slice(0, 7) !== month);
                   return (
+                    <Fragment key={`${o.recurrence_id}:${o.due_date}`}>
+                    {heading && (
+                      <tr className="tm-bill-month">
+                        <th colSpan={6} scope="colgroup">
+                          {monthName(month)}
+                        </th>
+                      </tr>
+                    )}
                     <tr
-                      key={`${o.recurrence_id}:${o.due_date}`}
                       className={s.tone}
+                      tabIndex={0}
+                      onContextMenu={(e) => rowMenu.open(e, o)}
                       // The row whose schedule is in the form is marked,
                       // so what Save will change is visible from the list.
                       style={o.recurrence_id === editingId ? { background: "var(--tm-ms-row-active)" } : undefined}
@@ -569,33 +689,14 @@ export default function PaymentsView() {
                                 className="aero-btn !py-0 !px-1.5 text-[11px]"
                                 disabled={busy}
                                 title="Enter this in the register"
-                                onClick={() =>
-                                  void act(
-                                    () =>
-                                      api.enterOccurrence(
-                                        o.recurrence_id,
-                                        o.due_date,
-                                        o.due_date,
-                                        null,
-                                        null
-                                      ),
-                                    `Entered ${o.payee}.`,
-                                    "list"
-                                  )
-                                }
+                                onClick={() => enter(o)}
                               >
                                 Enter
                               </button>
                               <button
                                 className="aero-btn !py-0 !px-1.5 text-[11px]"
                                 disabled={busy}
-                                onClick={() =>
-                                  void act(
-                                    () => api.skipOccurrence(o.recurrence_id, o.due_date),
-                                    `Skipped ${o.payee}.`,
-                                    "list"
-                                  )
-                                }
+                                onClick={() => skip(o)}
                               >
                                 Skip
                               </button>
@@ -605,13 +706,7 @@ export default function PaymentsView() {
                               className="aero-btn !py-0 !px-1.5 text-[11px]"
                               disabled={busy}
                               title="Put this back on the list"
-                              onClick={() =>
-                                void act(
-                                  () => api.clearOccurrence(o.recurrence_id, o.due_date),
-                                  undefined,
-                                  "list"
-                                )
-                              }
+                              onClick={() => putBack(o)}
                             >
                               Undo
                             </button>
@@ -630,11 +725,43 @@ export default function PaymentsView() {
                         </span>
                       </td>
                     </tr>
+                    </Fragment>
                   );
                 })}
               </tbody>
             </table>
           )}
+          {rowMenu.menu && (() => {
+            const o = rowMenu.menu.target;
+            const rule = rules.find((r) => r.id === o.recurrence_id);
+            return (
+              <ContextMenu
+                x={rowMenu.menu.x}
+                y={rowMenu.menu.y}
+                onClose={rowMenu.close}
+                label={`${o.payee}, ${formatDateUS(o.due_date)}`}
+                items={[
+                  isOpen(o) && !!o.account_id && { label: "Enter in the register", onSelect: () => enter(o), disabled: busy },
+                  isOpen(o) && { label: "Skip this one", onSelect: () => skip(o), disabled: busy, title: "This date only; the schedule carries on" },
+                  !isOpen(o) && { label: "Put back on the list", onSelect: () => putBack(o), disabled: busy },
+                  { label: "Edit the schedule…", onSelect: () => editOccurrence(o), separatorBefore: true },
+                  rule && {
+                    label: rule.is_active ? "Pause the schedule" : "Resume the schedule",
+                    onSelect: () => void act(() => api.setRecurrenceActive(rule.id, !rule.is_active), undefined, "list"),
+                  },
+                  rule && {
+                    label: "Delete the schedule…",
+                    separatorBefore: true,
+                    onSelect: () => {
+                      if (window.confirm(`Delete the schedule for "${rule.payee}"?`)) {
+                        void act(() => api.deleteRecurrence(rule.id), undefined, "list");
+                      }
+                    },
+                  },
+                ]}
+              />
+            );
+          })()}
         </div>
       </section>
 
@@ -926,6 +1053,12 @@ export default function PaymentsView() {
 
     </div>
   );
+}
+
+/** "March 2027" for "2027-03", the way the bill calendar titles a month. */
+function monthName(ym: string): string {
+  const [y, m] = ym.split("-").map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
 }
 
 function Stat({ label, cents, currency, emphasis }: { label: string; cents: number; currency?: string; emphasis?: boolean }) {

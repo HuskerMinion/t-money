@@ -5,6 +5,7 @@
 // render grayed, and only once "Show closed accounts" is ticked.
 import { Fragment, useEffect, useState } from "react";
 import Money from "./Money";
+import ContextMenu, { useContextMenu } from "./ContextMenu";
 import { ACCOUNT_GROUPS, accountWorth, groupFor, isValuedAsset, labelFor, placedFirst, type AccountGroup } from "../lib/accountTypes";
 import { maskNumber } from "./AccountDetailsDialog";
 import { currencyOf, homeName, isForeign, rateOf, worthHome } from "../lib/currency";
@@ -21,6 +22,8 @@ interface Props {
   onDeleteAccount: (id: string) => void;
   /** Money's "Merge duplicate accounts": fold this one into another. */
   onMergeAccount: (id: string) => void;
+  /** Star or unstar the account (Favorites). Left out, the item is not offered. */
+  onToggleFavorite?: (id: string) => void;
 }
 
 export default function AccountListView({
@@ -30,7 +33,9 @@ export default function AccountListView({
   onEditDetails,
   onDeleteAccount,
   onMergeAccount,
+  onToggleFavorite,
 }: Props) {
+  const ctx = useContextMenu<Account>();
   const [collapsed, setCollapsed] = useState<Partial<Record<AccountGroup, boolean>>>({});
   // N9: "A closed account stays out of the way … and Account List →
   // show closed finds it." Closed accounts are left off the rail and every
@@ -107,7 +112,13 @@ export default function AccountListView({
                 </tr>
                 {!isCollapsed &&
                   list.map((a) => (
-                    <tr key={a.id}>
+                    <tr
+                      key={a.id}
+                      // Focusable so Shift+F10 and the Menu key can open the menu.
+                      tabIndex={0}
+                      aria-label={a.name}
+                      onContextMenu={(e) => ctx.open(e, a)}
+                    >
                       <td>
                         <button
                           type="button"
@@ -192,6 +203,26 @@ export default function AccountListView({
           Add a new account
         </button>
       </div>
+      {ctx.menu && (
+        <ContextMenu
+          x={ctx.menu.x}
+          y={ctx.menu.y}
+          label={`${ctx.menu.target.name} actions`}
+          onClose={ctx.close}
+          items={[
+            { label: "Open register", onSelect: () => onOpen(ctx.menu!.target.id) },
+            { label: "Account details…", onSelect: () => onEditDetails(ctx.menu!.target.id) },
+            onToggleFavorite && {
+              label: ctx.menu.target.is_favorite ? "Remove from favorites" : "Add to favorites",
+              onSelect: () => onToggleFavorite(ctx.menu!.target.id),
+            },
+            // Closing and reopening live in the details dialog, so "Account
+            // details…" is the way to them; there is no separate path here.
+            { label: "Merge…", separatorBefore: true, onSelect: () => onMergeAccount(ctx.menu!.target.id) },
+            { label: "Delete account…", onSelect: () => onDeleteAccount(ctx.menu!.target.id) },
+          ]}
+        />
+      )}
     </section>
   );
 }

@@ -126,7 +126,7 @@ Type in the box at the top right and press Enter. Search looks through every acc
 
 # In the register
 
-- **Click** a row to select it; **click it again** or **double-click** to edit it. **Right-click** for the row's menu (void, cleared, tax line, delete).
+- **Click** a row to select it; **click it again** or **double-click** to edit it. **Right-click** (or Shift+F10) for the row's menu: edit, split, attachments, find others with the same payee, go to the other side of a transfer, schedule it as a bill or deposit, cleared, void, tax line, delete. Most other lists have one too: accounts, bills, categories, payees, holdings, goals and reports.
 - **↓ ↑** move the selection up and down the register, in the order the rows are on screen. They stop at the ends rather than wrapping. While a transaction form is open — or the caret is in any field — the arrows belong to whatever you are typing in, not to the list.
 - **Ctrl+M** marks the selected row cleared, or uncleared.
 - **Enter** or **Space** on the entry line at the bottom starts a new transaction.
@@ -255,7 +255,7 @@ Press **Enter** to save, **Esc** to cancel — or just click another row: a chan
 
 Click a selected row again (or double-click, or **Edit**) to change it. Give a category to a row that had none and the register offers to file that payee the same way from now on — **Remember** makes a rename rule (see Payees).
 
-**Attachments.** Open a transaction and click **Attachments** to keep a receipt, a photo of the check, or any file with it; a row that has one shows 📎 in the register. **Attach a file…** opens the file picker (several at once is fine); click a name, or **Open**, to open it with whatever your computer uses for that kind of file; **Save as…** writes a copy where you choose; **Remove** takes it off (Ctrl+Z puts it back). A statement belongs on the account: Banking → Accounts → **Change details** has the same panel. The bytes are kept inside your T-Money file — encrypted with everything else, and carried by every backup, so a backup grows with them. Files up to 25 MB. Right-click a row for **Void** (the row stays, struck through, and counts for nothing), **Mark as cleared** (Ctrl+M), **Tax line…** (see [[taxes|Taxes]]) and **Delete**; the **Delete** button below the register removes the selected row outright. A transfer edited on either side moves both halves.
+**Attachments.** Open a transaction and click **Attachments** to keep a receipt, a photo of the check, or any file with it; a row that has one shows 📎 in the register. **Attach a file…** opens the file picker (several at once is fine); click a name, or **Open**, to open it with whatever your computer uses for that kind of file; **Save as…** writes a copy where you choose; **Remove** takes it off (Ctrl+Z puts it back). A statement belongs on the account: Banking → Accounts → **Change details** has the same panel. The bytes are kept inside your T-Money file — encrypted with everything else, and carried by every backup, so a backup grows with them. Files up to 25 MB. Right-click a row for **Split…**, **Attachments…**, **Find transactions with** its payee, **Go to** the other account of a transfer, **Schedule this transaction…** (opens the Bills form filled in, monthly from a month on; check it and save), **Void** (the row stays, struck through, and counts for nothing), **Mark as cleared** (Ctrl+M), **Tax line…** (see [[taxes|Taxes]]) and **Delete**; the **Delete** button below the register removes the selected row outright. A transfer edited on either side moves both halves.
 
 # Views
 
@@ -438,7 +438,7 @@ Bills → **Bills to Pay** holds your scheduled bills, deposits and transfers.
 
 # Upcoming
 
-The upcoming list shows each due occurrence with its status — due, overdue, entered, skipped. **Enter** writes the transaction into the register (a transfer writes both halves); **Skip** passes over one occurrence. A transaction entered by hand in the register with the same payee, amount and date range settles the occurrence automatically.
+The upcoming list shows each due occurrence with its status — due, overdue, entered, skipped. **Enter** writes the transaction into the register (a transfer writes both halves); **Skip** passes over one occurrence. Right-click a row for the same and more: **Enter in the register**, **Skip this one**, **Put back on the list**, **Edit the schedule…**, **Pause the schedule** and **Delete the schedule…**. Past three months the list is headed by month. A transaction entered by hand in the register with the same payee, amount and date range settles the occurrence automatically.
 
 # List or Calendar
 
@@ -446,7 +446,9 @@ Switch to **Calendar** to see the month with each bill on its day, colored by st
 
 # Cash forecast
 
-The chart projects the chosen account's balance over the coming weeks from its scheduled bills and deposits (both sides of a scheduled transfer count), and shows the lowest point, so an overdraft is visible before it happens. The **Scheduled bills** and **Upcoming bills and deposits** reports list the same rules.
+The chart projects the chosen account's balance from its scheduled bills and deposits (both sides of a scheduled transfer count), and shows the lowest point, so an overdraft is visible before it happens. **Next** at the top picks how far ahead: 30 days, 90 days, 6 months, 1 year or 2 years. The bill list reaches as far as the chart, and the choice is kept with the file.
+
+**One-time item…** adds something that happens once, a tax refund, a car repair, a bonus, so you can see what it does to the balance. It is a schedule that repeats **Once**: it stays in the forecast until you enter or skip it. To turn something already in a register into a schedule, right-click it there → **Schedule this transaction…**. The **Scheduled bills** and **Upcoming bills and deposits** reports list the same rules.
 
 It also projects the **recurring charges T-Money has noticed** in that account — the same ones the Home page's Subscriptions card finds: a payee charged on a steady schedule at a steady amount over the last two years. Each is projected from its last charge forward, a monthly one on the same day of the month, and listed under the chart with its next date so a projection can be traced to the charge behind it. A payee that already has a scheduled rule is left to the rule; one you have told the Subscriptions card to ignore is projected all the same and says so, because ignoring it there means "not a reminder", not "not a bill". The switch under the chart turns the noticed charges off, and the choice is kept with the file. A charge that comes on a schedule at a different amount each time — the power bill, the weekly groceries — is projected too, at a typical recent amount, and the list says *amount varies*; the Subscriptions card keeps to the steady ones. Two charges on one day count as that day's charge; a skipped bill (a gap of two cadences) does not break the pattern; and a payee billed twice a month is projected once a month at a typical recent month's total. A payee that already has a scheduled bill in the account is projected by the bill and named under the list instead, so nothing looks missed. What it cannot find: a pattern only a few months old (give that one a scheduled bill), and anything paid by transfer or from another account.
 `,

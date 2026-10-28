@@ -1130,6 +1130,7 @@ export default function App() {
             accounts={sidebarAccounts}
             selectedId={sidebarSelectedId}
             onSelect={openAccountRegister}
+            onToggleFavorite={(id) => void useAccountStore.getState().toggleFavorite(id).catch(() => {})}
           />
         )}
         <main key={`${tabEpoch}|${format}`} className="flex-1 overflow-y-auto p-4" style={{ background: "var(--tm-ms-content-bg)" }}>
@@ -1525,6 +1526,7 @@ function BankingView({
             setDeleting(accounts.find((a) => a.id === id) ?? null);
           }}
           onMergeAccount={(id) => setMerging(accounts.find((a) => a.id === id) ?? null)}
+          onToggleFavorite={(id) => toggleFavorite(id).catch((e) => setStarError(String(e)))}
         />
       ) : (
         <AccountRegister />

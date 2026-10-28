@@ -687,7 +687,7 @@ body {
   background: rgba(0, 0, 0, 0.25);
 }
 
-/* Right-click menu on a register row. */
+/* The right-click menu (ContextMenu.tsx). */
 .tm-context-menu {
   position: fixed;
   z-index: 60;
@@ -707,8 +707,19 @@ body {
   cursor: pointer;
   color: var(--tm-ms-text);
 }
-.tm-context-menu button:hover {
+.tm-context-menu button:hover:not(:disabled),
+.tm-context-menu button:focus-visible {
   background: var(--tm-ms-group-header);
+  outline: none;
+}
+.tm-context-menu button:disabled {
+  color: var(--tm-ms-text-muted);
+  cursor: default;
+}
+.tm-context-sep {
+  height: 1px;
+  margin: 3px 4px;
+  background: var(--tm-ms-field-border-in);
 }
 
 /* A voided transaction: still legible, visibly not counting. The
@@ -3034,4 +3045,13 @@ li:hover .tm-subs-ignore,
   .tm-progress-fill {
     transition: none;
   }
+}
+
+/* A month heading in a long bill list (Bills, horizon past 90 days). */
+.register-table tr.tm-bill-month th {
+  text-align: left;
+  font-weight: 600;
+  padding-top: 6px;
+  background: var(--tm-ms-group-header);
+  color: var(--tm-ms-text);
 }

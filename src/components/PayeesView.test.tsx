@@ -1,5 +1,5 @@
 // Payees manager — rename, merge, and the delete guard.
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -416,5 +416,41 @@ describe("Merging the payee being edited", () => {
     await userEvent.selectOptions(within(dialog).getByLabelText("Merge into payee"), "p-1");
     await userEvent.click(within(dialog).getByRole("button", { name: "Merge" }));
     expect(await within(dialog).findByRole("alert")).toHaveTextContent("the file is locked");
+  });
+});
+
+describe("the row menu", () => {
+  const items = () => screen.getAllByRole("menuitem").map((i) => i.textContent);
+
+  it("lists Rename, Merge, rules and Delete", async () => {
+    render(<PayeesView />);
+    fireEvent.contextMenu((await screen.findByText("Kroger")).closest("tr")!);
+    expect(items()).toEqual(["Rename…", "Merge into…", "Payee rename rules…", "Delete"]);
+  });
+
+  it("Rename… loads the payee into the form", async () => {
+    render(<PayeesView />);
+    fireEvent.contextMenu((await screen.findByText("Kroger")).closest("tr")!);
+    await userEvent.click(screen.getByRole("menuitem", { name: "Rename…" }));
+    expect(screen.getByLabelText("Payee name")).toHaveValue("Kroger");
+    await waitFor(() => expect(screen.getByLabelText("Payee name")).toHaveFocus());
+  });
+
+  it("Merge into… opens the merge dialog for that payee", async () => {
+    render(<PayeesView />);
+    fireEvent.contextMenu((await screen.findByText("KROGER #442")).closest("tr")!);
+    await userEvent.click(screen.getByRole("menuitem", { name: "Merge into…" }));
+    const dialog = screen.getByRole("dialog", { name: "Merge payee" });
+    expect(within(dialog).getByText("KROGER #442")).toBeInTheDocument();
+  });
+
+  it("Delete is grayed for a payee in use and works for one that is not", async () => {
+    render(<PayeesView />);
+    fireEvent.contextMenu((await screen.findByText("Kroger")).closest("tr")!);
+    expect(screen.getByRole("menuitem", { name: "Delete" })).toBeDisabled();
+    await userEvent.keyboard("{Escape}");
+    fireEvent.contextMenu(screen.getByText("Typo Payee").closest("tr")!);
+    await userEvent.click(screen.getByRole("menuitem", { name: "Delete" }));
+    await waitFor(() => expect(invokeCalls.find((c) => c.cmd === "delete_payee")?.args).toMatchObject({ id: "p-3" }));
   });
 });

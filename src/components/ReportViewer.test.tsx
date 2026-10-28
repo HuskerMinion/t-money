@@ -1,5 +1,5 @@
 // The one viewer behind every report.
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -578,5 +578,55 @@ describe("in the file's region", () => {
     expect(centsOrNull("1.234,56 €")).toBe(123456);
     expect(centsOrNull("-40")).toBe(4000);
     expect(centsText(1250)).toBe("12,50");
+  });
+});
+
+describe("the row menu", () => {
+  const items = () => screen.getAllByRole("menuitem").map((i) => i.textContent);
+
+  it("a category row leads with Show transactions, which peeks at them like a click", async () => {
+    setup();
+    fireEvent.contextMenu(await screen.findByRole("row", { name: "Open Groceries" }));
+    expect(items()).toEqual([
+      "Show transactions",
+      "Customize…",
+      "Add to my favorite reports…",
+      "Print this report",
+      "Copy as CSV (for Excel)",
+      "Save as CSV file…",
+    ]);
+    await userEvent.click(screen.getByRole("menuitem", { name: "Show transactions" }));
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("a row with no drill-down gets only the report-wide items", async () => {
+    setup();
+    await screen.findByRole("row", { name: "Open Groceries" });
+    fireEvent.contextMenu(screen.getByText("Net Income").closest("tr")!);
+    expect(items()[0]).toBe("Customize…");
+    expect(items()).not.toContain("Show transactions");
+  });
+
+  it("Customize… opens the panel; Print calls the window", async () => {
+    const print = vi.spyOn(window, "print").mockImplementation(() => {});
+    setup();
+    fireEvent.contextMenu(await screen.findByRole("row", { name: "Open Groceries" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Customize…" }));
+    expect(screen.getByRole("button", { name: /^Customize/ })).toHaveAttribute("aria-expanded", "true");
+    fireEvent.contextMenu(screen.getByText("Net Income").closest("tr")!);
+    await userEvent.click(screen.getByRole("menuitem", { name: "Print this report" }));
+    expect(print).toHaveBeenCalled();
+    print.mockRestore();
+  });
+
+  it("a saved report also offers Remove from my favorites", async () => {
+    const onDeleteSaved = vi.fn(async () => {});
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    setup({ spec: { ...spec, savedId: "fav-1", savedName: "Mine" }, onDeleteSaved });
+    fireEvent.contextMenu(await screen.findByRole("row", { name: "Open Groceries" }));
+    expect(items()).toContain("Save changes to this report…");
+    await userEvent.click(screen.getByRole("menuitem", { name: "Remove from my favorites" }));
+    expect(onDeleteSaved).toHaveBeenCalledWith("fav-1");
+    confirm.mockRestore();
   });
 });

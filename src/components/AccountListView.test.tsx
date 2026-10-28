@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 // The account list: each balance in its own currency, equity in the home currency.
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@tauri-apps/api/core", () => import("../test/tauriMock"));
@@ -49,6 +50,42 @@ describe("the account list", () => {
     // €300,000 at 1.10 is $330,000; less $100,000 owed.
     expect(await screen.findByText(/equity/)).toHaveTextContent("less $100,000.00 owed = $230,000.00 equity in US dollars");
     expect(screen.getByRole("button", { name: "Flat" }).closest("tr")).toHaveTextContent("€300,000.00");
+  });
+});
+
+describe("the account row context menu", () => {
+  function setup(over: Partial<Account> = {}) {
+    const fns = { onOpen: vi.fn(), onEditDetails: vi.fn(), onDeleteAccount: vi.fn(), onMergeAccount: vi.fn(), onToggleFavorite: vi.fn() };
+    render(<AccountListView accounts={[acct("a-1", "Checking", "checking", 1000, over)]} onAddAccount={noop} {...fns} />);
+    const row = screen.getByRole("button", { name: "Checking" }).closest("tr")!;
+    expect(row).toHaveAttribute("tabindex", "0");
+    fireEvent.contextMenu(row);
+    return fns;
+  }
+
+  it("offers the account's actions in order", async () => {
+    setup();
+    await act(async () => {});
+    expect(screen.getAllByRole("menuitem").map((i) => i.textContent)).toEqual([
+      "Open register", "Account details…", "Add to favorites", "Merge…", "Delete account…",
+    ]);
+  });
+
+  it.each([
+    ["Open register", "onOpen"],
+    ["Account details…", "onEditDetails"],
+    ["Add to favorites", "onToggleFavorite"],
+    ["Merge…", "onMergeAccount"],
+    ["Delete account…", "onDeleteAccount"],
+  ] as const)("%s calls the right handler with the account", async (label, fn) => {
+    const fns = setup();
+    await userEvent.click(screen.getByRole("menuitem", { name: label }));
+    expect(fns[fn]).toHaveBeenCalledWith("a-1");
+  });
+
+  it("offers to remove a favorite", () => {
+    setup({ is_favorite: true });
+    expect(screen.getByRole("menuitem", { name: "Remove from favorites" })).toBeTruthy();
   });
 });
 

@@ -1,5 +1,5 @@
 // The Portfolio page: a holding's symbol is set where the user looks for it.
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -83,6 +83,58 @@ describe("InvestmentsView — symbol in place", () => {
     await userEvent.type(screen.getByLabelText("Symbol for VTSAX"), "xx{Escape}");
     expect(screen.getByRole("button", { name: "SCHD" })).toBeTruthy();
     expect(updateSecurity).not.toHaveBeenCalled();
+  });
+});
+
+describe("the holdings context menu", () => {
+  beforeEach(() => resetIpc());
+
+  function stubPortfolio(extra: Record<string, (a: Record<string, unknown>) => unknown> = {}) {
+    setIpcHandlers({
+      get_portfolio: async () => ({ ...portfolio, positions: [{ ...position, symbol: "VTSAX" }] }),
+      list_securities: async () => [{ ...fund, symbol: "VTSAX" }],
+      get_roi: async () => [],
+      get_performance: async () => [],
+      price_status: async () => ({ oldest_date: null, newest_date: null, missing: 0 }),
+      ...extra,
+    });
+  }
+
+  async function holdingRow() {
+    return (await screen.findByText(/VTSAX/, { selector: "td" })).closest("tr")!;
+  }
+
+  it("opens the account's register from a holding", async () => {
+    stubPortfolio();
+    const onOpenAccount = vi.fn();
+    render(<InvestmentsView onOpenAccount={onOpenAccount} />);
+    const row = await holdingRow();
+    expect(row).toHaveAttribute("tabindex", "0");
+    fireEvent.contextMenu(row);
+    await userEvent.click(screen.getByRole("menuitem", { name: "Open register (Buy / Sell)" }));
+    expect(onOpenAccount).toHaveBeenCalledWith("a-1");
+  });
+
+  it("shows and hides the lots, and leaves out the register item without a way to open it", async () => {
+    stubPortfolio();
+    render(<InvestmentsView />);
+    const row = await holdingRow();
+    fireEvent.contextMenu(row);
+    expect(screen.queryByRole("menuitem", { name: /Open register/ })).toBeNull();
+    await userEvent.click(screen.getByRole("menuitem", { name: "Show lots" }));
+    expect(await screen.findByRole("table", { name: "Lots of VTSAX" })).toBeTruthy();
+    fireEvent.contextMenu(row);
+    expect(screen.getByRole("menuitem", { name: "Hide lots" })).toBeTruthy();
+  });
+
+  it("fetches prices from the menu", async () => {
+    const refresh = vi.fn(async () => ({ updated: 1, skipped: 0, failures: [] }));
+    stubPortfolio({ refresh_investment_prices: refresh });
+    render(<InvestmentsView />);
+    const row = await holdingRow();
+    fireEvent.contextMenu(row);
+    await userEvent.click(screen.getByRole("menuitem", { name: "Update prices" }));
+    await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
   });
 });
 
