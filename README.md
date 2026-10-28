@@ -39,10 +39,11 @@ All screenshots use the made-up household in **File → New → Sample file with
 
 - **Accounts and the register** — checking, savings, credit cards, loans, assets and investment
   accounts. Type-ahead payees and categories, splits, linked transfers, and real Undo (Ctrl+Z) for
-  almost everything.
+  almost everything. Right-click (or Shift+F10) a row in most lists for what you can do with it.
 - **Balancing** — reconcile an account against a statement, the way Money did it.
-- **Bills and deposits** — scheduled payments and paychecks, a cash forecast, and subscriptions it
-  notices on its own.
+- **Bills and deposits** — scheduled payments and paychecks, one-time items, and subscriptions it
+  notices on its own. The cash forecast looks up to two years ahead, for one account or all your
+  bank and cash accounts together.
 - **Budgets** — a monthly budget and a year plan, including Level Pay for bills that come once or
   twice a year.
 - **Investments** — holdings, lots and cost basis, returns, asset allocation, and share prices
@@ -171,12 +172,12 @@ If you want to be sure a file is the real one before you run it:
   downloaded; the result must match the line for that file.
 
   ```powershell
-  Get-FileHash .\T-Money_1.4.0_x64-setup.exe -Algorithm SHA256   # Windows, in PowerShell
+  Get-FileHash .\T-Money_1.5.0_x64-setup.exe -Algorithm SHA256   # Windows, in PowerShell
   ```
 
   ```sh
-  shasum -a 256 T-Money_1.4.0_universal.dmg      # Mac
-  sha256sum T-Money_1.4.0_amd64.AppImage         # Linux
+  shasum -a 256 T-Money_1.5.0_universal.dmg      # Mac
+  sha256sum T-Money_1.5.0_amd64.AppImage         # Linux
   ```
 
 - **Check where it was built.** Every download is built by GitHub from the public source in this
@@ -184,7 +185,7 @@ If you want to be sure a file is the real one before you run it:
   [GitHub CLI](https://cli.github.com/):
 
   ```sh
-  gh attestation verify T-Money_1.4.0_x64-setup.exe --repo HuskerMinion/t-money
+  gh attestation verify T-Money_1.5.0_x64-setup.exe --repo HuskerMinion/t-money
   ```
 
 ## Coming from Microsoft Money
