@@ -13,7 +13,7 @@ import { categoryKey } from "./CategoryCombo";
 import ContextMenu, { useContextMenu, type MenuEntry } from "./ContextMenu";
 import FindInRegisterDialog from "./FindInRegisterDialog";
 import TransactionEditRow, { type TransactionDraft } from "./TransactionEditRow";
-import { onRegisterRequest, takeRegisterAction } from "../lib/registerRequest";
+import { onRegisterRequest, takeRegisterAction, type RegisterAction } from "../lib/registerRequest";
 import InvestmentEditRow, { type ShareTransferDraft } from "./InvestmentEditRow";
 import UpdateHoldingsDialog from "./UpdateHoldingsDialog";
 import UpdateValueDialog from "./UpdateValueDialog";
@@ -63,14 +63,27 @@ export type RegisterView = RegisterShow;
 /** Fill the viewport with empty rows, as Money does. */
 const MIN_ROWS = 24;
 
-/** The Bills form's starting point for a register row: the same payee, amount
- *  and sign, one month on, so a one-off becomes a monthly bill or deposit. */
-function scheduleDraftFor(row: RegisterRow): NewRecurrence {
-  const [y, m, d] = row.date.split("-").map(Number);
-  // Jan 31 -> Feb 28, not Mar 3.
-  const last = new Date(y, m + 1, 0).getDate();
-  const next = new Date(y, m, Math.min(d, last));
+/** The first monthly date after `date`, on its day of the month, that is not
+ *  before `notBefore`. Jan 31 → Feb 28, not Mar 3; a row from two years ago
+ *  starts its schedule now, not with two years of overdue bills. */
+export function nextMonthlyDate(date: string, notBefore: string): string {
+  const [y, m, d] = date.split("-").map(Number);
   const pad = (n: number) => String(n).padStart(2, "0");
+  let iso = date;
+  // Bounded: a row from a century ago still stops.
+  for (let k = 1; k <= 1200; k++) {
+    const last = new Date(y, m - 1 + k + 1, 0).getDate();
+    const next = new Date(y, m - 1 + k, Math.min(d, last));
+    iso = `${next.getFullYear()}-${pad(next.getMonth() + 1)}-${pad(next.getDate())}`;
+    if (iso >= notBefore) break;
+  }
+  return iso;
+}
+
+/** The Bills form's starting point for a register row: the same payee, amount
+ *  and sign, monthly from the next time it would come, so a one-off becomes
+ *  a monthly bill or deposit. */
+function scheduleDraftFor(row: RegisterRow): NewRecurrence {
   return {
     payee: row.payee,
     amount_cents: row.amount_cents,
@@ -79,7 +92,7 @@ function scheduleDraftFor(row: RegisterRow): NewRecurrence {
     transfer_account_id: row.transfer_account_id,
     freq: "monthly",
     interval_n: 1,
-    start_date: `${next.getFullYear()}-${pad(next.getMonth() + 1)}-${pad(next.getDate())}`,
+    start_date: nextMonthlyDate(row.date, today()),
     end_date: null,
     second_day: null,
     weekend_rule: "none",
@@ -279,33 +292,6 @@ export default function AccountRegister() {
     setSort(DEFAULT_VIEW.sort);
   }, [selectedAccountId, loadRegister]);
 
-  // A right-click on the account list asked for something specific
-  // (Balance this account…, Update value…, Loan terms…) or the Investments
-  // view for a Buy / Sell. Taken once the account is the current one;
-  // `take` removes the request before anything runs, so a StrictMode second
-  // pass finds nothing. An action this account does not offer is dropped.
-  const actionAccountId = account?.id ?? null;
-  const runParked = useRef<() => void>(() => {});
-  runParked.current = () => {
-    if (!actionAccountId) return;
-    const action = takeRegisterAction(actionAccountId);
-    if (!action) return;
-    if (action.kind === "reconcile") {
-      if (stage === null) void beginReconcile();
-    } else if (action.kind === "value") {
-      if (isAsset) setValuing(true);
-    } else if (action.kind === "terms") {
-      if (isLoan) setEditingTerms(true);
-    } else if (isInvestment) {
-      void startNew("investment", { activity: action.kind, securityId: action.securityId });
-    }
-  };
-  // Taken when this account becomes the current one…
-  useEffect(() => runParked.current(), [actionAccountId]);
-  // …and when a request arrives for the account already open (the sidebar
-  // is beside the register, so its menu can ask for the account on screen).
-  useEffect(() => onRegisterRequest(() => runParked.current()), []);
-
   // The register opens at the bottom, where the newest rows and the
   // entry line are — unless a search hit asked for a particular row.
   // Also after balancing ends or the view changes: the grouped
@@ -478,6 +464,61 @@ export default function AccountRegister() {
     else if (stage !== null) leaveReconcile();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAccountId]);
+
+  // A right-click elsewhere asked for something specific: the account list's
+  // Balance this account…, Update value…, Loan terms…, or the Investments
+  // view's Buy more… / Sell…. `take` removes the request before anything
+  // runs, so a StrictMode second pass finds nothing; an action this account
+  // does not offer is dropped.
+  //
+  // These effects come AFTER the switch effect above, on purpose. On a
+  // switch, that one saves the entry typed for the old account; Balance and
+  // Buy save the open form too, and run first they saved it through the
+  // form's newest render, which already belonged to the new account — the
+  // entry typed for Checking landed in Savings. Run second, they join the
+  // save already under way.
+  const actionAccountId = account?.id ?? null;
+  // Taken, and waiting for a reconcile still on screen (the old account's,
+  // which the switch is postponing) to close before Balance can start.
+  const parked = useRef<RegisterAction | null>(null);
+  const runParked = useRef<() => void>(() => {});
+  runParked.current = () => {
+    const action = parked.current;
+    if (!action) return;
+    if (action.kind === "reconcile" && stage !== null) return; // the `stage` effect tries again
+    parked.current = null;
+    if (action.kind === "reconcile") {
+      void beginReconcile();
+    } else if (action.kind === "value") {
+      if (isAsset) setValuing(true);
+    } else if (action.kind === "terms") {
+      if (isLoan) setEditingTerms(true);
+    } else if (isInvestment) {
+      void startNew("investment", { activity: action.kind, securityId: action.securityId });
+    }
+  };
+  // Taken when this account becomes the current one; anything still
+  // waiting for the account before it is dropped.
+  useEffect(() => {
+    parked.current = actionAccountId ? takeRegisterAction(actionAccountId) : null;
+    runParked.current();
+  }, [actionAccountId]);
+  // Tried again once a reconcile has closed.
+  useEffect(() => {
+    if (stage === null) runParked.current();
+  }, [stage]);
+  // A request for the account already open (the sidebar is beside the
+  // register, so its menu can ask for the account on screen). Balance while
+  // this account is already being balanced has nothing to start.
+  const takeForOpen = useRef<() => void>(() => {});
+  takeForOpen.current = () => {
+    if (!actionAccountId) return;
+    const action = takeRegisterAction(actionAccountId);
+    if (!action || (action.kind === "reconcile" && stage !== null)) return;
+    parked.current = action;
+    runParked.current();
+  };
+  useEffect(() => onRegisterRequest(() => takeForOpen.current()), []);
 
   useEffect(() => {
     let live = true;
@@ -946,6 +987,9 @@ export default function AccountRegister() {
     setEditingId(null);
     setAddingNew(false);
     setEntryPreset(null);
+    // Split… or Attachments… was for that one opening; a row opened
+    // again later opens plain.
+    setOpenPart(null);
   }
 
   /** Double-click, or a click on an already-selected row, opens editing —

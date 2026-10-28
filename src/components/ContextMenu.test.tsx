@@ -60,6 +60,43 @@ describe("ContextMenu", () => {
     expect(del).not.toHaveBeenCalled();
   });
 
+  it("Escape gives focus back to what had it before the menu opened", () => {
+    render(<button type="button">Before</button>);
+    const before = screen.getByRole("button", { name: "Before" });
+    before.focus();
+    setup();
+    expect(screen.getByRole("menuitem", { name: "Edit" })).toHaveFocus();
+    fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
+    expect(before).toHaveFocus();
+  });
+
+  it("Tab closes it and gives focus back the same way", () => {
+    render(<button type="button">Before</button>);
+    const before = screen.getByRole("button", { name: "Before" });
+    before.focus();
+    const { onClose } = setup();
+    fireEvent.keyDown(screen.getByRole("menu"), { key: "Tab" });
+    expect(onClose).toHaveBeenCalled();
+    expect(before).toHaveFocus();
+  });
+
+  it("ArrowUp from the first item wraps to the last enabled one, and Home goes back to the first", () => {
+    setup();
+    expect(screen.getByRole("menuitem", { name: "Edit" })).toHaveFocus();
+    fireEvent.keyDown(screen.getByRole("menu"), { key: "ArrowUp" });
+    expect(screen.getByRole("menuitem", { name: "Delete" })).toHaveFocus();
+    fireEvent.keyDown(screen.getByRole("menu"), { key: "Home" });
+    expect(screen.getByRole("menuitem", { name: "Edit" })).toHaveFocus();
+  });
+
+  it("a menu with every item unavailable takes focus itself, and Escape still closes it", () => {
+    const onClose = vi.fn();
+    render(<ContextMenu x={1} y={1} onClose={onClose} items={[{ label: "One", onSelect: vi.fn(), disabled: true }, { label: "Two", onSelect: vi.fn(), disabled: true }]} />);
+    expect(screen.getByRole("menu")).toHaveFocus();
+    fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
+    expect(onClose).toHaveBeenCalled();
+  });
+
   it("a click outside closes it", () => {
     const { onClose } = setup();
     fireEvent.click(document.querySelector(".tm-dialog-backdrop")!);
@@ -102,7 +139,31 @@ function Rows() {
   );
 }
 
+function RowsWithInput() {
+  const { menu, open, close } = useContextMenu<string>();
+  return (
+    <>
+      <div onContextMenu={(e) => open(e, "row-1")}>
+        <span>Row 1</span>
+        <input aria-label="Rename" />
+      </div>
+      {menu && <ContextMenu x={menu.x} y={menu.y} onClose={close} items={[{ label: `Open ${menu.target}`, onSelect: () => {} }]} />}
+    </>
+  );
+}
+
 describe("useContextMenu", () => {
+  it("a right-click in a text box inside the row leaves the webview's own menu alone", () => {
+    render(<RowsWithInput />);
+    const notPrevented = fireEvent.contextMenu(screen.getByLabelText("Rename"), { clientX: 20, clientY: 30 });
+    expect(notPrevented).toBe(true);
+    expect(screen.queryByRole("menu")).toBeNull();
+    // The row itself still opens it.
+    const prevented = fireEvent.contextMenu(screen.getByText("Row 1"), { clientX: 20, clientY: 30 });
+    expect(prevented).toBe(false);
+    expect(screen.getByRole("menuitem", { name: "Open row-1" })).toBeInTheDocument();
+  });
+
   it("a right-click opens the menu for what was clicked", () => {
     render(<Rows />);
     fireEvent.contextMenu(screen.getByText("Row 1"), { clientX: 20, clientY: 30 });

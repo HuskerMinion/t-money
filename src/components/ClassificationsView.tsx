@@ -165,7 +165,7 @@ export default function ClassificationsView() {
   function valueRow(v: ClassificationValue, isChild: boolean) {
     const editing = renaming?.kind === "value" && renaming.id === v.id;
     return (
-      <tr key={v.id} tabIndex={0} aria-label={v.full_name} onContextMenu={(e) => valueMenu.open(e, v)}>
+      <tr key={v.id} tabIndex={-1} onContextMenu={(e) => valueMenu.open(e, v)}>
         <td className="py-1 pl-1" style={{ paddingLeft: isChild ? 22 : 4 }}>
           {editing ? (
             <input

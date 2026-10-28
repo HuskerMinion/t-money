@@ -55,6 +55,13 @@ beforeEach(() => {
   setIpcHandlers({ list_categories: () => CATS });
 });
 
+/** The table row that shows exactly this text in one of its cells. */
+function rowOf(text: string): HTMLElement {
+  const row = screen.getAllByRole("row").find((r) => within(r).queryAllByText(text, { exact: true }).length > 0);
+  if (!row) throw new Error(`no row shows ${text}`);
+  return row;
+}
+
 describe("treeOf", () => {
   it("nests each parent's children under it, per kind", () => {
     const expense = treeOf(CATS, "expense");
@@ -501,7 +508,7 @@ describe("the row menu", () => {
   it("offers New subcategory only on a top-level row", async () => {
     render(<CategoriesView />);
     await screen.findByText("Groceries");
-    fireEvent.contextMenu(screen.getByRole("row", { name: "Automobile" }));
+    fireEvent.contextMenu(rowOf("Automobile"));
     expect(items()).toEqual(["Show transactions", "Rename…", "New subcategory…", "Change parent…", "Tax line…", "Merge into…", "Delete…"]);
     await userEvent.keyboard("{Escape}");
     fireEvent.contextMenu(screen.getByText(/Gasoline/).closest("tr")!);
@@ -513,7 +520,7 @@ describe("the row menu", () => {
     const off = registerCommand("nav.report", (a) => void seen.push(a));
     render(<CategoriesView />);
     await screen.findByText("Groceries");
-    fireEvent.contextMenu(screen.getByRole("row", { name: "Automobile" }));
+    fireEvent.contextMenu(rowOf("Automobile"));
     await userEvent.click(screen.getByRole("menuitem", { name: "Show transactions" }));
     off();
     expect(seen).toEqual([{ kind: "transactions_by_category", categoryIds: ["e-1"], rangeId: "all_dates" }]);
@@ -522,7 +529,7 @@ describe("the row menu", () => {
   it("Rename… selects the row and moves to the name box", async () => {
     render(<CategoriesView />);
     await screen.findByText("Groceries");
-    fireEvent.contextMenu(screen.getByRole("row", { name: "Groceries" }));
+    fireEvent.contextMenu(rowOf("Groceries"));
     await userEvent.click(screen.getByRole("menuitem", { name: "Rename…" }));
     expect(screen.getByLabelText("Category name")).toHaveValue("Groceries");
     await waitFor(() => expect(screen.getByLabelText("Category name")).toHaveFocus());
@@ -531,7 +538,7 @@ describe("the row menu", () => {
   it("Tax line… selects the row and moves to the tax line", async () => {
     render(<CategoriesView />);
     await screen.findByText("Groceries");
-    fireEvent.contextMenu(screen.getByRole("row", { name: "Groceries" }));
+    fireEvent.contextMenu(rowOf("Groceries"));
     await userEvent.click(screen.getByRole("menuitem", { name: "Tax line…" }));
     await waitFor(() => expect(screen.getByLabelText("Tax line")).toHaveFocus());
   });
@@ -539,7 +546,7 @@ describe("the row menu", () => {
   it("New subcategory… starts a blank form under that parent", async () => {
     render(<CategoriesView />);
     await screen.findByText("Groceries");
-    fireEvent.contextMenu(screen.getByRole("row", { name: "Automobile" }));
+    fireEvent.contextMenu(rowOf("Automobile"));
     await userEvent.click(screen.getByRole("menuitem", { name: "New subcategory…" }));
     expect(screen.getByLabelText("Category name")).toHaveValue("");
     expect(screen.getByLabelText("Parent category")).toHaveValue("e-1");
@@ -549,11 +556,11 @@ describe("the row menu", () => {
   it("Merge into… and Delete… open their dialogs for that row", async () => {
     render(<CategoriesView />);
     await screen.findByText("Groceries");
-    fireEvent.contextMenu(screen.getByRole("row", { name: "Groceries" }));
+    fireEvent.contextMenu(rowOf("Groceries"));
     await userEvent.click(screen.getByRole("menuitem", { name: "Merge into…" }));
     expect(within(screen.getByRole("dialog", { name: "Merge category" })).getAllByText("Groceries").length).toBeGreaterThan(0);
     await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
-    fireEvent.contextMenu(screen.getByRole("row", { name: "Salary" }));
+    fireEvent.contextMenu(rowOf("Salary"));
     await userEvent.click(screen.getByRole("menuitem", { name: "Delete…" }));
     expect(within(screen.getByRole("dialog", { name: "Delete category" })).getByText("Salary")).toBeInTheDocument();
   });

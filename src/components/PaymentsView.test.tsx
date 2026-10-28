@@ -466,6 +466,26 @@ describe("The forecast's horizon", () => {
     expect(screen.getAllByText("November 2026")).toHaveLength(1);
   });
 
+  it("at 90 days, puts no month headings over the bills, even across two months", async () => {
+    stub("90", [
+      occ({ recurrence_id: "r-a", due_date: "2026-11-03", account_id: "a-chk" }),
+      occ({ recurrence_id: "r-c", due_date: "2026-12-03", account_id: "a-chk" }),
+    ]);
+    render(<PaymentsView />);
+    await waitFor(() => expect(screen.getByLabelText("Forecast period")).toHaveValue("90"));
+    await waitFor(() => expect(screen.getAllByText("Anytown Properties")).toHaveLength(2));
+    expect(screen.queryByText("November 2026")).toBeNull();
+    expect(screen.queryByText("December 2026")).toBeNull();
+  });
+
+  it("with one open bank account, does not offer All bank and cash accounts", async () => {
+    stub();
+    render(<PaymentsView />);
+    const picker = await screen.findByLabelText("Forecast account");
+    await waitFor(() => expect(within(picker).getAllByRole("option").length).toBeGreaterThan(0));
+    expect(within(picker).getAllByRole("option").map((o) => o.textContent)).toEqual(["Demo Checking"]);
+  });
+
   it("One-time item… starts a Once schedule in the account being forecast", async () => {
     stub();
     render(<PaymentsView />);

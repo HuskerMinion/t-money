@@ -18,6 +18,7 @@ vi.mock("./ReportViewer", async (importOriginal) => {
           <h1>{spec.savedName ?? spec.kind}</h1>
           <div data-testid="accounts">{spec.accountIds.join(",")}</div>
           <div data-testid="saved-id">{spec.savedId ?? ""}</div>
+          {props.customizeOnOpen && <div>Customize panel is showing</div>}
           <button type="button" onClick={() => onSpec({ ...spec, accountIds: ["a-2"] })}>
             Customize
           </button>
@@ -171,6 +172,22 @@ describe("the gallery menus", () => {
     fireEvent.contextMenu(await screen.findByRole("button", { name: "Net worth" }));
     await userEvent.click(screen.getByRole("menuitem", { name: "Open" }));
     expect(await screen.findByRole("heading", { name: "net_worth" })).toBeInTheDocument();
+  });
+
+  it("Customize… opens the report with its Customize panel already showing", async () => {
+    render(view(null));
+    fireEvent.contextMenu(await screen.findByRole("button", { name: "Net worth" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Customize…" }));
+    expect(await screen.findByRole("heading", { name: "net_worth" })).toBeInTheDocument();
+    expect(screen.getByText("Customize panel is showing")).toBeInTheDocument();
+  });
+
+  it("plain Open leaves the Customize panel closed", async () => {
+    render(view(null));
+    fireEvent.contextMenu(await screen.findByRole("button", { name: "Net worth" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Open" }));
+    expect(await screen.findByRole("heading", { name: "net_worth" })).toBeInTheDocument();
+    expect(screen.queryByText("Customize panel is showing")).toBeNull();
   });
 
   it("a favorite: Open, Customize…, Rename…, Remove", async () => {

@@ -115,9 +115,9 @@ export default function AccountListView({
                   list.map((a) => (
                     <tr
                       key={a.id}
-                      // Focusable so Shift+F10 and the Menu key can open the menu.
-                      tabIndex={0}
-                      aria-label={a.name}
+                      // Focusable by a click, not a Tab stop (a long list would be a long
+                      // walk): Shift+F10 or the Menu key then opens its menu.
+                      tabIndex={-1}
                       onContextMenu={(e) => ctx.open(e, a)}
                     >
                       <td>

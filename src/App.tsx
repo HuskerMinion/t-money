@@ -1146,7 +1146,8 @@ export default function App() {
             accounts={sidebarAccounts}
             selectedId={sidebarSelectedId}
             onSelect={openAccountRegister}
-            onToggleFavorite={(id) => void useAccountStore.getState().toggleFavorite(id).catch(() => {})}
+            // A refusal shows in the app-wide notice; the sidebar has no room of its own.
+            onToggleFavorite={(id) => void useAccountStore.getState().toggleFavorite(id).catch((e) => useAccountStore.setState({ error: `Could not change favorites: ${e}` }))}
           />
         )}
         <main key={`${tabEpoch}|${format}`} className="flex-1 overflow-y-auto p-4" style={{ background: "var(--tm-ms-content-bg)" }}>

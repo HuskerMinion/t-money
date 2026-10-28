@@ -60,7 +60,8 @@ describe("the account row context menu", () => {
     const fns = { onOpen: vi.fn(), onEditDetails: vi.fn(), onDeleteAccount: vi.fn(), onMergeAccount: vi.fn(), onToggleFavorite: vi.fn() };
     render(<AccountListView accounts={[acct("a-1", "Checking", "checking", 1000, over)]} onAddAccount={noop} {...fns} />);
     const row = screen.getByRole("button", { name: "Checking" }).closest("tr")!;
-    expect(row).toHaveAttribute("tabindex", "0");
+    // Focusable by a click (Shift+F10 then opens the menu), not a Tab stop.
+    expect(row).toHaveAttribute("tabindex", "-1");
     fireEvent.contextMenu(row);
     return fns;
   }

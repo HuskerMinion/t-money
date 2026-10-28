@@ -28,11 +28,17 @@ describe("the favorite accounts card context menu", () => {
     const onOpen = vi.fn();
     render(<FavoriteAccountsWidget onOpen={onOpen} />);
     const row = screen.getByRole("button", { name: "Open Checking" });
-    expect(row).toHaveAttribute("tabindex", "0");
     fireEvent.contextMenu(row);
     expect(screen.getAllByRole("menuitem").map((i) => i.textContent)).toEqual(["Open register", "Remove from favorites"]);
     await userEvent.click(screen.getByRole("menuitem", { name: "Open register" }));
     expect(onOpen).toHaveBeenCalledWith("a-1");
+  });
+
+  it("Shift+F10 or the Menu key (a contextmenu with no pointer position) opens it too", () => {
+    render(<FavoriteAccountsWidget />);
+    fireEvent.contextMenu(screen.getByRole("button", { name: "Open Checking" }), { clientX: 0, clientY: 0 });
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+    expect(screen.getAllByRole("menuitem").map((i) => i.textContent)).toEqual(["Open register", "Remove from favorites"]);
   });
 
   it("removes the account from favorites", async () => {

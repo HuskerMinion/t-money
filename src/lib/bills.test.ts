@@ -18,4 +18,9 @@ describe("spendableAccounts", () => {
     const ids = spendableAccounts(accounts, (x) => x.currency, "USD").map((x) => x.id);
     expect(ids).toEqual(["chk", "sav", "wallet"]);
   });
+
+  it("counts the bank account type as spendable", () => {
+    const ids = spendableAccounts([a("bk", "bank"), a("visa", "credit")], (x) => x.currency, "USD").map((x) => x.id);
+    expect(ids).toEqual(["bk"]);
+  });
 });

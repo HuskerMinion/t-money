@@ -305,8 +305,8 @@ export default function CategoriesView() {
     return (
       <tr
         key={c.id}
-        tabIndex={0}
-        aria-label={c.full_name}
+        // Focusable by a click, not a Tab stop: Shift+F10 then opens its menu.
+        tabIndex={-1}
         onContextMenu={(e) => rowMenu.open(e, c)}
         data-category-row={c.id}
         className={c.id === selectedId ? "tm-row-selected" : undefined}

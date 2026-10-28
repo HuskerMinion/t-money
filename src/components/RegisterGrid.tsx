@@ -359,7 +359,7 @@ function Row({
       // One row is a tab stop (the selected one), so Shift+F10 or the Menu
       // key has a row to open the context menu on without Tab crossing
       // every row of a long register.
-      tabIndex={onRowContextMenu && selected ? 0 : -1}
+      tabIndex={onRowContextMenu ? (selected ? 0 : -1) : undefined}
       onClick={() => {
         // Clicking a row that is already selected opens it, so a second click
         // edits without needing the toolbar — Money behaves this way too.

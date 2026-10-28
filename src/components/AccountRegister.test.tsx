@@ -16,7 +16,7 @@ vi.mock("@tauri-apps/plugin-dialog", () => ({ save: dialog.save, open: dialog.op
 
 import { formatDateUS, today } from "../lib/format";
 import AccountRegister, {
-  nextCheckNumber, groupByDepositsAndWithdrawals } from "./AccountRegister";
+  nextCheckNumber, nextMonthlyDate, groupByDepositsAndWithdrawals } from "./AccountRegister";
 import RegisterGrid from "./RegisterGrid";
 import { runCommand } from "../lib/commands";
 import { takeScheduleDraft } from "../lib/scheduleDraft";
@@ -2259,6 +2259,20 @@ describe("register interactions", () => {
     );
   });
 
+  describe("nextMonthlyDate", () => {
+    it("is a month on, on the same day, or the month's last day when it has fewer", () => {
+      expect(nextMonthlyDate("2026-01-31", "2026-01-01")).toBe("2026-02-28");
+      expect(nextMonthlyDate("2024-01-31", "2024-01-01")).toBe("2024-02-29");
+      expect(nextMonthlyDate("2026-12-15", "2026-01-01")).toBe("2027-01-15");
+    });
+
+    it("starts an old row's schedule now, not with years of overdue bills", () => {
+      expect(nextMonthlyDate("2024-01-31", "2026-10-28")).toBe("2026-10-31");
+      expect(nextMonthlyDate("2026-10-27", "2026-10-28")).toBe("2026-11-27");
+      expect(nextMonthlyDate("2026-09-28", "2026-10-28")).toBe("2026-10-28");
+    });
+  });
+
   describe("row context menu", () => {
     const transfer: RegisterRow = {
       ...withdrawal,
@@ -2304,7 +2318,7 @@ describe("register interactions", () => {
       expect(within(menu).getAllByRole("separator").length).toBeGreaterThan(0);
     });
 
-    it("Schedule this transaction… parks a monthly draft one month on", async () => {
+    it("Schedule this transaction… parks a monthly draft, from the next time it would come", async () => {
       with_([transfer]);
       render(<AccountRegister />);
       await screen.findByRole("table");
@@ -2318,8 +2332,8 @@ describe("register interactions", () => {
         transfer_account_id: "acc-2",
         freq: "monthly",
         interval_n: 1,
-        // Jan 31 has no February 31.
-        start_date: "2026-02-28",
+        // Monthly on the row's day from now on (nextMonthlyDate, tested below).
+        start_date: nextMonthlyDate("2026-01-31", today()),
         end_date: null,
         second_day: null,
         weekend_rule: "none",
@@ -2349,7 +2363,7 @@ describe("register interactions", () => {
       expect(select).toHaveBeenCalledWith("acc-2");
     });
 
-    it("a voided row offers only Edit, Un-void and Delete", async () => {
+    it("a voided row offers no Split, Schedule, cleared or Tax line", async () => {
       with_([{ ...withdrawal, is_void: true }]);
       render(<AccountRegister />);
       await screen.findByRole("table");
@@ -2365,6 +2379,39 @@ describe("register interactions", () => {
       fireEvent.contextMenu(dataRows()[0]);
       await userEvent.click(screen.getByRole("menuitem", { name: "Split…" }));
       expect(await screen.findByRole("dialog", { name: "Transaction with Multiple Categories" })).toBeInTheDocument();
+    });
+
+    it("closing the split window and the form, the same row opens plain next time", async () => {
+      with_([withdrawal]);
+      render(<AccountRegister />);
+      await screen.findByRole("table");
+      fireEvent.contextMenu(dataRows()[0]);
+      await userEvent.click(screen.getByRole("menuitem", { name: "Split…" }));
+      const split = await screen.findByRole("dialog", { name: "Transaction with Multiple Categories" });
+      await userEvent.click(within(split).getByRole("button", { name: "Cancel" }));
+      await waitFor(() => expect(screen.queryByRole("dialog", { name: "Transaction with Multiple Categories" })).toBeNull());
+      await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+      expect(screen.queryByLabelText("Payee")).not.toBeInTheDocument();
+      await userEvent.dblClick(dataRows()[0]);
+      expect(await screen.findByLabelText("Payee")).toBeInTheDocument();
+      expect(screen.queryByRole("dialog", { name: "Transaction with Multiple Categories" })).toBeNull();
+    });
+
+    it("hiding and showing the transaction forms does not bring the split window back either", async () => {
+      with_([withdrawal]);
+      render(<AccountRegister />);
+      await screen.findByRole("table");
+      fireEvent.contextMenu(dataRows()[0]);
+      await userEvent.click(screen.getByRole("menuitem", { name: "Split…" }));
+      const split = await screen.findByRole("dialog", { name: "Transaction with Multiple Categories" });
+      await userEvent.click(within(split).getByRole("button", { name: "Cancel" }));
+      // That path closes the form, then opens the selected row again without
+      // going through a double-click.
+      const toggle = screen.getByRole("checkbox", { name: "Show transaction forms" });
+      await userEvent.click(toggle);
+      await userEvent.click(toggle);
+      expect(await screen.findByLabelText("Payee")).toBeInTheDocument();
+      expect(screen.queryByRole("dialog", { name: "Transaction with Multiple Categories" })).toBeNull();
     });
 
     it("a transfer offers no Split…", async () => {
@@ -3501,6 +3548,33 @@ describe("The register's review fixes", () => {
     const payload = (invokeCalls.find((c) => c.cmd === "create_transaction")!.args as { payload: Record<string, unknown> }).payload;
     expect(payload).toMatchObject({ account_id: "acc-1", payee: "Hardware Store", amount_cents: -1200 });
     await waitFor(() => expect(screen.queryByLabelText("Payee")).not.toBeInTheDocument());
+  });
+
+  // The release review's finding: Balance asked for from the sidebar saved
+  // the half-typed entry itself, through the form's newest render — which
+  // already belonged to the account being switched to.
+  it("item 1 — and when the switch is a sidebar's Balance this account…, it still goes to the account it was typed in, once", async () => {
+    mount({ create_transaction: () => ({ id: "t-9" }) });
+    await screen.findByRole("table");
+    await userEvent.click(screen.getByRole("button", { name: "New" }));
+    await userEvent.type(screen.getByLabelText("Payee"), "Hardware Store");
+    await userEvent.type(screen.getByLabelText("Payment"), "12.00");
+    act(() => requestRegisterAction({ accountId: "acc-2", action: { kind: "reconcile" } }));
+    switchTo("acc-2");
+    await waitFor(() => expect(invokeCalls).toContainEqual({ cmd: "get_open_statement", args: { accountId: "acc-2" } }));
+    const creates = invokeCalls.filter((c) => c.cmd === "create_transaction");
+    expect(creates).toHaveLength(1);
+    expect((creates[0].args as { payload: Record<string, unknown> }).payload).toMatchObject({ account_id: "acc-1", payee: "Hardware Store" });
+  });
+
+  it("item 1 — Balance asked for another account mid-reconcile starts once the old one is postponed, rather than being lost", async () => {
+    mount();
+    await toClearing();
+    act(() => requestRegisterAction({ accountId: "acc-2", action: { kind: "reconcile" } }));
+    switchTo("acc-2");
+    await waitFor(() => expect(invokeCalls).toContainEqual({ cmd: "discard_statement", args: { statementId: "st-1" } }));
+    await waitFor(() => expect(invokeCalls).toContainEqual({ cmd: "get_open_statement", args: { accountId: "acc-2" } }));
+    expect(takeRegisterAction("acc-2")).toBeNull();
   });
 
   it("item 1 — one that cannot be saved says so rather than vanishing", async () => {

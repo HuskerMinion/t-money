@@ -256,7 +256,7 @@ export default function GoalsView() {
                   const cur = watched ? currencyOf(watched) : undefined;
                   return (
                     <Fragment key={g.id}>
-                    <tr title={g.notes ?? undefined} tabIndex={0} aria-label={g.name} onContextMenu={(e) => rowMenu.open(e, g)}>
+                    <tr title={g.notes ?? undefined} tabIndex={-1} onContextMenu={(e) => rowMenu.open(e, g)}>
                       <td>
                         {g.name}
                         {done && (

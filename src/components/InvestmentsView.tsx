@@ -564,8 +564,8 @@ function PositionRows({
       <tr
         onClick={onToggle}
         onContextMenu={(e) => onMenu(e, p)}
-        // Focusable so Shift+F10 and the Menu key can open the menu.
-        tabIndex={0}
+        // Focusable by a click, not a Tab stop: Shift+F10 then opens its menu.
+        tabIndex={-1}
         style={{ cursor: "pointer" }}
         aria-expanded={open}
         title={p.price_date ? `Price from ${formatDateUS(p.price_date)}` : "Never priced — valued at cost"}

@@ -157,6 +157,19 @@ describe("the row menu", () => {
     fireEvent.contextMenu((await screen.findByText("Alaska cruise")).closest("tr")!);
     await userEvent.click(screen.getByRole("menuitem", { name: "Delete" }));
     await waitFor(() => expect(invokeCalls.find((c) => c.cmd === "delete_goal")?.args).toMatchObject({ id: "g-cruise" }));
+    expect(confirm).toHaveBeenCalledWith(expect.stringContaining("Alaska cruise"));
+    confirm.mockRestore();
+  });
+
+  it("Delete does nothing when the question is answered No", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    setIpcHandlers({ list_goals: () => [cruise], get_all_accounts: () => accounts, delete_goal: () => null });
+    render(<GoalsView />);
+    fireEvent.contextMenu((await screen.findByText("Alaska cruise")).closest("tr")!);
+    await userEvent.click(screen.getByRole("menuitem", { name: "Delete" }));
+    expect(confirm).toHaveBeenCalledWith(expect.stringContaining("Alaska cruise"));
+    expect(invokeCalls.some((c) => c.cmd === "delete_goal")).toBe(false);
+    expect(screen.getByText("Alaska cruise")).toBeInTheDocument();
     confirm.mockRestore();
   });
 });

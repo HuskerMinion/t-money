@@ -461,11 +461,11 @@ export default function PaymentsView() {
 
   const open = useMemo(() => upcoming.filter(isOpen), [upcoming]);
   const settled = useMemo(() => upcoming.filter((o) => !isOpen(o)), [upcoming]);
-  // Scoped to the account being forecast: "still to come" beside a
-  // per-account projection has to mean the same account, or the two numbers
-  // quietly disagree.
-  // A scheduled transfer counts for the side being forecast: out of the
-  // paying account, into the receiving one, and nothing when both are in.
+  // Scoped to what is being forecast (one account, or all the cash ones):
+  // "still to come" beside the projection has to mean the same money, or the
+  // two numbers quietly disagree. A scheduled transfer counts for the side
+  // being forecast: out of the paying account, into the receiving one, and
+  // nothing when both are in.
   const dueTotal = open.reduce(
     (s, o) => s + (inForecast(o.account_id) ? o.amount_cents : 0) - (inForecast(o.transfer_account_id) ? o.amount_cents : 0),
     0
@@ -669,7 +669,9 @@ export default function PaymentsView() {
                     )}
                     <tr
                       className={s.tone}
-                      tabIndex={0}
+                      // Focusable by a click, not a Tab stop (two years of bills
+                      // is hundreds of rows): Shift+F10 then opens its menu.
+                      tabIndex={-1}
                       onContextMenu={(e) => rowMenu.open(e, o)}
                       // The row whose schedule is in the form is marked,
                       // so what Save will change is visible from the list.

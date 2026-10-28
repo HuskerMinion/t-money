@@ -98,9 +98,9 @@ export default function FavoriteAccountsWidget({ onOpen }: Props) {
           items={[
             { label: "Open register", onSelect: () => open(ctx.menu!.target.id) },
             // Everything on this card is a favorite, so the one change on
-            // offer is taking it off. A refused write has nowhere to show on
-            // a card; the star in Banking reports it.
-            { label: "Remove from favorites", onSelect: () => void toggleFavorite(ctx.menu!.target.id).catch(() => {}) },
+            // offer is taking it off. A refusal shows in the app-wide notice;
+            // this card has no room for one.
+            { label: "Remove from favorites", onSelect: () => void toggleFavorite(ctx.menu!.target.id).catch((e) => useAccountStore.setState({ error: `Could not change favorites: ${e}` })) },
           ]}
         />
       )}

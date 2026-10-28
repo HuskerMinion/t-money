@@ -271,8 +271,8 @@ export default function PayeesView() {
                 {shown.map((p) => (
                   <tr
                     key={p.id}
-                    tabIndex={0}
-                    aria-label={p.name}
+                    // Focusable by a click, not a Tab stop: Shift+F10 then opens its menu.
+                    tabIndex={-1}
                     onContextMenu={(e) => rowMenu.open(e, p)}
                     onClick={() => select(p)}
                     style={

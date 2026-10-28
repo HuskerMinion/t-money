@@ -599,6 +599,22 @@ describe("the row menu", () => {
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
   });
 
+  it("a category row inside a Transactions by category report does not offer Show transactions", async () => {
+    const txnReport: Report = {
+      ...report,
+      kind: "transactions_by_category",
+      title: "Transactions by category",
+      chart: null,
+      rows: [{ key: "c-groc", key_kind: "category", label: "Groceries", level: 0, style: "header", cells: [] }],
+    };
+    setIpcHandlers({ run_report: () => txnReport });
+    setup({ spec: { ...spec, kind: "transactions_by_category" } });
+    const row = (await screen.findByText("Groceries")).closest("tr")!;
+    fireEvent.contextMenu(row);
+    expect(items()).not.toContain("Show transactions");
+    expect(items()).toContain("Customize…");
+  });
+
   it("a row with no drill-down gets only the report-wide items", async () => {
     setup();
     await screen.findByRole("row", { name: "Open Groceries" });

@@ -57,12 +57,15 @@ export function clampToViewport(x: number, y: number, w: number, h: number, vw: 
   return { x: left, y: top };
 }
 
+/** Where typing happens, and so where Cut, Copy and Paste belong. */
+const TEXT_FIELD = "input, textarea, [contenteditable='true']";
+
 /** Whether a right-click should still get the webview's own menu: in a
  *  text box, or over selected text, where Cut, Copy and Paste live. */
 export function keepsBrowserMenu(target: EventTarget | null, selection: string): boolean {
   if (selection.trim() !== "") return true;
   const el = target instanceof Element ? target : null;
-  return !!el?.closest("input, textarea, [contenteditable='true']");
+  return !!el?.closest(TEXT_FIELD);
 }
 
 export default function ContextMenu({ x, y, items, onClose, label }: Props) {
@@ -73,17 +76,31 @@ export default function ContextMenu({ x, y, items, onClose, label }: Props) {
   const shown = items.filter((i): i is ContextMenuItem => !!i);
 
   useLayoutEffect(() => {
-    returnTo.current = document.activeElement;
+    // Only the first time: StrictMode runs this twice, and the second run
+    // would record the menu's own first item, which is gone once it closes.
+    if (returnTo.current === null) returnTo.current = document.activeElement;
     const el = ref.current;
     if (!el) return;
     const box = el.getBoundingClientRect();
     setPos(clampToViewport(x, y, box.width, box.height, window.innerWidth, window.innerHeight));
-    el.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus();
+    // A menu whose items are all unavailable still takes focus, so
+    // Escape can close it.
+    (el.querySelector<HTMLButtonElement>("button:not(:disabled)") ?? el).focus();
   }, [x, y]);
 
   function close(restoreFocus: boolean) {
     onClose();
     if (restoreFocus && returnTo.current instanceof HTMLElement) returnTo.current.focus();
+  }
+
+  /** After an item ran: focus goes back to the row, unless the item put it
+   *  somewhere itself (a dialog, a form). Checked once the menu is gone. */
+  function refocusAfter() {
+    const back = returnTo.current;
+    setTimeout(() => {
+      const now = document.activeElement;
+      if ((!now || now === document.body || !now.isConnected) && back instanceof HTMLElement && back.isConnected) back.focus();
+    }, 0);
   }
 
   function onKeyDown(e: React.KeyboardEvent) {
@@ -107,9 +124,14 @@ export default function ContextMenu({ x, y, items, onClose, label }: Props) {
         close(true);
         break;
       case "Tab":
-        close(false);
+        // Back where it was, not lost on <body>: Tab goes on from there.
+        close(true);
         break;
       default:
+        // Enter and Space reach the focused item. Every key stops here, so
+        // the app's shortcuts (Del, Ctrl+M) do not act on the row underneath
+        // while its menu is open.
+        e.stopPropagation();
         return;
     }
     e.preventDefault();
@@ -131,6 +153,7 @@ export default function ContextMenu({ x, y, items, onClose, label }: Props) {
         ref={ref}
         className="tm-context-menu"
         role="menu"
+        tabIndex={-1}
         aria-label={label}
         style={{ top: pos.y, left: pos.x }}
         onKeyDown={onKeyDown}
@@ -148,6 +171,7 @@ export default function ContextMenu({ x, y, items, onClose, label }: Props) {
                 // have the menu still on top of it.
                 onClose();
                 item.onSelect();
+                refocusAfter();
               }}
             >
               {item.label}
@@ -167,6 +191,10 @@ export function useContextMenu<T>() {
   return {
     menu,
     open: (e: React.MouseEvent, target: T) => {
+      // A text box inside the row (an inline rename), or text selected in
+      // it, keeps the webview's Cut, Copy and Paste; the row's menu is for
+      // the row.
+      if (keepsBrowserMenu(e.target, window.getSelection()?.toString() ?? "")) return;
       e.preventDefault();
       e.stopPropagation();
       setMenu({ target, ...menuPoint(e) });

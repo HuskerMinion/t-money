@@ -44,6 +44,13 @@ beforeEach(() => {
   setIpcHandlers({ list_classifications: () => [PROPERTY, PERSON] });
 });
 
+/** The table row that shows exactly this text in one of its cells. */
+function rowOf(text: string): HTMLElement {
+  const row = screen.getAllByRole("row").find((r) => within(r).queryAllByText(text, { exact: true }).length > 0);
+  if (!row) throw new Error(`no row shows ${text}`);
+  return row;
+}
+
 describe("valueTree", () => {
   it("nests each value's sub-values under it", () => {
     const tree = valueTree(PROPERTY.values);
@@ -193,7 +200,7 @@ describe("The parent picker follows the classification", () => {
 describe("the value row menu", () => {
   it("Rename… opens the inline editor on that value", async () => {
     render(<ClassificationsView />);
-    const row = await screen.findByRole("row", { name: "Birch Lane" });
+    const row = (await screen.findAllByText("Birch Lane", { exact: true }), rowOf("Birch Lane"));
     fireEvent.contextMenu(row);
     expect(screen.getAllByRole("menuitem").map((i) => i.textContent)).toEqual(["Rename…", "Delete…"]);
     await userEvent.click(screen.getByRole("menuitem", { name: "Rename…" }));
@@ -202,7 +209,7 @@ describe("the value row menu", () => {
 
   it("Delete… opens the confirmation for that value", async () => {
     render(<ClassificationsView />);
-    fireEvent.contextMenu(await screen.findByRole("row", { name: "Birch Lane" }));
+    fireEvent.contextMenu((await screen.findAllByText("Birch Lane", { exact: true }), rowOf("Birch Lane")));
     await userEvent.click(screen.getByRole("menuitem", { name: "Delete…" }));
     expect(screen.getByRole("dialog", { name: "Delete Birch Lane" })).toBeInTheDocument();
   });

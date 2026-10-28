@@ -231,6 +231,23 @@ export function toCsv(report: Report): string {
   return [head, ...body].join("\r\n");
 }
 
+/** Does a click on this row lead anywhere? The table's click and the row's
+ *  right-click "Show transactions" ask the same question here, so the menu
+ *  never offers what the click would not do. */
+export function rowClickable(spec: ReportSpec, r: ReportLine): boolean {
+  return (
+    !!r.key_kind &&
+    r.key !== null &&
+    (r.key_kind !== "category" || spec.kind !== "transactions_by_category") &&
+    // A value row in the list it already opened leads
+    // nowhere; everywhere else it opens its transactions.
+    (r.key_kind !== "class_value" || spec.kind !== "transactions_by_classification") &&
+    r.key_kind !== "recurrence" &&
+    r.key_kind !== "investment" &&
+    r.key_kind !== "security"
+  );
+}
+
 /** Where a click on this row leads, if anywhere. */
 export function drillFor(spec: ReportSpec, row: ReportLine): Partial<ReportSpec> | null {
   if (!row.key_kind || row.key === null) return null;
@@ -648,8 +665,8 @@ export default function ReportViewer({ spec, onSpec, onOpenAccount, onOpenTransa
         {rowMenu.menu && (() => {
           const row = rowMenu.menu.target;
           const drills =
-            !!row.key && ["category", "payee", "class_value"].includes(row.key_kind ?? "") && !!drillFor(spec, row);
-          const opens = !!row.key && (row.key_kind === "account" || row.key_kind === "transaction");
+            rowClickable(spec, row) && ["category", "payee", "class_value"].includes(row.key_kind ?? "") && !!drillFor(spec, row);
+          const opens = rowClickable(spec, row) && !!row.key && (row.key_kind === "account" || row.key_kind === "transaction");
           return (
             <ContextMenu
               x={rowMenu.menu.x}
@@ -1162,16 +1179,7 @@ export default function ReportViewer({ spec, onSpec, onOpenAccount, onOpenTransa
                   </tr>
                 )}
                 {shaped.rows.map((r, ri) => {
-                  const clickable =
-                    !!r.key_kind &&
-                    r.key !== null &&
-                    (r.key_kind !== "category" || spec.kind !== "transactions_by_category") &&
-                    // A value row in the list it already opened leads
-                    // nowhere; everywhere else it opens its transactions.
-                    (r.key_kind !== "class_value" || spec.kind !== "transactions_by_classification") &&
-                    r.key_kind !== "recurrence" &&
-                    r.key_kind !== "investment" &&
-                    r.key_kind !== "security";
+                  const clickable = rowClickable(spec, r);
                   return (
                     <tr
                       key={ri}
@@ -1184,9 +1192,10 @@ export default function ReportViewer({ spec, onSpec, onOpenAccount, onOpenTransa
                         clickable ? "tm-report-link" : "",
                       ].filter(Boolean).join(" ") || undefined}
                       onClick={clickable ? () => click(r) : undefined}
-                      // Every row is a stop, so Shift+F10 can open the menu
-                      // on a total as well as on a row that drills.
-                      tabIndex={0}
+                      // A row that drills is a Tab stop, as it always was; any
+                      // other is focusable by a click, so Shift+F10 can open the
+                      // menu on a total too.
+                      tabIndex={clickable ? 0 : -1}
                       onContextMenu={(e) => rowMenu.open(e, r)}
                       onKeyDown={clickable ? (e) => { if (e.key === "Enter") click(r); } : undefined}
                       aria-label={clickable ? `Open ${r.label}` : undefined}

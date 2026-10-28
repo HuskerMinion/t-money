@@ -113,7 +113,8 @@ describe("the holdings context menu", () => {
     const onOpenAccount = vi.fn();
     render(<InvestmentsView onOpenAccount={onOpenAccount} />);
     const row = await holdingRow();
-    expect(row).toHaveAttribute("tabindex", "0");
+    // Focusable by a click (Shift+F10 then opens the menu), not a Tab stop.
+    expect(row).toHaveAttribute("tabindex", "-1");
     fireEvent.contextMenu(row);
     await userEvent.click(screen.getByRole("menuitem", { name: "Open register" }));
     expect(onOpenAccount).toHaveBeenCalledWith("a-1");
