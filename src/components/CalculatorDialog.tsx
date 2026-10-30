@@ -17,18 +17,25 @@
 // 8.50 (a percentage OF the running value), not 0.085. That is what a till
 // does and what a receipt means.
 //
-// MONEY IS INTEGER CENTS at the boundary — `parseMoneyToCents` in,
+// MONEY IS INTEGER CENTS at the boundary — `parseMoneyStrict` in,
 // `bare(cents)` out, both in the file's region ("12,50" in Germany). Inside, the arithmetic is done on a JS number,
 // because division does not stay in cents (a third of $10 is not a whole
 // number of cents) and pretending otherwise would round twice. The tape shows
 // exactly what each step produced, so nothing is hidden.
+//
+// FROM AN AMOUNT BOX (Ctrl+K in it, or the small button beside the
+// register's), the tape starts with the box's amount and "Put in Payment"
+// (or a second Enter on an empty entry) writes the total back into the box.
 import { useEffect, useRef, useState } from "react";
 import Notice from "./Notice";
-import { formatMoney, parseMoneyToCents } from "../lib/format";
+import { formatAmountTyped, formatMoney, parseMoneyStrict, parseMoneyToCents } from "../lib/format";
 import { currentRegion } from "../lib/region";
+import { typeInto } from "../lib/amountField";
 
 interface Props {
   onClose: () => void;
+  /** The amount box it was opened from, if any. */
+  target?: HTMLInputElement | null;
 }
 
 type Op = "+" | "−" | "×" | "÷";
@@ -75,14 +82,21 @@ function apply(total: number, op: Op, value: number): number {
   }
 }
 
-export default function CalculatorDialog({ onClose }: Props) {
-  const [lines, setLines] = useState<Line[]>([]);
-  const [total, setTotal] = useState(0);
+export default function CalculatorDialog({ onClose, target = null }: Props) {
+  // What the box held when the calculator opened: the tape's first line. A
+  // sum still in the box is worked out first.
+  const [opening] = useState(() => {
+    const text = target?.value.trim() ?? "";
+    return text ? parseMoneyToCents(text) : null;
+  });
+  const [lines, setLines] = useState<Line[]>(() => (opening === null ? [] : [{ op: null, cents: opening, total: opening }]));
+  const [total, setTotal] = useState(opening ?? 0);
   const [pending, setPending] = useState<Op | null>(null);
   const [draft, setDraft] = useState("");
   /** True once a run has started, so the first number does not add to zero
    *  through an invisible "+". */
-  const [started, setStarted] = useState(false);
+  const [started, setStarted] = useState(opening !== null);
+  const targetName = target?.getAttribute("aria-label") || "the amount box";
   const [copied, setCopied] = useState(false);
   // A step that cannot be done. Dividing by zero used to keep the
   // total and write "÷ $0.00" to the tape as if it had happened, so the tape
@@ -109,11 +123,12 @@ export default function CalculatorDialog({ onClose }: Props) {
   }, [lines.length]);
 
   /** Commit whatever is typed, applying the pending operator. Returns the new
-   *  running total so a caller can chain. */
-  function commit(): number {
+   *  running total so a caller can chain, or null when the step was refused
+   *  (a division by zero). */
+  function commit(): number | null {
     const raw = draft.trim();
     if (raw === "") return total;
-    const cents = parseMoneyToCents(raw);
+    const cents = parseMoneyStrict(raw);
     if (cents === null) return total;
     setDraft("");
     setCopied(false);
@@ -126,7 +141,7 @@ export default function CalculatorDialog({ onClose }: Props) {
     const op = pending ?? "+";
     if (op === "÷" && cents === 0) {
       setError("Cannot divide by zero. Type another number, or press C to start over.");
-      return total;
+      return null;
     }
     setError(null);
     const next = apply(total, op, cents);
@@ -146,7 +161,7 @@ export default function CalculatorDialog({ onClose }: Props) {
   /** Percent is of the RUNNING TOTAL, which is what a receipt means: 8.5%
    *  after 100.00 is 8.50, not 0.085. */
   function percent() {
-    const cents = parseMoneyToCents(draft.trim());
+    const cents = parseMoneyStrict(draft.trim());
     if (cents === null || !started) return;
     const part = Math.round((total * cents) / 10_000);
     setDraft(bare(part));
@@ -162,6 +177,19 @@ export default function CalculatorDialog({ onClose }: Props) {
     setStarted(false);
     setCopied(false);
     inputRef.current?.focus();
+  }
+
+  /** Finish the sum and write it into the box it came from. */
+  function putBack() {
+    if (!target) return;
+    const sum = commit();
+    if (sum === null) return;
+    if (!target.isConnected) {
+      setError(`The ${targetName} box is gone. Use Copy total and paste it where it belongs.`);
+      return;
+    }
+    typeInto(target, formatAmountTyped(sum));
+    onClose();
   }
 
   function key(k: string) {
@@ -213,7 +241,10 @@ export default function CalculatorDialog({ onClose }: Props) {
           className="pt-2"
           onSubmit={(e) => {
             e.preventDefault();
-            commit();
+            // Enter finishes the sum; Enter again, with nothing typed, puts it
+            // in the box the calculator was opened from.
+            if (target && started && draft.trim() === "" && pending === null) putBack();
+            else commit();
           }}
         >
           <input
@@ -274,6 +305,17 @@ export default function CalculatorDialog({ onClose }: Props) {
         </div>
 
         <div className="flex justify-end gap-2 pt-3">
+          {target && (
+            <button
+              className="aero-btn default"
+              type="button"
+              disabled={!started && draft.trim() === ""}
+              title="Writes the total into the box the calculator was opened from (or press Enter on an empty entry)"
+              onClick={putBack}
+            >
+              Put in {targetName}
+            </button>
+          )}
           <button
             className="aero-btn"
             type="button"

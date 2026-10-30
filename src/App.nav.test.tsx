@@ -660,3 +660,57 @@ describe("Edit → Undo", () => {
     );
   });
 });
+
+// Back and Forward (navHistory.ts), asked for by a user: "back/forward buttons".
+describe("Back and Forward", () => {
+  const main = () => screen.getByRole("main");
+  const back = () => screen.getByRole("button", { name: "Back" });
+  const forward = () => screen.getByRole("button", { name: "Forward" });
+
+  it("walk the screens visited, into and out of a report", async () => {
+    render(<App />);
+    await waitFor(() => expect(within(main()).getByText(/Favorite Accounts/)).toBeInTheDocument());
+    expect(back()).toBeDisabled();
+    await userEvent.click(screen.getByRole("button", { name: "Bills" }));
+    await screen.findByText(/Bills to Pay & income/);
+    await userEvent.click(screen.getByRole("button", { name: "Reports" }));
+    await screen.findByText(/View a report/);
+    await userEvent.click(screen.getByRole("button", { name: "Spending by category" }));
+    await screen.findByRole("heading", { name: "Spending by category" });
+
+    // Back: the gallery, then Bills, then Home.
+    await waitFor(() => expect(back()).toBeEnabled());
+    await userEvent.click(back());
+    await waitFor(() => expect(within(main()).getByText(/View a report/)).toBeInTheDocument());
+    await userEvent.click(back());
+    await waitFor(() => expect(within(main()).getByText(/Bills to Pay & income/)).toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "Bills" })).toHaveClass("active");
+    await userEvent.click(back());
+    await waitFor(() => expect(within(main()).getByText(/Favorite Accounts/)).toBeInTheDocument());
+    expect(back()).toBeDisabled();
+
+    // Forward, by the keyboard too, all the way back into the report.
+    await userEvent.click(forward());
+    await waitFor(() => expect(within(main()).getByText(/Bills to Pay & income/)).toBeInTheDocument());
+    await userEvent.keyboard("{Alt>}{ArrowRight}{/Alt}");
+    await waitFor(() => expect(within(main()).getByText(/View a report/)).toBeInTheDocument());
+    await userEvent.keyboard("{Alt>}{ArrowRight}{/Alt}");
+    await screen.findByRole("heading", { name: "Spending by category" });
+    expect(forward()).toBeDisabled();
+    await userEvent.keyboard("{Alt>}{ArrowLeft}{/Alt}");
+    await waitFor(() => expect(within(main()).getByText(/View a report/)).toBeInTheDocument());
+  });
+
+  it("going somewhere new after Back drops what was ahead", async () => {
+    render(<App />);
+    await userEvent.click(screen.getByRole("button", { name: "Bills" }));
+    await screen.findByText(/Bills to Pay & income/);
+    await waitFor(() => expect(back()).toBeEnabled());
+    await userEvent.click(back());
+    await waitFor(() => expect(forward()).toBeEnabled());
+    await userEvent.click(screen.getByRole("button", { name: "Taxes" }));
+    await screen.findByText(/Tax Line Manager/);
+    await waitFor(() => expect(back()).toBeEnabled());
+    expect(forward()).toBeDisabled();
+  });
+});

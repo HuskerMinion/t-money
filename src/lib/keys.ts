@@ -13,6 +13,8 @@ export function keys(text: string, p: Platform = platform()): string {
     .replace(/Tools → Settings…/g, "T-Money → Settings…")
     .replace(/Ctrl\+Y\b/g, "⇧⌘Z")
     .replace(/Alt\+F4\b/g, "⌘Q")
+    .replace(/Alt\+←/g, "⌘[")
+    .replace(/Alt\+→/g, "⌘]")
     .replace(/Ctrl\+Shift\+/g, "⇧⌘")
     .replace(/Ctrl\+Alt\+/g, "⌥⌘")
     .replace(/Ctrl\+/g, "⌘");

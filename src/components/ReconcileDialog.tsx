@@ -198,6 +198,7 @@ function StatementStep({
         "Starting balance:",
         <input
           className="aero-field text-right"
+          data-amount
           value={starting}
           onChange={(e) => setStarting(e.target.value)}
           style={{ width: 180 }}
@@ -207,6 +208,7 @@ function StatementStep({
         "Ending balance:",
         <input
           className="aero-field text-right"
+          data-amount
           value={ending}
           onChange={(e) => setEnding(e.target.value)}
           style={{ width: 180 }}
@@ -221,6 +223,7 @@ function StatementStep({
         "Service charge:",
         <input
           className="aero-field text-right"
+          data-amount
           value={charge}
           onChange={(e) => setCharge(e.target.value)}
           style={{ width: 180 }}
@@ -241,6 +244,7 @@ function StatementStep({
         "Interest earned:",
         <input
           className="aero-field text-right"
+          data-amount
           value={interest}
           onChange={(e) => setInterest(e.target.value)}
           style={{ width: 180 }}

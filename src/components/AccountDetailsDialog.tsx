@@ -267,6 +267,7 @@ export default function AccountDetailsDialog({ account, assets = [], onSave, onS
             "Credit limit:",
             <input
               className="aero-field"
+              data-amount
               value={creditLimit}
               onChange={(e) => setCreditLimit(e.target.value)}
               placeholder={formatAmountBare(0)}

@@ -185,7 +185,7 @@ export default function UpdateHoldingsDialog({ account, securities, onCancel, on
                     <input className="aero-field text-right" style={{ width: 90 }} aria-label={`Price of ${sec?.name ?? "new investment"}`} value={l.price} onChange={(e) => set(i, { price: e.target.value })} />
                   </td>
                   <td className="num">
-                    <input className="aero-field text-right" style={{ width: 100 }} aria-label={`Value of ${sec?.name ?? "new investment"}`} value={l.value} onChange={(e) => set(i, { value: e.target.value })} placeholder="or the value" />
+                    <input data-amount className="aero-field text-right" style={{ width: 100 }} aria-label={`Value of ${sec?.name ?? "new investment"}`} value={l.value} onChange={(e) => set(i, { value: e.target.value })} placeholder="or the value" />
                   </td>
                   <td className={`num${c?.problem ? " money-neg" : ""}`} aria-label={`Change for ${sec?.name ?? "new investment"}`}>
                     {c?.problem

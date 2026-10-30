@@ -815,6 +815,7 @@ export default function PaymentsView() {
                 className="aero-field mt-1 w-full"
                 inputMode="decimal"
                 placeholder={fromCurrency && fromCurrency !== homeCurrency() ? `${fromCurrency} 0${currentRegion().decimal}00` : `0${currentRegion().decimal}00`}
+                data-amount
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
               />

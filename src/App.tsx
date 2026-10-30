@@ -1,7 +1,7 @@
 // T-Money main application shell: Aero header + slate sidebar + content area.
 // The Home tab shows the dashboard widgets; Banking shows accounts + a
 // quick-add transaction form. All data flows through Tauri IPC.
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { accountWorth } from "./lib/accountTypes";
 import { currencyOf } from "./lib/currency";
 import AeroHeader, { type Tab } from "./components/AeroHeader";
@@ -33,12 +33,16 @@ import AutobudgetDialog from "./components/AutobudgetDialog";
 import ImportSection from "./components/ImportSection";
 import PaymentsView from "./components/PaymentsView";
 import ReportsView, { type ReportOpen } from "./components/ReportsView";
+import type { ReportSpec } from "./components/ReportViewer";
+import { platform } from "./lib/keyStore";
+import { canGoBack, canGoForward, EMPTY_HISTORY, record, step, type NavHistory, type Place } from "./lib/navHistory";
 import TaxesView from "./components/TaxesView";
 import InvestmentsView from "./components/InvestmentsView";
 import GoalsView from "./components/GoalsView";
 import DebtPlannerView from "./components/DebtPlannerView";
 import SettingsView, { aimSettingsAt, runInSettings } from "./components/SettingsView";
 import CalculatorDialog from "./components/CalculatorDialog";
+import { installAmountMath, isAmountField } from "./lib/amountField";
 import TspImportDialog from "./components/TspImportDialog";
 import ApplyPayeeRulesDialog from "./components/ApplyPayeeRulesDialog";
 import OrganizeFavoritesDialog from "./components/OrganizeFavoritesDialog";
@@ -175,6 +179,120 @@ export default function App() {
   const loadAccounts = useAccountStore((s) => s.loadAccounts);
   const loadFavorites = useAccountStore((s) => s.loadFavorites);
   const loadSummary = useBudgetStore((s) => s.loadSummary);
+
+  // Back and Forward (navHistory.ts). The report on screen lives in the
+  // Reports screen, which tells the shell about it; a report put back by Back
+  // is handed to it to open on.
+  const [reportSpec, setReportSpec] = useState<ReportSpec | null>(null);
+  // Until the Reports screen has said what it shows, the shell does not know
+  // where it is, and records nothing: the gallery it would otherwise guess
+  // is not a step anyone took.
+  const [reportKnown, setReportKnown] = useState(false);
+  const onReportSpec = useCallback((s: ReportSpec | null) => {
+    setReportSpec(s);
+    setReportKnown(true);
+  }, []);
+  const [restoreSpec, setRestoreSpec] = useState<ReportSpec | null>(null);
+  useEffect(() => {
+    if (tab !== "Reports") {
+      setReportSpec(null);
+      setReportKnown(false);
+    }
+  }, [tab]);
+  // Handed over once: the Reports screen read it as it mounted.
+  useEffect(() => {
+    if (restoreSpec) setRestoreSpec(null);
+  }, [restoreSpec]);
+  const [history, setHistoryState] = useState<NavHistory>(EMPTY_HISTORY);
+  const historyRef = useRef<NavHistory>(EMPTY_HISTORY);
+  // Bumped when the history is wiped, so the screen you are on is recorded
+  // again as its first step even though it has not changed.
+  const [historyEpoch, setHistoryEpoch] = useState(0);
+  const setHistory = (h: NavHistory) => {
+    historyRef.current = h;
+    setHistoryState(h);
+  };
+  const place: Place = {
+    tab,
+    side,
+    bankingScreen,
+    budgetScreen,
+    accountId: tab === "Banking" && bankingScreen === "register" ? sidebarSelectedId : null,
+    report: tab === "Reports" ? reportSpec : null,
+    helpTopic: tab === "Help" ? helpTopic : null,
+    searchQuery: tab === "Search" ? searchQuery : null,
+  };
+  const placeJson = JSON.stringify(place);
+  const placeSettled = fileOpen && (tab !== "Reports" || reportKnown);
+  useEffect(() => {
+    if (placeSettled) setHistory(record(historyRef.current, JSON.parse(placeJson) as Place));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [placeJson, placeSettled, historyEpoch]);
+  /** Put a recorded place back on screen. The view is remounted, as a
+   *  header tab click does, so it opens fresh on what it is handed. */
+  function applyPlace(p: Place) {
+    setNavError(null);
+    setReportOpen(null);
+    setRestoreSpec(p.tab === "Reports" ? p.report : null);
+    // The shell knows the report already, so nothing in between is recorded.
+    setReportSpec(p.tab === "Reports" ? p.report : null);
+    setReportKnown(p.tab === "Reports");
+    setHelpTopic(p.helpTopic);
+    if (p.searchQuery !== null) setSearchQuery(p.searchQuery);
+    setSide(p.side);
+    setBudgetScreen(p.budgetScreen);
+    // An account deleted since is not there to go back to: its list is.
+    const st = useAccountStore.getState();
+    if (p.accountId && st.accounts.some((a) => a.id === p.accountId)) {
+      void selectAccountFromRail(p.accountId);
+      setBankingScreen(p.bankingScreen);
+    } else {
+      setBankingScreen(p.bankingScreen === "register" ? "list" : p.bankingScreen);
+    }
+    setTabEpoch((e) => e + 1);
+    setTab(p.tab);
+  }
+  function goHistory(by: -1 | 1) {
+    const next = step(historyRef.current, by);
+    if (next === historyRef.current) return;
+    setHistory(next);
+    applyPlace(next.entries[next.index]);
+  }
+  const goBack = () => goHistory(-1);
+  const goForward = () => goHistory(1);
+  // Alt+← and Alt+→ (⌘[ and ⌘] on a Mac, where ⌥← moves the caret a word),
+  // and a mouse's back and forward buttons. Not while a dialog is open: that
+  // is finished or canceled first.
+  useEffect(() => {
+    if (!fileOpen) return;
+    const dialogOpen = () => document.querySelector(".tm-dialog") !== null;
+    const mac = platform() === "mac";
+    const onKey = (e: KeyboardEvent) => {
+      const plainAlt = !mac && e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey;
+      const cmd = e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey;
+      const by = (plainAlt && e.key === "ArrowLeft") || (cmd && e.key === "[") ? -1 : (plainAlt && e.key === "ArrowRight") || (cmd && e.key === "]") ? 1 : 0;
+      if (by === 0 || dialogOpen()) return;
+      e.preventDefault();
+      goHistory(by);
+    };
+    const onMouse = (e: MouseEvent) => {
+      if ((e.button !== 3 && e.button !== 4) || dialogOpen()) return;
+      e.preventDefault();
+      goHistory(e.button === 3 ? -1 : 1);
+    };
+    // The webview would take the mouse buttons as its own page history.
+    const swallow = (e: MouseEvent) => {
+      if (e.button === 3 || e.button === 4) e.preventDefault();
+    };
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("mouseup", onMouse);
+    window.addEventListener("mousedown", swallow);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("mouseup", onMouse);
+      window.removeEventListener("mousedown", swallow);
+    };
+  });
 
   // Initial data load on mount; the remembered text size goes on first.
   useEffect(() => {
@@ -399,7 +517,21 @@ export default function App() {
   // because neither belongs to any one screen.
   const [calcOpen, setCalcOpen] = useState(false);
   const [favOpen, setFavOpen] = useState(false);
-  useCommand("tools.calculator", () => setCalcOpen(true));
+  // Opened from an amount box (Ctrl+K in it, or its calculator button), the
+  // calculator starts from the box's amount and can put its total back.
+  const [calcTarget, setCalcTarget] = useState<HTMLInputElement | null>(null);
+  useCommand("tools.calculator", (arg) => {
+    const from = arg ?? document.activeElement;
+    setCalcTarget(isAmountField(from) ? from : null);
+    setCalcOpen(true);
+  });
+  // A sum typed in an amount box is shown worked out when the box is left.
+  useEffect(() => installAmountMath(), []);
+  /** Closed however it closes, the calculator gives focus back to the box. */
+  const closeCalc = useCallback(() => {
+    setCalcOpen(false);
+    if (calcTarget) setTimeout(() => calcTarget.isConnected && calcTarget.focus(), 0);
+  }, [calcTarget]);
   // File → Import → TSP activity detail. The shell owns it because it
   // is about a file, not about whatever screen you happen to be on.
   const [tspOpen, setTspOpen] = useState(false);
@@ -428,12 +560,12 @@ export default function App() {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       e.preventDefault();
-      setCalcOpen(false);
+      if (calcOpen) closeCalc();
       setFavOpen(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [calcOpen, favOpen]);
+  }, [calcOpen, favOpen, closeCalc]);
 
   const openHelp = (topic: string | null) => {
     goTab("Help");
@@ -668,6 +800,10 @@ export default function App() {
     setBudgetScreen("budget");
     setOpenTabs([]);
     setTab("Home");
+    // Back and Forward are about the file being left: its accounts, its reports.
+    setHistory(EMPTY_HISTORY);
+    setHistoryEpoch((e) => e + 1);
+    setRestoreSpec(null);
     // And REMOUNT what is on screen.
     //
     // Everything under <main> is keyed on `tabEpoch`; setting the tab alone
@@ -1082,6 +1218,7 @@ export default function App() {
         }}
         onSearch={runSearch}
         onSettings={() => setSettingsOpen(true)}
+        nav={{ back: goBack, forward: goForward, canBack: canGoBack(history), canForward: canGoForward(history) }}
       />
       {structure === "documents" && (
         <DocumentTabs
@@ -1170,6 +1307,8 @@ export default function App() {
           {tab === "Reports" && (
             <ReportsView
               initialOpen={reportOpen}
+              initialSpec={restoreSpec}
+              onSpecChange={onReportSpec}
               onSavedReportsChanged={() => void reloadSavedReports()}
               onOpenAccount={openAccountRegister}
               onOpenTransaction={(accountId, txnId) => void openTransaction(accountId, txnId)}
@@ -1287,8 +1426,8 @@ export default function App() {
 
       {calcOpen && (
         <>
-          <div className="tm-dialog-backdrop" onClick={() => setCalcOpen(false)} />
-          <CalculatorDialog onClose={() => setCalcOpen(false)} />
+          <div className="tm-dialog-backdrop" onClick={closeCalc} />
+          <CalculatorDialog target={calcTarget} onClose={closeCalc} />
         </>
       )}
 

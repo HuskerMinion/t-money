@@ -40,6 +40,12 @@ interface Props {
   /** A saved report was added, changed or removed — the Favorites menu
    *  lists them too. */
   onSavedReportsChanged?: () => void;
+  /** A report to put back exactly as it was (Back, Forward). Wins over
+   *  `initialOpen`, which names a report rather than a whole spec. */
+  initialSpec?: ReportSpec | null;
+  /** Told whenever the report on screen changes (null: the gallery), so
+   *  Back and Forward know where you have been. */
+  onSpecChange?: (spec: ReportSpec | null) => void;
 }
 
 /** The range a report opens with. Balances are "as of" and want the whole
@@ -76,9 +82,12 @@ export function specForOpen(o: ReportOpen): ReportSpec {
   return base;
 }
 
-export default function ReportsView({ initialOpen = null, onOpenAccount, onOpenTransaction, onSavedReportsChanged }: Props) {
+export default function ReportsView({ initialOpen = null, initialSpec = null, onOpenAccount, onOpenTransaction, onSavedReportsChanged, onSpecChange }: Props) {
   const [gallery, setGallery] = useState<ReportGalleryEntry[]>([]);
-  const [spec, setSpec] = useState<ReportSpec | null>(initialOpen ? specForOpen(initialOpen) : null);
+  const [spec, setSpec] = useState<ReportSpec | null>(initialSpec ?? (initialOpen ? specForOpen(initialOpen) : null));
+  useEffect(() => {
+    onSpecChange?.(spec);
+  }, [spec, onSpecChange]);
   // My favorites: saved, named, customized reports, kept in the file.
   const [favorites, setFavorites] = useState<SavedReport[]>([]);
   const [favoritesLoaded, setFavoritesLoaded] = useState(false);
@@ -116,6 +125,8 @@ export default function ReportsView({ initialOpen = null, onOpenAccount, onOpenT
   // the next Save made a second favorite instead of updating the first.
   useEffect(() => {
     if (!initialOpen) {
+      // Opened by Back or Forward on a report: that is the report.
+      if (initialSpec) return;
       setPendingSavedId(null);
       setSpec(null);
       return;
@@ -128,6 +139,8 @@ export default function ReportsView({ initialOpen = null, onOpenAccount, onOpenT
     }
     setPendingSavedId(null);
     setSpec(specForOpen(initialOpen));
+    // Only a new opener resets the viewer; `initialSpec` is read on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialOpen]);
 
   // …and the saved report is resolved once, when the list is there — not

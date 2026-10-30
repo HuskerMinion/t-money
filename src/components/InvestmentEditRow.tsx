@@ -471,6 +471,7 @@ export default function InvestmentEditRow({
             className="aero-field w-full text-right"
             aria-label="Total"
             placeholder={isSplit ? "" : isIncome ? "Amount" : "Total"}
+            data-amount
             value={!typed.total && !emptied.total && derivedTotal !== null ? amountInput(derivedTotal) : total}
             onChange={(e) => {
               const own = e.target.value.trim() !== "";
@@ -522,6 +523,7 @@ export default function InvestmentEditRow({
                   id="inv-commission"
                   className="aero-field text-right"
                   style={{ width: 90 }}
+                  data-amount
                   value={commission}
                   onChange={(e) => setCommission(e.target.value)}
                   placeholder={`0${currentRegion().decimal}00`}

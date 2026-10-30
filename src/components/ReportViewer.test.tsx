@@ -661,3 +661,29 @@ describe("opened straight into Customize", () => {
     expect(screen.queryByRole("region", { name: "Customize report" })).not.toBeInTheDocument();
   });
 });
+
+describe("highlighted rows", () => {
+  it("the row clicked stays highlighted, and up and down move the highlight", async () => {
+    setup();
+    const table = await screen.findByRole("table", { name: "Spending by category" });
+    const row = (label: string) => within(table).getByText(label).closest("tr")!;
+    // A total does not drill, but it can still be picked out.
+    await userEvent.click(within(table).getByText("Net Income"));
+    expect(row("Net Income")).toHaveClass("tm-report-selected");
+    await userEvent.keyboard("{ArrowUp}");
+    expect(row("Net Income")).not.toHaveClass("tm-report-selected");
+    expect(row("Fuel")).toHaveClass("tm-report-selected");
+    expect(row("Fuel")).toHaveFocus();
+    // Only one row is highlighted at a time.
+    expect(table.querySelectorAll("tr.tm-report-selected")).toHaveLength(1);
+  });
+
+  it("a right-clicked row is highlighted while its menu is open", async () => {
+    setup();
+    const table = await screen.findByRole("table", { name: "Spending by category" });
+    const groceries = within(table).getByText("Groceries").closest("tr")!;
+    fireEvent.contextMenu(groceries, { clientX: 20, clientY: 20 });
+    expect(groceries).toHaveClass("tm-report-selected");
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+  });
+});

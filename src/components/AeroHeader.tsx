@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import logoMark from "../assets/branding/tm-logo-mark-compact.svg";
 import TmIcon from "./TmIcon";
 import { isDark, readTheme, toggleDark } from "../lib/theme";
+import { platform } from "../lib/keyStore";
 
 const TABS = [
   "Home",
@@ -31,9 +32,12 @@ interface AeroHeaderProps {
   /** The gear opens the Settings pop-up rather than navigating to a
    *  tab — you come back from settings, you do not travel to them. */
   onSettings?: () => void;
+  /** Back and Forward between screens (navHistory.ts). */
+  nav?: { back: () => void; forward: () => void; canBack: boolean; canForward: boolean };
 }
 
-export default function AeroHeader({ active, onTab, onSearch, showTabs = true, onSettings }: AeroHeaderProps) {
+export default function AeroHeader({ active, onTab, onSearch, showTabs = true, onSettings, nav }: AeroHeaderProps) {
+  const mac = platform() === "mac";
   const [query, setQuery] = useState("");
   const [dark, setDark] = useState(() => isDark(readTheme()));
   // Follow a theme chosen in Settings, not only this button. The
@@ -68,6 +72,34 @@ export default function AeroHeader({ active, onTab, onSearch, showTabs = true, o
           <div className="text-[10px]" style={{ color: "var(--tm-sky-tint)" }}>Personal Finance</div>
         </div>
       </div>
+
+      {/* Back and Forward, beside the brand where Money kept its arrows. */}
+      {nav && (
+        <div className="flex items-center gap-1 pr-2" role="group" aria-label="History">
+          <button
+            className="aero-gear tm-nav-arrow"
+            type="button"
+            onClick={nav.back}
+            disabled={!nav.canBack}
+            title={mac ? "Back (⌘[)" : "Back (Alt+Left)"}
+            aria-label="Back"
+            aria-keyshortcuts={mac ? "Meta+BracketLeft" : "Alt+ArrowLeft"}
+          >
+            {"←"}
+          </button>
+          <button
+            className="aero-gear tm-nav-arrow"
+            type="button"
+            onClick={nav.forward}
+            disabled={!nav.canForward}
+            title={mac ? "Forward (⌘])" : "Forward (Alt+Right)"}
+            aria-label="Forward"
+            aria-keyshortcuts={mac ? "Meta+BracketRight" : "Alt+ArrowRight"}
+          >
+            {"→"}
+          </button>
+        </div>
+      )}
 
       {/* Nav tabs */}
       <nav className="flex items-end gap-1 flex-1" hidden={!showTabs}>

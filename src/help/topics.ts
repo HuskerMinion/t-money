@@ -29,6 +29,7 @@ T-Money is a personal-finance program in the shape of Microsoft Money Plus: acco
 # The window
 
 - **Tabs across the top** — Home, Banking, Bills, Reports, Budget, Investing, Planning, Taxes, and this Help. The gear opens [[settings|Settings]]; the box at the right is [[search|Search]].
+- **← and →** beside the T-Money name go **Back** and **Forward** through the screens you have visited — a register, a report, a drill-down from it — the way a web browser's do. **Alt+←** and **Alt+→** do the same, and so do a mouse's back and forward buttons.
 - **The left rail** lists your accounts and the common pages under each tab. Drag its edge to make it wider or narrower.
 - **Home** shows your favorite accounts, the month's spending against budget, and your subscriptions. See [[home|The Home tab]].
 
@@ -120,7 +121,8 @@ Type in the box at the top right and press Enter. Search looks through every acc
 - **Enter** saves the transaction. Inside the Category field, Enter picks the highlighted category first; press it again to save.
 - **Esc** closes the form without saving.
 - **+** in the Num field fills in the next check number. See [[register|The account register]].
-- In the **Date** field, **+** and **−** step a day and **T** is today.
+- In the **Date** field, **+** and **−** step a day and **T** is today. **Alt+↓** or **F4** opens the calendar: the arrows move a day or a week, **Page Up** and **Page Down** a month (with Shift, a year), **T** is today, **Enter** picks and **Esc** closes it.
+- In an **amount** field you can type a sum — \`12.99*4\`, \`45+12.50-3\`, \`100+8.5%\` — and it is worked out when you leave the field or press Enter. **Ctrl+K** in an amount field opens the calculator on that amount.
 - **↓ ↑** in the Category field move through the matches; Tab takes the highlighted one and moves on.
 - The **Payee** field completes from the payees you have used: type a few letters, the best match is highlighted, and **Tab** or **Enter** takes it. A new name is typed straight through — the list is an offer, not a rule.
 
@@ -145,6 +147,7 @@ are bound — the menu bar is the list, and this page repeats it.
 - **Del** deletes the selected transaction. (Edit)
 - **Ctrl+M** marks the selected row cleared, or uncleared. (Edit → Mark as cleared)
 - **Ctrl+K** opens the calculator. (Tools)
+- **Alt+←** and **Alt+→** go Back and Forward through the screens you have visited.
 - **F1** opens Help for the tab you are on.
 - **Alt+F4** closes T-Money.
 - **Alt** and a menu's underlined letter opens that menu; **Esc** closes it.
@@ -241,7 +244,7 @@ Click the **entry line** at the bottom (today's date, "Click here to enter a tra
 - **Num** — a check number, or a marker like ATM or EFT. Free text. Type **+** to fill in the next check number (one past the highest in this account). After you enter a check, the next new transaction offers the following number automatically; delete it if the next one is a card swipe, and the offer stops until you write another check.
 - **Date** — where the caret starts on a new transaction, because it is the one field that arrives as a guess. Type it: \`8/3\`, \`8/3/26\` or \`8/3/2026\` all work (in the order the file's region writes dates); **+** and **−** step a day, **T** is today, and the small ▾ opens a calendar. A new transaction starts on the date of the last one you entered, so a stack of receipts goes in without retyping the date — Tab straight past it when it is already right. Opening a transaction that already exists starts in the Payee instead.
 - **Payee** — offers the payees you have used before. A new name is added to the payee list when you save.
-- **Payment / Deposit** — the amount in one or the other, typed the way the file's region writes numbers.
+- **Payment / Deposit** — the amount in one or the other, typed the way the file's region writes numbers. You can type a sum instead — \`12.99*4\` for four at $12.99, \`100+8.5%\` for tax on top — and it is worked out when you leave the field. The small calculator at the left of the field (or **Ctrl+K**) opens the calculator on the amount, and **Put in Payment** writes its total back.
 - **Category** — type any part of a name to filter: \`fuel\` finds "Automobile : Fuel". Type **Parent : Child** to reach a subcategory directly; the spaces around the colon and the capitals do not matter, so \`loan:heloc\` finds "Loan : HELOC" and Tab takes it rather than offering to add a second one. If what you typed does not exist, choose **+ Add …** and the new category is created without leaving the transaction; typing an existing parent and a new child ("Other Income : Garage Sale") adds the subcategory straight under that parent. To move money to another account choose **Transfer : (account)** in the same list — see [[splits-transfers|Splits, transfers and goals]].
 - **Memo** — notes; shown as the row's tooltip.
 - **Split** — divide the amount across several categories. See [[splits-transfers|Splits, transfers and goals]].
@@ -619,7 +622,7 @@ Reports → **View a report** is a gallery in Money's groups: Income and expense
 
 # Drilling through
 
-Rows are links, as in Money, and so are the chart's bars, slices and legend entries. A category or payee row — or its bar or slice — opens a **quick look** — a small window listing that row's transactions for the same range, with its total; click a transaction there to open it in its register, or **Make this a report** to open that listing as a report of its own (Transactions by category, or by that payee), which can then be saved as a favorite. A month opens that month's Income and spending; a transaction row opens its register row; an account opens its register.
+Click any row, or move with **↓ ↑**, and it stays highlighted, so a line can be followed across a wide report. Rows are links, as in Money, and so are the chart's bars, slices and legend entries. A category or payee row — or its bar or slice — opens a **quick look** — a small window listing that row's transactions for the same range, with its total; click a transaction there to open it in its register, or **Make this a report** to open that listing as a report of its own (Transactions by category, or by that payee), which can then be saved as a favorite. A month opens that month's Income and spending; a transaction row opens its register row; an account opens its register.
 
 # Charts
 
@@ -883,6 +886,12 @@ Each fetch is **one Undo step**, and the next fetch reaches back for whatever an
 A tape, not a keypad — though it has one. You are entering a transaction, the receipt has three numbers on it, and you need the total. Type an amount and press **Enter**; type an operator (**+ − × ÷** on the buttons, or \`+ - * /\` on the keyboard) and then the next number. Every completed step writes a line showing what you entered and the running total after it, so when the answer is wrong you can see **which line** is wrong.
 
 **%** is a percentage of the running total, the way a receipt means it: after 100.00, \`+ 8.5%\` is 8.50, not 0.085 — and it lands in the entry box so you see it before it counts. **Copy total** puts bare digits on the clipboard, ready to paste into an amount field.
+
+Opened from an amount field — **Ctrl+K** with the caret in it, or the small calculator at the left of the register's Payment and Deposit and a split line's amount — the tape starts with that field's amount, and **Put in Payment** (or a second **Enter** with nothing typed) writes the total back into the field.
+
+# Sums in any amount field
+
+Every amount field takes a sum as well as a number: \`12.99*4\`, \`45+12.50-3\`, \`(120+35)/3\`. It is worked out when you leave the field or press Enter, rounded to the cent. A percentage works as it does on the tape: \`100+8.5%\` is 108.50, and \`200*15%\` is 30.00. Each number is written the way the file's region writes numbers.
 
 # Find duplicates
 

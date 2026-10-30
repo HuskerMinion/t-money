@@ -235,6 +235,7 @@ export default function LoanTermsDialog({ account, onDone, onCancel }: Props) {
             <input
               id="lt-payment"
               className="aero-field text-right"
+              data-amount
               value={payment}
               placeholder={formatAmountBare(112_400)}
               onChange={(e) => setPayment(e.target.value)}
@@ -244,6 +245,7 @@ export default function LoanTermsDialog({ account, onDone, onCancel }: Props) {
             <input
               id="lt-extra"
               className="aero-field text-right"
+              data-amount
               value={extra}
               onChange={(e) => setExtra(e.target.value)}
             />
@@ -252,6 +254,7 @@ export default function LoanTermsDialog({ account, onDone, onCancel }: Props) {
             <input
               id="lt-escrow"
               className="aero-field text-right"
+              data-amount
               value={escrow}
               onChange={(e) => setEscrow(e.target.value)}
             />

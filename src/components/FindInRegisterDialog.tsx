@@ -14,7 +14,7 @@
 // deposit and not $1,340.00; a date matches the way it is shown (7/4/2026)
 // or as typed (2026-07-04).
 import { useEffect, useRef, useState } from "react";
-import { formatDateUS, formatMoney, formatScaled, parseMoneyToCents } from "../lib/format";
+import { formatDateUS, formatMoney, formatScaled, parseMoneyStrict } from "../lib/format";
 import type { RegisterRow } from "../lib/types";
 
 export type FindField = "any" | "payee" | "category" | "memo" | "num" | "amount" | "date";
@@ -44,7 +44,7 @@ function has(hay: string | null | undefined, needle: string): boolean {
 export function findInRegister(rows: readonly RegisterRow[], query: string, field: FindField): RegisterRow[] {
   const q = query.trim().toLowerCase();
   if (!q) return [];
-  const cents = parseMoneyToCents(query.trim());
+  const cents = parseMoneyStrict(query.trim());
   const magnitude = cents === null ? null : Math.abs(cents);
   return rows.filter((r) => {
     const byAmount = magnitude !== null && Math.abs(r.amount_cents) === magnitude;

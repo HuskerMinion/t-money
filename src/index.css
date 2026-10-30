@@ -147,6 +147,21 @@ body {
     outline: 2px solid var(--tm-pure-white);
     outline-offset: 1px;
   }
+  /* Back and Forward: the gear's button, with an arrow for a face. */
+  .aero-gear.tm-nav-arrow {
+    /* White like the brand beside it: a button's own text color is black. */
+    color: var(--tm-pure-white);
+    font-size: 16px;
+    line-height: 1;
+    width: 26px;
+    height: 26px;
+    font-weight: bold;
+  }
+  .aero-gear.tm-nav-arrow:disabled {
+    opacity: 0.35;
+    background: transparent;
+    cursor: default;
+  }
 
   .aero-tab.active {
     background: linear-gradient(
@@ -935,6 +950,30 @@ body {
 .tm-report-table tbody tr.tm-report-link {
   cursor: pointer;
 }
+/* Highlighted rows: the one under the pointer, and the one picked (clicked,
+   arrowed to or right-clicked) in the register's selection color, so a line
+   can be followed across a wide report. Neither is printed. */
+.tm-report-table tbody tr:hover td {
+  background: var(--tm-ms-group-header);
+}
+.tm-report-table tbody tr.tm-report-selected td {
+  background: var(--tm-ms-row-active);
+}
+.tm-report-table tbody tr:focus {
+  outline: none;
+}
+.tm-report-table tbody tr.tm-report-selected:focus-visible td:first-child {
+  box-shadow: inset 2px 0 0 var(--tm-ms-text-link);
+}
+@media print {
+  .tm-report-table tbody tr:hover td,
+  .tm-report-table tbody tr.tm-report-selected td {
+    background: transparent;
+  }
+  .tm-report-table tbody tr:nth-child(even) td {
+    background: var(--tm-ms-row);
+  }
+}
 .tm-report-table tbody tr.tm-report-link:hover td:first-child {
   text-decoration: underline;
   color: var(--tm-ms-text-link);
@@ -1521,15 +1560,6 @@ li:hover .tm-subs-ignore,
   border-color: var(--tm-negative);
   color: var(--tm-negative);
 }
-.tm-datefield-picker {
-  position: absolute;
-  right: 0;
-  top: 0;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
-}
 .tm-datefield-btn {
   position: absolute;
   right: 1px;
@@ -1545,6 +1575,120 @@ li:hover .tm-subs-ignore,
 }
 .tm-datefield-btn:hover {
   color: var(--tm-ms-text);
+}
+
+/* An amount box with its calculator button (AmountCalcButton.tsx). The amount
+   is right-aligned, so the button sits at the left, shown on hover or focus. */
+.tm-amountfield {
+  position: relative;
+  display: block;
+}
+.tm-amountfield input {
+  padding-left: 18px;
+}
+.tm-amountfield-btn {
+  position: absolute;
+  left: 2px;
+  top: 1px;
+  bottom: 1px;
+  width: 14px;
+  border: none;
+  background: transparent;
+  color: var(--tm-ms-text-muted);
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+}
+.tm-amountfield:hover .tm-amountfield-btn,
+.tm-amountfield:focus-within .tm-amountfield-btn {
+  opacity: 1;
+}
+.tm-amountfield-btn:hover {
+  color: var(--tm-ms-text);
+}
+@media print {
+  .tm-amountfield-btn {
+    display: none;
+  }
+}
+
+/* The calendar under a date field's ▾ (DatePopup.tsx). Above dialogs and the
+   right-click menu: it opens from fields inside both. */
+.tm-datepopup {
+  position: fixed;
+  z-index: 70;
+  background: var(--tm-ms-field-bg);
+  border: 1px solid var(--tm-ms-field-border-in);
+  box-shadow: 0 2px 8px rgba(20, 50, 90, 0.3);
+  padding: 4px;
+  font-size: 12px;
+  color: var(--tm-ms-text);
+}
+.tm-datepopup-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: bold;
+  padding: 0 0 4px;
+}
+.tm-datepopup-head button {
+  border: none;
+  background: transparent;
+  color: var(--tm-ms-text);
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  padding: 0 8px;
+}
+.tm-datepopup-head button:hover {
+  background: var(--tm-ms-group-header);
+}
+.tm-datepopup table {
+  border-collapse: collapse;
+}
+.tm-datepopup th {
+  font-weight: normal;
+  color: var(--tm-ms-text-muted);
+  width: 26px;
+  padding: 1px 0 3px;
+  text-align: center;
+}
+.tm-datepopup td {
+  padding: 0;
+  text-align: center;
+}
+.tm-datepopup td button {
+  width: 26px;
+  height: 22px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--tm-ms-text);
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+.tm-datepopup td button:hover {
+  background: var(--tm-ms-group-header);
+}
+.tm-datepopup td button.tm-datepopup-today {
+  border-color: var(--tm-ms-accent, #3b7dd8);
+  font-weight: bold;
+}
+.tm-datepopup td button.tm-datepopup-chosen {
+  background: var(--tm-ms-row-active);
+}
+.tm-datepopup td button:focus-visible,
+.tm-datepopup td button:focus {
+  outline: 2px solid var(--tm-ms-accent, #3b7dd8);
+  outline-offset: -2px;
+}
+.tm-datepopup-foot {
+  text-align: center;
+  padding-top: 4px;
+  border-top: 1px solid var(--tm-ms-grid-line);
+  margin-top: 3px;
 }
 
 /* Category and memo alongside the payee. */

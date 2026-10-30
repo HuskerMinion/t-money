@@ -269,6 +269,7 @@ export default function NewAccountWizard({ onCreate, onCancel }: Props) {
               <input
                 className="aero-field flex-1"
                 aria-label={owed ? "Amount you owe" : "Opening balance"}
+                data-amount
                 value={opening}
                 onChange={(e) => setOpening(e.target.value)}
                 placeholder={formatAmountBare(0)}

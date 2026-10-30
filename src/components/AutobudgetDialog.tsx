@@ -193,6 +193,7 @@ export default function AutobudgetDialog({ month, source = "history", onCancel, 
                           className={`aero-field text-right${bad ? " money-neg" : ""}`}
                           style={{ width: 90 }}
                           aria-label={`Budget for ${l.category_name}`}
+                          data-amount
                           value={p.amount}
                           disabled={!p.on}
                           onChange={(e) => setPicks({ ...picks, [l.category_id]: { ...p, amount: e.target.value } })}

@@ -184,6 +184,7 @@ export default function RecordPaymentDialog({ account, onDone, onCancel }: Props
             <input
               id="rp-interest"
               className="aero-field text-right"
+              data-amount
               value={interest}
               onChange={(e) => setInterest(e.target.value)}
             />
@@ -192,6 +193,7 @@ export default function RecordPaymentDialog({ account, onDone, onCancel }: Props
             <input
               id="rp-principal"
               className="aero-field text-right"
+              data-amount
               value={principal}
               autoFocus
               onChange={(e) => setPrincipal(e.target.value)}
@@ -201,12 +203,13 @@ export default function RecordPaymentDialog({ account, onDone, onCancel }: Props
             <input
               id="rp-extra"
               className="aero-field text-right"
+              data-amount
               value={extra}
               onChange={(e) => setExtra(e.target.value)}
             />
 
             <label htmlFor="rp-escrow">Escrow</label>
-            <input id="rp-escrow" className="aero-field text-right" value={escrow} onChange={(e) => setEscrow(e.target.value)} />
+            <input data-amount id="rp-escrow" className="aero-field text-right" value={escrow} onChange={(e) => setEscrow(e.target.value)} />
 
             <label htmlFor="rp-notes">Memo</label>
             <input id="rp-notes" className="aero-field" value={notes} onChange={(e) => setNotes(e.target.value)} />

@@ -354,7 +354,7 @@ export default function GoalsView() {
                             </label>
                             <label className="flex flex-col text-[11px]">
                               Amount
-                              <input className="aero-field text-right" style={{ width: 100 }} aria-label="Contribution" value={contribAmount} onChange={(e) => setContribAmount(e.target.value)} placeholder={`0${currentRegion().decimal}00`} />
+                              <input data-amount className="aero-field text-right" style={{ width: 100 }} aria-label="Contribution" value={contribAmount} onChange={(e) => setContribAmount(e.target.value)} placeholder={`0${currentRegion().decimal}00`} />
                             </label>
                             <label className="flex flex-col text-[11px]">
                               Date
@@ -400,6 +400,7 @@ export default function GoalsView() {
           <label className="block text-[11px] text-slate-600">
             Target
             <input
+              data-amount
               value={target}
               onChange={(e) => setTarget(e.target.value)}
               className="mt-1 w-full rounded px-2 py-1 text-[12px] border"
@@ -432,6 +433,7 @@ export default function GoalsView() {
           <label className="block text-[11px] text-slate-600">
             {accountId ? "Starting amount (before the tagged rows)" : "Saved so far"}
             <input
+              data-amount
               value={saved}
               onChange={(e) => setSaved(e.target.value)}
               className="mt-1 w-full rounded px-2 py-1 text-[12px] border"

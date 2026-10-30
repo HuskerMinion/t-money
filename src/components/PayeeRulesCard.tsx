@@ -215,11 +215,11 @@ export default function PayeeRulesCard({ categories, onApplied, draft }: Props) 
               Amazon is Household. */}
           <label className="flex flex-col text-[11px]">
             Amount at least
-            <input className="aero-field" value={minAmount} onChange={(e) => setMinAmount(e.target.value)} placeholder="any" style={{ width: 90 }} aria-label="Amount at least" />
+            <input data-amount className="aero-field" value={minAmount} onChange={(e) => setMinAmount(e.target.value)} placeholder="any" style={{ width: 90 }} aria-label="Amount at least" />
           </label>
           <label className="flex flex-col text-[11px]">
             at most
-            <input className="aero-field" value={maxAmount} onChange={(e) => setMaxAmount(e.target.value)} placeholder="any" style={{ width: 90 }} aria-label="Amount at most" />
+            <input data-amount className="aero-field" value={maxAmount} onChange={(e) => setMaxAmount(e.target.value)} placeholder="any" style={{ width: 90 }} aria-label="Amount at most" />
           </label>
           <label className="flex flex-col text-[11px]">
             Memo contains

@@ -158,6 +158,7 @@ export default function BuildPlanDialog({
                 <input
                   className="aero-field tm-budget-amount"
                   aria-label={`Monthly for ${p.full_name}`}
+                  data-amount
                   value={editingThis ? editing.text : formatAmountBare(r.monthlyCents)}
                   disabled={busy || !r.include}
                   onFocus={() => setEditing({ id: p.category_id, text: formatAmountBare(r.monthlyCents) })}

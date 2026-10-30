@@ -1,6 +1,6 @@
 // The typed date field: what it tells the form while the text
 // does not read as a date.
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { useState } from "react";
@@ -193,5 +193,79 @@ describe("DateField where dates are written with a dash", () => {
     useFileFormat.getState().setFormat({ home_currency: "EUR", region: "nl-NL" });
     expect(parseTypedDate("15-09-2026")).toBe("2026-09-15");
     expect(parseTypedDate("15-09-202")).toBeNull();
+  });
+});
+
+describe("DateField's calendar", () => {
+  it("opens on the field's date and a click picks a day", async () => {
+    const s = setup("2026-08-03");
+    await userEvent.click(screen.getByRole("button", { name: "Choose date from a calendar" }));
+    const cal = screen.getByRole("dialog", { name: "Date calendar" });
+    expect(within(cal).getByText("August 2026")).toBeInTheDocument();
+    expect(within(cal).getByRole("button", { name: "8/3/2026" })).toHaveAttribute("aria-pressed", "true");
+    await userEvent.click(within(cal).getByRole("button", { name: "8/20/2026" }));
+    expect(s.last()).toBe("2026-08-20");
+    expect(s.field).toHaveValue("8/20/2026");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    // Focus goes back to the field, and + steps from the PICKED date.
+    await waitFor(() => expect(s.field).toHaveFocus());
+    await userEvent.keyboard("+");
+    expect(s.last()).toBe("2026-08-21");
+  });
+
+  it("is driven by the keyboard: Alt+Down opens, arrows and Page Down move, Enter picks", async () => {
+    const s = setup("2026-01-31");
+    s.field.focus();
+    await userEvent.keyboard("{Alt>}{ArrowDown}{/Alt}");
+    const cal = screen.getByRole("dialog", { name: "Date calendar" });
+    expect(within(cal).getByRole("button", { name: "1/31/2026" })).toHaveFocus();
+    // A month on from Jan 31 is Feb 28, not March 3.
+    await userEvent.keyboard("{PageDown}");
+    expect(within(cal).getByText("February 2026")).toBeInTheDocument();
+    expect(within(cal).getByRole("button", { name: "2/28/2026" })).toHaveFocus();
+    await userEvent.keyboard("{ArrowRight}{ArrowDown}{Enter}");
+    expect(s.last()).toBe("2026-03-08");
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("Escape closes without changing the date, and does not reach the form", async () => {
+    const onFormKey = vi.fn();
+    const values: string[] = [];
+    render(
+      <div onKeyDown={(e) => onFormKey(e.key)}>
+        <Harness initial="2026-08-03" onValue={(v) => values.push(v)} />
+      </div>
+    );
+    const field = screen.getByLabelText("Date");
+    field.focus();
+    await userEvent.keyboard("{F4}");
+    onFormKey.mockClear();
+    await userEvent.keyboard("{ArrowRight}{Escape}");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(values).toEqual([]);
+    expect(onFormKey).not.toHaveBeenCalled();
+    await waitFor(() => expect(field).toHaveFocus());
+  });
+
+  it("a click in the calendar does not reach the row the field sits in", async () => {
+    const onRowClick = vi.fn();
+    render(
+      <div onClick={onRowClick}>
+        <DateField value="2026-08-03" onChange={() => {}} />
+      </div>
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Choose date from a calendar" }));
+    onRowClick.mockClear();
+    await userEvent.click(screen.getByRole("button", { name: "Next month" }));
+    expect(screen.getByText("September 2026")).toBeInTheDocument();
+    expect(onRowClick).not.toHaveBeenCalled();
+  });
+
+  it("does not open on a read-only field", async () => {
+    render(<DateField value="2026-08-03" onChange={() => {}} readOnly />);
+    expect(screen.getByRole("button", { name: "Choose date from a calendar" })).toBeDisabled();
+    screen.getByLabelText("Date").focus();
+    await userEvent.keyboard("{F4}");
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 });

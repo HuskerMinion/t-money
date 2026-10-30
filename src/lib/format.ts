@@ -3,6 +3,7 @@
 // Everything here writes and reads the open file's region (`region.ts`):
 // "$1,234.56" in the United States, "1.234,56 €" in Germany, dates as
 // 8/30/2026, 30.08.2026 or 2026-08-30.
+import { evalAmount, looksLikeSum } from "./amountMath";
 import { symbolFor } from "./currency";
 import { currentRegion, groupDigits, type Region } from "./region";
 
@@ -125,7 +126,7 @@ export function today(): string {
  * Integer arithmetic on the digit strings: no float multiplication, so
  * "1.005" is refused (three decimals) rather than rounded either way.
  */
-export function parseMoneyToCents(input: string): number | null {
+export function parseMoneyStrict(input: string): number | null {
   // Any of the currency marks this app writes — "$", "US$", "CA$", "€",
   // "£", "MX$", "A$" — or an ISO code typed beside the number.
   let cleaned = stripMoneyMarks(input);
@@ -148,6 +149,29 @@ export function parseMoneyToCents(input: string): number | null {
   if (!Number.isSafeInteger(cents)) return null;
   // `-0` is a real JS value and `Object.is(-0, 0)` is false; keep zero plain.
   return negative && cents !== 0 ? -cents : cents;
+}
+
+/**
+ * `parseMoneyStrict`, and failing that a typed sum ("12.99*4", "100+8.5%";
+ * see amountMath.ts). What every amount box in a form reads, so a sum left
+ * in the box saves as its result. A search box or a file being imported
+ * wants `parseMoneyStrict`: there "7-11" is text, not 4.00.
+ */
+export function parseMoneyToCents(input: string): number | null {
+  const plain = parseMoneyStrict(input);
+  if (plain !== null || !looksLikeSum(input)) return plain;
+  return evalAmount(input, (part) => {
+    const n = normalizeNumber(stripMoneyMarks(part), currentRegion(), 6);
+    if (n === null || n === "" || n === "." || n.startsWith("-")) return null;
+    return Number(n);
+  });
+}
+
+/** Cents as an amount box shows them: the region's marks, a "-" when
+ *  negative ("1,234.50", "-12,00"). What a worked-out sum is replaced by. */
+export function formatAmountTyped(cents: number): string {
+  const s = numberIn(Math.abs(cents), currentRegion());
+  return cents < 0 ? `-${s}` : s;
 }
 
 /**

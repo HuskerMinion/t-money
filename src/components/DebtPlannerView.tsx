@@ -193,7 +193,7 @@ export default function DebtPlannerView() {
                           <input className={`aero-field text-right${d.aprBad ? " money-neg" : ""}`} style={{ width: 70 }} aria-label={`Rate for ${d.name}`} value={r.apr} placeholder={`6${currentRegion().decimal}5`} onChange={(e) => setRate(d.id, { apr: e.target.value })} />
                         </td>
                         <td className="num">
-                          <input className={`aero-field text-right${d.minBad ? " money-neg" : ""}`} style={{ width: 90 }} aria-label={`Minimum payment for ${d.name}`} value={r.min} placeholder={d.currency === homeCurrency() ? zero : `${symbolFor(d.currency)}${zero}`} onChange={(e) => setRate(d.id, { min: e.target.value })} />
+                          <input data-amount className={`aero-field text-right${d.minBad ? " money-neg" : ""}`} style={{ width: 90 }} aria-label={`Minimum payment for ${d.name}`} value={r.min} placeholder={d.currency === homeCurrency() ? zero : `${symbolFor(d.currency)}${zero}`} onChange={(e) => setRate(d.id, { min: e.target.value })} />
                         </td>
                         <td className="num" aria-label={`Payoff for ${d.name}`}>{d.rate_micro === 0 ? "not planned" : pd?.paid_off_month ? monthAfter(start, pd.paid_off_month) : fullPlan && !fullPlan.problem ? "—" : ""}</td>
                         <td className="num">{pd && !fullPlan?.problem ? formatMoney(pd.interest_cents) : ""}</td>
@@ -205,7 +205,7 @@ export default function DebtPlannerView() {
               <div className="flex flex-wrap items-center gap-4 pt-1">
                 <label className="inline-flex items-center gap-1">
                   Monthly budget for all debts{anyForeign ? ` (${homeName()})` : ""}
-                  <input className="aero-field text-right" style={{ width: 100 }} aria-label="Monthly budget" value={saved.budget} placeholder={zero} onChange={(e) => update({ ...saved, budget: e.target.value })} />
+                  <input data-amount className="aero-field text-right" style={{ width: 100 }} aria-label="Monthly budget" value={saved.budget} placeholder={zero} onChange={(e) => update({ ...saved, budget: e.target.value })} />
                 </label>
                 <label className="inline-flex items-center gap-1">
                   Order
@@ -265,7 +265,7 @@ export default function DebtPlannerView() {
                 <label className="inline-flex items-center gap-1">
                   <input type="radio" name="mini-mode" checked={miniMode === "payment"} onChange={() => setMiniMode("payment")} />
                   Paying
-                  <input className="aero-field text-right" style={{ width: 90 }} aria-label="Monthly payment" value={miniPayment} placeholder={mini && mini.currency !== homeCurrency() ? `${symbolFor(mini.currency)}${zero}` : zero} disabled={miniMode !== "payment"} onChange={(e) => setMiniPayment(e.target.value)} />
+                  <input data-amount className="aero-field text-right" style={{ width: 90 }} aria-label="Monthly payment" value={miniPayment} placeholder={mini && mini.currency !== homeCurrency() ? `${symbolFor(mini.currency)}${zero}` : zero} disabled={miniMode !== "payment"} onChange={(e) => setMiniPayment(e.target.value)} />
                   a month
                 </label>
                 <label className="inline-flex items-center gap-1">

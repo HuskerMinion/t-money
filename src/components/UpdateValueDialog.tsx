@@ -75,6 +75,7 @@ export default function UpdateValueDialog({ account, onDone, onCancel }: Props) 
             <input
               id="uv-value"
               className="aero-field text-right"
+              data-amount
               value={value}
               autoFocus
               onChange={(e) => setValue(e.target.value)}

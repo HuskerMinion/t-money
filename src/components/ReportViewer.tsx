@@ -416,6 +416,11 @@ export default function ReportViewer({ spec, onSpec, onOpenAccount, onOpenTransa
   const options = spec.options ?? DEFAULT_OPTIONS;
   const setOptions = (next: Partial<ReportOptions>) => onSpec({ ...spec, options: { ...options, ...next } });
   const shaped = useMemo(() => (report ? shapeReport(report, options) : null), [report, options]);
+  // The row you clicked, arrowed to or right-clicked stays highlighted, so a
+  // line can be read across a wide report and found again after a drill-down.
+  // Cleared when the rows change: an index into another report means nothing.
+  const [selectedRow, setSelectedRow] = useState<number | null>(null);
+  useEffect(() => setSelectedRow(null), [shaped]);
   const chart = useMemo(() => (report ? chartFor(report, options) : null), [report, options]);
   const chartStyle = report ? chartStyleFor(report, options) : null;
   const singleSeries = !!report?.chart && report.chart.series.length === 1;
@@ -867,6 +872,7 @@ export default function ReportViewer({ spec, onSpec, onOpenAccount, onOpenTransa
                     style={{ width: 90 }}
                     aria-label="Smallest amount"
                     inputMode="decimal"
+                    data-amount
                     value={amountText.min}
                     onChange={(e) => setAmountText({ ...amountText, min: e.target.value })}
                     onBlur={() => {
@@ -883,6 +889,7 @@ export default function ReportViewer({ spec, onSpec, onOpenAccount, onOpenTransa
                     style={{ width: 90 }}
                     aria-label="Largest amount"
                     inputMode="decimal"
+                    data-amount
                     value={amountText.max}
                     onChange={(e) => setAmountText({ ...amountText, max: e.target.value })}
                     onBlur={() => {
@@ -1190,14 +1197,29 @@ export default function ReportViewer({ spec, onSpec, onOpenAccount, onOpenTransa
                         r.style === "subtotal" ? "tm-report-subtotal" : "",
                         r.style === "total" ? "tm-report-total" : "",
                         clickable ? "tm-report-link" : "",
+                        ri === selectedRow ? "tm-report-selected" : "",
                       ].filter(Boolean).join(" ") || undefined}
                       onClick={clickable ? () => click(r) : undefined}
+                      onFocus={() => setSelectedRow(ri)}
                       // A row that drills is a Tab stop, as it always was; any
                       // other is focusable by a click, so Shift+F10 can open the
                       // menu on a total too.
                       tabIndex={clickable ? 0 : -1}
-                      onContextMenu={(e) => rowMenu.open(e, r)}
-                      onKeyDown={clickable ? (e) => { if (e.key === "Enter") click(r); } : undefined}
+                      onContextMenu={(e) => {
+                        setSelectedRow(ri);
+                        rowMenu.open(e, r);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && clickable) click(r);
+                        // Up and down walk the rows, the way they do in a register.
+                        else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                          const next = e.key === "ArrowDown" ? e.currentTarget.nextElementSibling : e.currentTarget.previousElementSibling;
+                          if (next instanceof HTMLElement) {
+                            e.preventDefault();
+                            next.focus();
+                          }
+                        }
+                      }}
                       aria-label={clickable ? `Open ${r.label}` : undefined}
                     >
                       <td style={{ paddingLeft: 6 + r.level * 18 }} colSpan={r.style === "header" ? report.columns.length : 1}>

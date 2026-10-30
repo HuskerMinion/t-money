@@ -4,9 +4,10 @@
 // with a few keys. So: a text field showing the date the file's region's
 // way (M/D/YYYY in the US), parsed as you type (M/D, M/D/YY, M/D/YYYY,
 // YYYY-MM-DD all accepted, in the region's order), with Money's shortcuts —
-// + and − step a day, T is today — and a small ▾ that opens the native
-// picker for anyone who wants the calendar.
+// + and − step a day, T is today — and a small ▾ (or Alt+↓, or F4) that
+// opens the app's own calendar (DatePopup.tsx) for anyone who wants one.
 import { useEffect, useRef, useState } from "react";
+import DatePopup from "./DatePopup";
 import { formatDateUS, today } from "../lib/format";
 import { currentRegion } from "../lib/region";
 
@@ -119,7 +120,8 @@ export default function DateField({
   const [text, setText] = useState(formatDateUS(value));
   const [bad, setBad] = useState(false);
   const focused = useRef(false);
-  const pickerRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [calendarOpen, setCalendarOpen] = useState(false);
   // The date the field held when the caret came in. An unreadable
   // date now sends "" (see `read`), so `value` no longer says what the date
   // was: a year left off ("8/3") still means that date's year, + and − still
@@ -173,9 +175,19 @@ export default function DateField({
     }
   }
 
+  /** A date chosen by a key or from the calendar: shown and sent at once. */
+  function setTo(next: string) {
+    setText(formatDateUS(next));
+    setBad(false);
+    tellInvalid(false);
+    before.current = next;
+    onChange(next);
+  }
+
   return (
     <span className="tm-datefield" style={width === undefined ? undefined : { width, display: "inline-flex", flexShrink: 0 }}>
       <input
+        ref={inputRef}
         className={`${className}${bad ? " tm-datefield-bad" : ""}`}
         type="text"
         inputMode="numeric"
@@ -206,14 +218,17 @@ export default function DateField({
         }}
         onKeyDown={(e) => {
           if (readOnly) return;
+          if ((e.altKey && e.key === "ArrowDown") || e.key === "F4") {
+            e.preventDefault();
+            // What is typed so far is the date the calendar opens on.
+            leave(e.currentTarget.value);
+            setCalendarOpen(true);
+            return;
+          }
           if (e.key === "Enter" && commitOnLeave) leave(e.currentTarget.value);
           const set = (next: string) => {
             e.preventDefault();
-            setText(formatDateUS(next));
-            setBad(false);
-            tellInvalid(false);
-            before.current = next;
-            onChange(next);
+            setTo(next);
           };
           // Where dates are written with "-" (Canada, the Netherlands) the key
           // is part of the date, so it steps back a day only when the whole
@@ -227,34 +242,35 @@ export default function DateField({
         }}
         title={title ?? `Type a date (${dateExamples()}). + and − step a day; T is today.`}
       />
-      <input
-        ref={pickerRef}
-        type="date"
-        className="tm-datefield-picker"
-        aria-label={`${label} picker`}
-        tabIndex={-1}
-        value={value}
-        onChange={(e) => {
-          if (e.target.value) onChange(e.target.value);
-        }}
-      />
       <button
         type="button"
         className="tm-datefield-btn"
         tabIndex={-1}
         disabled={readOnly}
         aria-label={`Choose ${label.toLowerCase()} from a calendar`}
-        title="Calendar"
+        aria-haspopup="dialog"
+        aria-expanded={calendarOpen}
+        title="Calendar (Alt+↓)"
+        // Not a mouse-down that takes focus from the field: leaving it would
+        // commit (and for a report, re-run) before the calendar even opens.
+        onMouseDown={(e) => e.preventDefault()}
         onClick={() => {
-          const p = pickerRef.current;
-          if (!p) return;
-          const withPicker = p as HTMLInputElement & { showPicker?: () => void };
-          if (typeof withPicker.showPicker === "function") withPicker.showPicker();
-          else p.click();
+          const el = inputRef.current;
+          if (el && document.activeElement === el) leave(el.value);
+          setCalendarOpen((o) => !o);
         }}
       >
         ▾
       </button>
+      {calendarOpen && inputRef.current && (
+        <DatePopup
+          value={before.current || value}
+          anchor={inputRef.current}
+          label={label}
+          onPick={setTo}
+          onClose={() => setCalendarOpen(false)}
+        />
+      )}
     </span>
   );
 }

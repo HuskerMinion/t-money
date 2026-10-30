@@ -372,6 +372,7 @@ export default function TspImportDialog({ accounts, initialPath = null, onClose,
                                   className="aero-field text-right"
                                   style={{ width: 92 }}
                                   aria-label={`Received for ${p.date}`}
+                                  data-amount
                                   value={a?.net ?? ""}
                                   onChange={(e) => set(p.date, { net: e.target.value })}
                                 />

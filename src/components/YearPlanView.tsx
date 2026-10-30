@@ -373,6 +373,7 @@ export default function YearPlanView() {
         <input
           className="aero-field tm-budget-amount"
           aria-label={`${col === "annual" ? "Annual" : "Monthly"} plan for ${line.full_name}`}
+          data-amount
           value={editingThis ? editing.text : line.has_plan ? formatAmountBare(value) : ""}
           /* An empty field still shows the tic the empty month cells
              use, so a line with no plan reads as two boxes waiting for a

@@ -25,6 +25,7 @@
 //     its own choice, as the Category field always has.
 //   - The Description completes from descriptions used on earlier split
 //     lines, the way the Payee field completes a payee.
+import AmountCalcButton from "./AmountCalcButton";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../lib/ipc";
 import { formatAmountBare, formatMoney, parseMoneyToCents } from "../lib/format";
@@ -409,17 +410,20 @@ export default function SplitDialog({
                       />
                     </td>
                     <td>
-                      <input
-                        className="aero-field w-full text-right"
-                        aria-label={`Amount ${i + 1}`}
-                        aria-invalid={unreadable.includes(i) || undefined}
-                        style={unreadable.includes(i) ? { borderColor: "var(--tm-negative)", color: "var(--tm-negative)" } : undefined}
-                        value={l.amount}
-                        onChange={(e) => {
-                          update(i, { amount: e.target.value });
-                          ensureTrailingBlank(i);
-                        }}
-                      />
+                      <AmountCalcButton>
+                        <input
+                          className="aero-field w-full text-right"
+                          aria-label={`Amount ${i + 1}`}
+                          aria-invalid={unreadable.includes(i) || undefined}
+                          style={unreadable.includes(i) ? { borderColor: "var(--tm-negative)", color: "var(--tm-negative)" } : undefined}
+                          data-amount
+                          value={l.amount}
+                          onChange={(e) => {
+                            update(i, { amount: e.target.value });
+                            ensureTrailingBlank(i);
+                          }}
+                        />
+                      </AmountCalcButton>
                     </td>
                   </tr>
                 ))}

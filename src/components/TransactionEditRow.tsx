@@ -10,6 +10,7 @@
 // This is not a modal. Money reveals it with the "Show transaction forms"
 // checkbox at the foot of the register, and it edits the selected row where it
 // sits.
+import AmountCalcButton from "./AmountCalcButton";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import SplitDialog from "./SplitDialog";
@@ -688,34 +689,40 @@ export default function TransactionEditRow({
           )}
         </td>
         <td>
-          <input
-            className="aero-field w-full text-right"
-            aria-label={columnLabels.payment}
-            autoFocus={startIn === "payment"}
-            value={payment}
-            onChange={(e) => {
-              setPayment(e.target.value);
-              if (e.target.value) setDeposit("");
-            }}
-            placeholder={columnLabels.payment}
-            readOnly={isSplit || farRow}
-            title={farTitle ?? (isSplit ? "Set by the split lines — open the split to change it" : undefined)}
-          />
+          <AmountCalcButton off={isSplit || farRow}>
+            <input
+              className="aero-field w-full text-right"
+              aria-label={columnLabels.payment}
+              autoFocus={startIn === "payment"}
+              data-amount
+              value={payment}
+              onChange={(e) => {
+                setPayment(e.target.value);
+                if (e.target.value) setDeposit("");
+              }}
+              placeholder={columnLabels.payment}
+              readOnly={isSplit || farRow}
+              title={farTitle ?? (isSplit ? "Set by the split lines — open the split to change it" : undefined)}
+            />
+          </AmountCalcButton>
         </td>
         <td>
-          <input
-            className="aero-field w-full text-right"
-            aria-label={columnLabels.deposit}
-            autoFocus={startIn === "deposit"}
-            value={deposit}
-            onChange={(e) => {
-              setDeposit(e.target.value);
-              if (e.target.value) setPayment("");
-            }}
-            placeholder={columnLabels.deposit}
-            readOnly={isSplit || farRow}
-            title={farTitle ?? (isSplit ? "Set by the split lines — open the split to change it" : undefined)}
-          />
+          <AmountCalcButton off={isSplit || farRow}>
+            <input
+              className="aero-field w-full text-right"
+              aria-label={columnLabels.deposit}
+              autoFocus={startIn === "deposit"}
+              data-amount
+              value={deposit}
+              onChange={(e) => {
+                setDeposit(e.target.value);
+                if (e.target.value) setPayment("");
+              }}
+              placeholder={columnLabels.deposit}
+              readOnly={isSplit || farRow}
+              title={farTitle ?? (isSplit ? "Set by the split lines — open the split to change it" : undefined)}
+            />
+          </AmountCalcButton>
         </td>
         <td />
         {columns > COLUMNS && <td />}
@@ -791,6 +798,7 @@ export default function TransactionEditRow({
                   className="aero-field text-right"
                   style={{ width: 110 }}
                   autoComplete="off"
+                  data-amount
                   value={otherAmount}
                   onChange={(e) => setOtherAmount(e.target.value)}
                   readOnly={farRow}
