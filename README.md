@@ -38,8 +38,9 @@ All screenshots use the made-up household in **File → New → Sample file with
 ## What it does
 
 - **Accounts and the register** — checking, savings, credit cards, loans, assets and investment
-  accounts. Type-ahead payees and categories, splits, linked transfers, and real Undo (Ctrl+Z) for
-  almost everything. Right-click (or Shift+F10) a row in most lists for what you can do with it.
+  accounts. Enter transactions in Money's tabbed Withdrawal, Deposit and Transfer form under the
+  register, or right in the row. Type-ahead payees and categories, splits, linked transfers, and
+  real Undo (Ctrl+Z) for almost everything. Right-click (or Shift+F10) a row in most lists for what you can do with it.
   Amount boxes take a sum (`12.99*4`) or open a calculator, date boxes open a calendar, and Back
   and Forward step through the screens you have visited.
 - **Balancing** — reconcile an account against a statement, the way Money did it.
@@ -174,12 +175,12 @@ If you want to be sure a file is the real one before you run it:
   downloaded; the result must match the line for that file.
 
   ```powershell
-  Get-FileHash .\T-Money_1.6.0_x64-setup.exe -Algorithm SHA256   # Windows, in PowerShell
+  Get-FileHash .\T-Money_1.7.0_x64-setup.exe -Algorithm SHA256   # Windows, in PowerShell
   ```
 
   ```sh
-  shasum -a 256 T-Money_1.6.0_universal.dmg      # Mac
-  sha256sum T-Money_1.6.0_amd64.AppImage         # Linux
+  shasum -a 256 T-Money_1.7.0_universal.dmg      # Mac
+  sha256sum T-Money_1.7.0_amd64.AppImage         # Linux
   ```
 
 - **Check where it was built.** Every download is built by GitHub from the public source in this
@@ -187,7 +188,7 @@ If you want to be sure a file is the real one before you run it:
   [GitHub CLI](https://cli.github.com/):
 
   ```sh
-  gh attestation verify T-Money_1.6.0_x64-setup.exe --repo HuskerMinion/t-money
+  gh attestation verify T-Money_1.7.0_x64-setup.exe --repo HuskerMinion/t-money
   ```
 
 ## Coming from Microsoft Money
