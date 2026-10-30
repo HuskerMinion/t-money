@@ -52,6 +52,9 @@ describe("a sum in an amount box", () => {
     expect(parseMoneyToCents("(405.26)-20")).toBe(-42526);
     expect(parseMoneyToCents("(12.50)*2")).toBe(-2500);
     expect(parseMoneyToCents("(120+35)/3")).toBe(5167);
+    // Further in, brackets only group.
+    expect(parseMoneyToCents("2*(3)")).toBe(600);
+    expect(parseMoneyToCents("10+(5)")).toBe(1500);
   });
 
   it("takes digits only, not the other ways JavaScript writes a number", () => {

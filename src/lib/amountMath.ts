@@ -17,9 +17,10 @@
 // came before (100+8.5% is 108.50, 100-20% is 80.00); after × or ÷ it is the
 // plain fraction (200*15% is 30.00). A bare "15%" is not an amount.
 //
-// Parentheses group. A lone number in them is the accounting negative, as
-// it is on its own: a reconcile box seeded "(405.26)" with "-20" typed after
-// it is -425.26. "(120+35)/3" is a group.
+// Parentheses group. A lone number in them AT THE START is the accounting
+// negative, as it is on its own: a reconcile box seeded "(405.26)" with "-20"
+// typed after it is -425.26. Anywhere else they only group: "2*(3)" is 6,
+// and "(120+35)/3" is a group.
 
 /** Characters that make text a sum rather than a number. A leading "-" or a
  *  pair of accounting parentheses alone do not. */
@@ -97,7 +98,7 @@ export function evalAmount(text: string, operand: Operand): number | null {
     const t = toks[at++];
     let val: Val | null = null;
     if (t?.k === "num") val = { v: t.v, pct: false };
-    else if (t?.k === "(" && toks[at]?.k === "num" && toks[at + 1]?.k === ")") {
+    else if (t?.k === "(" && at === 1 && toks[at]?.k === "num" && toks[at + 1]?.k === ")") {
       val = { v: -(toks[at] as { v: number }).v, pct: false };
       at += 2;
     } else if (t?.k === "(") {
