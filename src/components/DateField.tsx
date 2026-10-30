@@ -218,7 +218,7 @@ export default function DateField({
         }}
         onKeyDown={(e) => {
           if (readOnly) return;
-          if ((e.altKey && e.key === "ArrowDown") || e.key === "F4") {
+          if ((e.altKey && e.key === "ArrowDown") || (e.key === "F4" && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey)) {
             e.preventDefault();
             // What is typed so far is the date the calendar opens on.
             leave(e.currentTarget.value);

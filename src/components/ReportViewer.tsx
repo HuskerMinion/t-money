@@ -417,7 +417,7 @@ export default function ReportViewer({ spec, onSpec, onOpenAccount, onOpenTransa
   const setOptions = (next: Partial<ReportOptions>) => onSpec({ ...spec, options: { ...options, ...next } });
   const shaped = useMemo(() => (report ? shapeReport(report, options) : null), [report, options]);
   // The row you clicked, arrowed to or right-clicked stays highlighted, so a
-  // line can be read across a wide report and found again after a drill-down.
+  // line can be read across a wide report and found again after a quick look.
   // Cleared when the rows change: an index into another report means nothing.
   const [selectedRow, setSelectedRow] = useState<number | null>(null);
   useEffect(() => setSelectedRow(null), [shaped]);

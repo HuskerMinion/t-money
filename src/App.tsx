@@ -36,6 +36,7 @@ import ReportsView, { type ReportOpen } from "./components/ReportsView";
 import type { ReportSpec } from "./components/ReportViewer";
 import { platform } from "./lib/keyStore";
 import { canGoBack, canGoForward, EMPTY_HISTORY, record, step, type NavHistory, type Place } from "./lib/navHistory";
+import { leaveScreen } from "./lib/leaveGuard";
 import TaxesView from "./components/TaxesView";
 import InvestmentsView from "./components/InvestmentsView";
 import GoalsView from "./components/GoalsView";
@@ -241,44 +242,57 @@ export default function App() {
     if (p.searchQuery !== null) setSearchQuery(p.searchQuery);
     setSide(p.side);
     setBudgetScreen(p.budgetScreen);
-    // An account deleted since is not there to go back to: its list is.
-    const st = useAccountStore.getState();
-    if (p.accountId && st.accounts.some((a) => a.id === p.accountId)) {
-      void selectAccountFromRail(p.accountId);
-      setBankingScreen(p.bankingScreen);
-    } else {
-      setBankingScreen(p.bankingScreen === "register" ? "list" : p.bankingScreen);
-    }
+    if (p.accountId) void selectAccountFromRail(p.accountId);
+    setBankingScreen(p.bankingScreen);
     setTabEpoch((e) => e + 1);
     setTab(p.tab);
   }
-  function goHistory(by: -1 | 1) {
-    const next = step(historyRef.current, by);
+  async function goHistory(by: -1 | 1) {
+    if (step(historyRef.current, by) === historyRef.current) return;
+    // A transaction being entered is saved first; one that cannot be saved
+    // keeps you where you are, with the form saying why.
+    if (!(await leaveScreen())) return;
+    let next = step(historyRef.current, by);
     if (next === historyRef.current) return;
+    let p = next.entries[next.index];
+    // An account deleted since is not there to go back to: its list is. The
+    // entry itself becomes the list, so arriving there is not a new step
+    // that would drop everything ahead.
+    if (p.accountId && !useAccountStore.getState().accounts.some((a) => a.id === p.accountId)) {
+      p = { ...p, bankingScreen: "list", accountId: null };
+      const entries = next.entries.slice();
+      entries[next.index] = p;
+      next = { entries, index: next.index };
+    }
     setHistory(next);
-    applyPlace(next.entries[next.index]);
+    applyPlace(p);
   }
-  const goBack = () => goHistory(-1);
-  const goForward = () => goHistory(1);
+  const goBack = () => void goHistory(-1);
+  const goForward = () => void goHistory(1);
   // Alt+← and Alt+→ (⌘[ and ⌘] on a Mac, where ⌥← moves the caret a word),
   // and a mouse's back and forward buttons. Not while a dialog is open: that
-  // is finished or canceled first.
+  // is finished or canceled first. The keys also wait while the caret is in
+  // a box, where a slip of the finger would leave a half-typed transaction.
   useEffect(() => {
     if (!fileOpen) return;
     const dialogOpen = () => document.querySelector(".tm-dialog") !== null;
+    const isTyping = (t: EventTarget | null) =>
+      (t instanceof HTMLInputElement && !["checkbox", "radio", "button", "submit", "reset", "range", "color", "file"].includes(t.type)) ||
+      t instanceof HTMLTextAreaElement ||
+      (t instanceof HTMLElement && t.isContentEditable);
     const mac = platform() === "mac";
     const onKey = (e: KeyboardEvent) => {
       const plainAlt = !mac && e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey;
       const cmd = e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey;
       const by = (plainAlt && e.key === "ArrowLeft") || (cmd && e.key === "[") ? -1 : (plainAlt && e.key === "ArrowRight") || (cmd && e.key === "]") ? 1 : 0;
-      if (by === 0 || dialogOpen()) return;
+      if (by === 0 || dialogOpen() || isTyping(e.target)) return;
       e.preventDefault();
-      goHistory(by);
+      void goHistory(by);
     };
     const onMouse = (e: MouseEvent) => {
       if ((e.button !== 3 && e.button !== 4) || dialogOpen()) return;
       e.preventDefault();
-      goHistory(e.button === 3 ? -1 : 1);
+      void goHistory(e.button === 3 ? -1 : 1);
     };
     // The webview would take the mouse buttons as its own page history.
     const swallow = (e: MouseEvent) => {

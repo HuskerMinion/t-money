@@ -17,21 +17,30 @@
 // came before (100+8.5% is 108.50, 100-20% is 80.00); after × or ÷ it is the
 // plain fraction (200*15% is 30.00). A bare "15%" is not an amount.
 //
-// Parentheses group. "(12.50)" alone is still the accounting negative: the
-// strict reader is asked first and only text it cannot read comes here.
+// Parentheses group. A lone number in them is the accounting negative, as
+// it is on its own: a reconcile box seeded "(405.26)" with "-20" typed after
+// it is -425.26. "(120+35)/3" is a group.
 
 /** Characters that make text a sum rather than a number. A leading "-" or a
  *  pair of accounting parentheses alone do not. */
 const OPERATOR = /[+*/×÷−%]|.-|\(.*\).|.\(/;
 
+/** Longer than any sum anyone types. A pasted page of "(((" or "---" would
+ *  otherwise recurse past the stack, or keep the regex below busy. */
+const MAX_LENGTH = 200;
+
+/** Reads one unsigned number; `rate` when a % follows it, so it can be read
+ *  as a rate is ("8.875%" is never eight thousand, even in Germany). */
+type Operand = (s: string, rate: boolean) => number | null;
+
 type Tok = { k: "num"; v: number } | { k: "op"; v: string } | { k: "%" } | { k: "(" } | { k: ")" };
 
 /** Does this text look like a sum? Only then is it worth evaluating. */
 export function looksLikeSum(text: string): boolean {
-  return OPERATOR.test(text.replace(/\s/g, ""));
+  return text.length <= MAX_LENGTH && OPERATOR.test(text.replace(/\s/g, ""));
 }
 
-function tokenize(text: string, operand: (s: string) => number | null): Tok[] | null {
+function tokenize(text: string, operand: Operand): Tok[] | null {
   const s = text.replace(/\s/g, "");
   const out: Tok[] = [];
   let i = 0;
@@ -55,7 +64,7 @@ function tokenize(text: string, operand: (s: string) => number | null): Tok[] | 
     } else {
       let j = i;
       while (j < s.length && !"+-−*×/÷%()".includes(s[j])) j++;
-      const v = operand(s.slice(i, j));
+      const v = operand(s.slice(i, j), s[j] === "%");
       if (v === null) return null;
       out.push({ k: "num", v });
       i = j;
@@ -75,7 +84,8 @@ interface Val {
  * operator, an unreadable number, a division by zero, a bare percentage.
  * `operand` reads one unsigned number, in currency units.
  */
-export function evalAmount(text: string, operand: (s: string) => number | null): number | null {
+export function evalAmount(text: string, operand: Operand): number | null {
+  if (text.length > MAX_LENGTH) return null;
   const read = tokenize(text, operand);
   if (!read || read.length === 0) return null;
   const toks: Tok[] = read;
@@ -87,7 +97,10 @@ export function evalAmount(text: string, operand: (s: string) => number | null):
     const t = toks[at++];
     let val: Val | null = null;
     if (t?.k === "num") val = { v: t.v, pct: false };
-    else if (t?.k === "(") {
+    else if (t?.k === "(" && toks[at]?.k === "num" && toks[at + 1]?.k === ")") {
+      val = { v: -(toks[at] as { v: number }).v, pct: false };
+      at += 2;
+    } else if (t?.k === "(") {
       const inner = expr();
       if (!inner || inner.pct || toks[at++]?.k !== ")") return null;
       val = { v: inner.v, pct: false };

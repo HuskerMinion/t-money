@@ -261,6 +261,21 @@ describe("DateField's calendar", () => {
     expect(onRowClick).not.toHaveBeenCalled();
   });
 
+  it("Alt+F4 is left for closing T-Money", async () => {
+    render(<DateField value="2026-08-03" onChange={() => {}} />);
+    screen.getByLabelText("Date").focus();
+    await userEvent.keyboard("{Alt>}{F4}{/Alt}");
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("a click on the weekday names keeps the keys working", async () => {
+    render(<DateField value="2026-08-03" onChange={() => {}} />);
+    await userEvent.click(screen.getByRole("button", { name: "Choose date from a calendar" }));
+    await userEvent.click(screen.getByText("Mo"));
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
   it("does not open on a read-only field", async () => {
     render(<DateField value="2026-08-03" onChange={() => {}} readOnly />);
     expect(screen.getByRole("button", { name: "Choose date from a calendar" })).toBeDisabled();

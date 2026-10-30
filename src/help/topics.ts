@@ -29,7 +29,7 @@ T-Money is a personal-finance program in the shape of Microsoft Money Plus: acco
 # The window
 
 - **Tabs across the top** — Home, Banking, Bills, Reports, Budget, Investing, Planning, Taxes, and this Help. The gear opens [[settings|Settings]]; the box at the right is [[search|Search]].
-- **← and →** beside the T-Money name go **Back** and **Forward** through the screens you have visited — a register, a report, a drill-down from it — the way a web browser's do. **Alt+←** and **Alt+→** do the same, and so do a mouse's back and forward buttons.
+- **← and →** beside the T-Money name go **Back** and **Forward** through the screens you have visited — a register, a report, a drill-down from it — the way a web browser's do. **Alt+←** and **Alt+→** do the same when the caret is not in a box, and so do a mouse's back and forward buttons.
 - **The left rail** lists your accounts and the common pages under each tab. Drag its edge to make it wider or narrower.
 - **Home** shows your favorite accounts, the month's spending against budget, and your subscriptions. See [[home|The Home tab]].
 
@@ -121,7 +121,7 @@ Type in the box at the top right and press Enter. Search looks through every acc
 - **Enter** saves the transaction. Inside the Category field, Enter picks the highlighted category first; press it again to save.
 - **Esc** closes the form without saving.
 - **+** in the Num field fills in the next check number. See [[register|The account register]].
-- In the **Date** field, **+** and **−** step a day and **T** is today. **Alt+↓** or **F4** opens the calendar: the arrows move a day or a week, **Page Up** and **Page Down** a month (with Shift, a year), **T** is today, **Enter** picks and **Esc** closes it.
+- In the **Date** field, **+** and **−** step a day and **T** is today. **Alt+↓** or **F4** opens the calendar: the arrows move a day or a week, **Page Up** and **Page Down** a month (with Shift, a year), **Home** and **End** the ends of the week, **T** is today, **Enter** or **Space** picks, and **Esc** or **Tab** closes it.
 - In an **amount** field you can type a sum — \`12.99*4\`, \`45+12.50-3\`, \`100+8.5%\` — and it is worked out when you leave the field or press Enter. **Ctrl+K** in an amount field opens the calculator on that amount.
 - **↓ ↑** in the Category field move through the matches; Tab takes the highlighted one and moves on.
 - The **Payee** field completes from the payees you have used: type a few letters, the best match is highlighted, and **Tab** or **Enter** takes it. A new name is typed straight through — the list is an offer, not a rule.
@@ -147,7 +147,7 @@ are bound — the menu bar is the list, and this page repeats it.
 - **Del** deletes the selected transaction. (Edit)
 - **Ctrl+M** marks the selected row cleared, or uncleared. (Edit → Mark as cleared)
 - **Ctrl+K** opens the calculator. (Tools)
-- **Alt+←** and **Alt+→** go Back and Forward through the screens you have visited.
+- **Alt+←** and **Alt+→** go Back and Forward through the screens you have visited (not while the caret is in a box, so a half-typed transaction is not left behind).
 - **F1** opens Help for the tab you are on.
 - **Alt+F4** closes T-Money.
 - **Alt** and a menu's underlined letter opens that menu; **Esc** closes it.
@@ -891,7 +891,7 @@ Opened from an amount field — **Ctrl+K** with the caret in it, or the small ca
 
 # Sums in any amount field
 
-Every amount field takes a sum as well as a number: \`12.99*4\`, \`45+12.50-3\`, \`(120+35)/3\`. It is worked out when you leave the field or press Enter, rounded to the cent. A percentage works as it does on the tape: \`100+8.5%\` is 108.50, and \`200*15%\` is 30.00. Each number is written the way the file's region writes numbers.
+The amount fields — Payment and Deposit, a split's amount, balances, budgets, loan payments, goals and the rest — take a sum as well as a number: \`12.99*4\`, \`45+12.50-3\`, \`(120+35)/3\`. It is worked out when you leave the field or press Enter, rounded to the cent. A percentage works as it does on the tape: \`100+8.5%\` is 108.50, and \`200*15%\` is 30.00. Each number is written the way the file's region writes numbers.
 
 # Find duplicates
 

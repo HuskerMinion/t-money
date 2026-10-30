@@ -85,15 +85,17 @@ export function specForOpen(o: ReportOpen): ReportSpec {
 export default function ReportsView({ initialOpen = null, initialSpec = null, onOpenAccount, onOpenTransaction, onSavedReportsChanged, onSpecChange }: Props) {
   const [gallery, setGallery] = useState<ReportGalleryEntry[]>([]);
   const [spec, setSpec] = useState<ReportSpec | null>(initialSpec ?? (initialOpen ? specForOpen(initialOpen) : null));
-  useEffect(() => {
-    onSpecChange?.(spec);
-  }, [spec, onSpecChange]);
   // My favorites: saved, named, customized reports, kept in the file.
   const [favorites, setFavorites] = useState<SavedReport[]>([]);
   const [favoritesLoaded, setFavoritesLoaded] = useState(false);
   // A saved report opened from the Favorites menu, still waiting for the
   // saved list to arrive. Null once it has been resolved (or was never asked).
   const [pendingSavedId, setPendingSavedId] = useState<string | null>(initialOpen?.savedId ?? null);
+  // Not while a favorite is still on its way: until then the spec is a
+  // stand-in, and Back would land on it.
+  useEffect(() => {
+    if (!pendingSavedId) onSpecChange?.(spec);
+  }, [spec, pendingSavedId, onSpecChange]);
   const [error, setError] = useState<string | null>(null);
   // Open straight into Customize, from the gallery's right-click menu.
   const [customizeFirst, setCustomizeFirst] = useState(false);

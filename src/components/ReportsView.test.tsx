@@ -130,6 +130,15 @@ describe("Saving a favorite does not reset the open report", () => {
     expect(saved).toHaveLength(1);
   });
 
+  it("tells the shell only the saved report itself, not its stand-in, for Back to come back to", async () => {
+    saved = [{ ...savedFromSpec(specFor("income_and_spending"), "Monthly"), id: "fav-1" }];
+    const onSpecChange = vi.fn();
+    render(<ReportsView initialOpen={{ kind: "", savedId: "fav-1" }} onOpenAccount={() => {}} onOpenTransaction={() => {}} onSpecChange={onSpecChange} />);
+    await screen.findByRole("heading", { name: "Monthly" });
+    await waitFor(() => expect(onSpecChange).toHaveBeenLastCalledWith(expect.objectContaining({ kind: "income_and_spending" })));
+    expect(onSpecChange.mock.calls.every(([s]) => s?.kind !== "")).toBe(true);
+  });
+
   it("says so when the saved report asked for is no longer in the file", async () => {
     await act(async () => {
       render(view({ kind: "", savedId: "gone" }));

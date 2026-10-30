@@ -60,6 +60,8 @@ export default function DatePopup({ value, anchor, onPick, onClose, label }: Pro
   });
 
   // On screen: under the field, or above it when there is no room below.
+  // Again when a month needs another row of weeks, so a calendar above the
+  // field grows upward rather than over it.
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -70,7 +72,7 @@ export default function DatePopup({ value, anchor, onPick, onClose, label }: Pro
     const x = Math.max(0, Math.min(r.left, window.innerWidth - box.width));
     const y = r.bottom + 2 + box.height <= window.innerHeight ? r.bottom + 2 : Math.max(0, r.top - 2 - box.height);
     setPos({ x, y });
-  }, [anchor]);
+  }, [anchor, rows.length]);
 
   // The focused day has focus, so the arrows and a screen reader follow it.
   useLayoutEffect(() => {
@@ -151,6 +153,11 @@ export default function DatePopup({ value, anchor, onPick, onClose, label }: Pro
         aria-label={`${label} calendar`}
         style={{ top: pos.y, left: pos.x }}
         onKeyDown={onKeyDown}
+        // A click between the days (the weekday names, a blank cell) leaves
+        // the focused day focused, so the keys keep working.
+        onMouseDown={(e) => {
+          if (!(e.target as HTMLElement).closest("button")) e.preventDefault();
+        }}
       >
         <div className="tm-datepopup-head">
           <button type="button" tabIndex={-1} aria-label="Previous month" title="Previous month (Page Up)" onClick={() => setFocusDay(shiftMonthDay(focusDay, -1))}>

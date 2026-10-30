@@ -124,15 +124,21 @@ export default function CalculatorDialog({ onClose, target = null }: Props) {
 
   /** Commit whatever is typed, applying the pending operator. Returns the new
    *  running total so a caller can chain, or null when the step was refused
-   *  (a division by zero). */
+   *  (a division by zero, or an entry that is not a number). */
   function commit(): number | null {
     const raw = draft.trim();
     if (raw === "") return total;
     const cents = parseMoneyStrict(raw);
-    if (cents === null) return total;
+    if (cents === null) {
+      // Not dropped quietly: Put in Payment would write the total before it
+      // as if this had been added.
+      setError(`"${raw}" is not a number. Correct it, or press C to start over.`);
+      return null;
+    }
     setDraft("");
     setCopied(false);
     if (!started) {
+      setError(null);
       setStarted(true);
       setTotal(cents);
       setLines((l) => [...l, { op: null, cents, total: cents }]);
@@ -153,7 +159,7 @@ export default function CalculatorDialog({ onClose, target = null }: Props) {
 
   /** An operator: finish what is typed, then wait for the next number. */
   function operator(op: Op) {
-    commit();
+    if (commit() === null) return;
     setPending(op);
     inputRef.current?.focus();
   }
@@ -188,6 +194,9 @@ export default function CalculatorDialog({ onClose, target = null }: Props) {
       setError(`The ${targetName} box is gone. Use Copy total and paste it where it belongs.`);
       return;
     }
+    // Into the box first, then the figure: a box that loads its text when it
+    // gets the caret (the Year plan's) would otherwise put back what it had.
+    target.focus();
     typeInto(target, formatAmountTyped(sum));
     onClose();
   }

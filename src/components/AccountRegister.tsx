@@ -31,6 +31,7 @@ import { formatDateUS, formatMoney, today } from "../lib/format";
 import { currencyOf } from "../lib/currency";
 import { save } from "@tauri-apps/plugin-dialog";
 import { registerCsv } from "../lib/registerCsv";
+import { setLeaveGuard } from "../lib/leaveGuard";
 import {
   applyRegisterView,
   balanceIsMeaningful,
@@ -213,6 +214,8 @@ export default function AccountRegister() {
     const r = await leave();
     return r !== "failed";
   }
+  // Back and Forward ask the same before taking the register away.
+  useEffect(() => setLeaveGuard(() => leaveRef.current?.() ?? Promise.resolve("clean")), []);
   // Money's "add / remove a single transaction to a tax line": the
   // row whose tax line is being chosen.
   const [taxLineFor, setTaxLineFor] = useState<string | null>(null);

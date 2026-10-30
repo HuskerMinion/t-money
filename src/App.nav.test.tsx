@@ -19,6 +19,7 @@ import { currentMonth } from "./lib/format";
 import { shiftMonth } from "./components/BillCalendar";
 import { monthTitle } from "./components/SpendingTrackerWidget";
 import type { Account } from "./lib/types";
+import { setLeaveGuard } from "./lib/leaveGuard";
 
 /** Every command answers benignly; these tests care about routing, not data. */
 function stubEverything(overrides: Record<string, () => unknown> = {}) {
@@ -712,5 +713,33 @@ describe("Back and Forward", () => {
     await screen.findByText(/Tax Line Manager/);
     await waitFor(() => expect(back()).toBeEnabled());
     expect(forward()).toBeDisabled();
+  });
+
+  it("stays put when the transaction being entered cannot be saved", async () => {
+    render(<App />);
+    await userEvent.click(screen.getByRole("button", { name: "Bills" }));
+    await screen.findByText(/Bills to Pay & income/);
+    await waitFor(() => expect(back()).toBeEnabled());
+    const leave = vi.fn(async () => "failed" as const);
+    const clear = setLeaveGuard(leave);
+    await userEvent.click(back());
+    expect(leave).toHaveBeenCalled();
+    expect(within(main()).getByText(/Bills to Pay & income/)).toBeInTheDocument();
+    clear();
+    await userEvent.click(back());
+    await waitFor(() => expect(within(main()).getByText(/Favorite Accounts/)).toBeInTheDocument());
+  });
+
+  it("Alt+← waits while the caret is in a box", async () => {
+    render(<App />);
+    await userEvent.click(screen.getByRole("button", { name: "Bills" }));
+    await screen.findByText(/Bills to Pay & income/);
+    await waitFor(() => expect(back()).toBeEnabled());
+    await userEvent.click(screen.getByLabelText("Search transactions"));
+    await userEvent.keyboard("{Alt>}{ArrowLeft}{/Alt}");
+    expect(within(main()).getByText(/Bills to Pay & income/)).toBeInTheDocument();
+    // The button still goes back.
+    await userEvent.click(back());
+    await waitFor(() => expect(within(main()).getByText(/Favorite Accounts/)).toBeInTheDocument());
   });
 });

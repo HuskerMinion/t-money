@@ -1544,7 +1544,7 @@ li:hover .tm-subs-ignore,
   background: var(--tm-ms-row-active);
 }
 
-/* The typed date field, with a calendar button that opens the native picker. */
+/* The typed date field, with a calendar button that opens T-Money's own calendar. */
 .tm-datefield {
   position: relative;
   display: flex;

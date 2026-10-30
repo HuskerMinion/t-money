@@ -160,9 +160,10 @@ export function parseMoneyStrict(input: string): number | null {
 export function parseMoneyToCents(input: string): number | null {
   const plain = parseMoneyStrict(input);
   if (plain !== null || !looksLikeSum(input)) return plain;
-  return evalAmount(input, (part) => {
-    const n = normalizeNumber(stripMoneyMarks(part), currentRegion(), 6);
-    if (n === null || n === "" || n === "." || n.startsWith("-")) return null;
+  return evalAmount(input, (part, rate) => {
+    const n = normalizeNumber(stripMoneyMarks(part), currentRegion(), 6, !rate);
+    // Digits and a point only: Number() would also take "1e3" and "0x10".
+    if (n === null || !/^(?:\d+\.?\d*|\.\d+)$/.test(n)) return null;
     return Number(n);
   });
 }

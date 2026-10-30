@@ -48,6 +48,23 @@ describe("a sum in an amount box", () => {
     expect(parseMoneyToCents("1.234.5+1")).toBeNull();
   });
 
+  it("reads a lone number in brackets as the accounting negative, even in a sum", () => {
+    expect(parseMoneyToCents("(405.26)-20")).toBe(-42526);
+    expect(parseMoneyToCents("(12.50)*2")).toBe(-2500);
+    expect(parseMoneyToCents("(120+35)/3")).toBe(5167);
+  });
+
+  it("takes digits only, not the other ways JavaScript writes a number", () => {
+    expect(parseMoneyToCents("1e3+0")).toBeNull();
+    expect(parseMoneyToCents("0x10+1")).toBeNull();
+  });
+
+  it("refuses a pasted page of brackets or minus signs rather than recursing on it", () => {
+    expect(parseMoneyToCents("-".repeat(100_000) + "1")).toBeNull();
+    expect(parseMoneyToCents("(".repeat(100_000) + "1")).toBeNull();
+    expect(looksLikeSum("(".repeat(100_000))).toBe(false);
+  });
+
   it("leaves plain amounts exactly as they were", () => {
     expect(parseMoneyToCents("1,234.56")).toBe(123456);
     expect(parseMoneyToCents("(12.50)")).toBe(-1250);
@@ -68,6 +85,9 @@ describe("a sum in an amount box", () => {
     expect(parseMoneyToCents("12,50*2")).toBe(2500);
     expect(parseMoneyToCents("1.234,50+0,50")).toBe(123500);
     expect(parseMoneyToCents("100+19%")).toBe(11900);
+    // A rate is a rate however its point is written: never eight thousand.
+    expect(parseMoneyToCents("100+8.875%")).toBe(10888);
+    expect(parseMoneyToCents("100+8,875%")).toBe(10888);
     expect(formatAmountTyped(123500)).toBe("1.235,00");
     expect(formatAmountTyped(-1200)).toBe("-12,00");
   });

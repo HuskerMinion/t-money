@@ -131,4 +131,34 @@ describe("the calculator, opened on an amount box", () => {
     expect(onClose).not.toHaveBeenCalled();
     expect(screen.getByText(/Cannot divide by zero/)).toBeInTheDocument();
   });
+
+  it("puts the total in a box that reloads its text when it gets the caret", async () => {
+    // The Year plan's boxes: focus loads the stored figure into the editor.
+    function ReloadingBox() {
+      const [text, setText] = useState("");
+      return <input data-amount aria-label="Monthly" value={text} onFocus={() => setText("40.00")} onChange={(e) => setText(e.target.value)} />;
+    }
+    render(<ReloadingBox />);
+    const box = screen.getByLabelText("Monthly") as HTMLInputElement;
+    render(<CalculatorDialog target={box} onClose={() => {}} />);
+    await userEvent.type(screen.getByLabelText("Amount"), "150");
+    await userEvent.click(screen.getByRole("button", { name: "Put in Monthly" }));
+    expect(box).toHaveValue("150.00");
+    expect(box).toHaveFocus();
+  });
+
+  it("an entry that is not a number puts nothing in the box", async () => {
+    const onClose = vi.fn();
+    render(<Form onAmount={() => {}} />);
+    const box = screen.getByLabelText("Payment") as HTMLInputElement;
+    fireEvent.change(box, { target: { value: "10" } });
+    render(<CalculatorDialog target={box} onClose={onClose} />);
+    const entry = screen.getByLabelText("Amount");
+    await userEvent.type(entry, "*");
+    fireEvent.change(entry, { target: { value: "12abc" } });
+    await userEvent.click(screen.getByRole("button", { name: "Put in Payment" }));
+    expect(box).toHaveValue("10");
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByText(/"12abc" is not a number/)).toBeInTheDocument();
+  });
 });

@@ -961,7 +961,7 @@ describe("in-place transaction form", () => {
     await screen.findByRole("table");
     await userEvent.click(screen.getByRole("button", { name: "New" }));
     const form = screen.getByLabelText("Num").closest("tr")!;
-    // The date field's hidden picker input is tabIndex -1 and out of the order.
+    // Anything kept out of the Tab order (tabIndex -1) does not count.
     const inputs = Array.from(form.querySelectorAll("input")).filter((i) => i.tabIndex !== -1);
     expect(inputs[0]).toBe(screen.getByLabelText("Num"));
     expect(inputs[1]).toBe(screen.getByLabelText("Date"));
