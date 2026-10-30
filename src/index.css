@@ -1577,6 +1577,81 @@ li:hover .tm-subs-ignore,
   color: var(--tm-ms-text);
 }
 
+/* Money's transaction form, docked under the register: three folder tabs
+   (Withdrawal, Deposit, Transfer) over a panel in the edit band's color. */
+.tm-txnform {
+  margin-top: 6px;
+}
+.tm-txnform-tabs {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  padding-left: 6px;
+}
+.tm-txnform-tab {
+  padding: 3px 16px 4px;
+  border: 1px solid var(--tm-ms-card-border);
+  border-bottom: none;
+  border-radius: 4px 4px 0 0;
+  background: linear-gradient(180deg, var(--tm-ms-tab-inactive-top) 0%, var(--tm-ms-tab-inactive-bot) 100%);
+  color: var(--tm-ms-tab-text);
+  cursor: pointer;
+}
+.tm-txnform-tab.active {
+  background: var(--tm-ms-row-active);
+  color: var(--tm-ms-text);
+  font-weight: bold;
+  /* Sits over the panel's top border, joining the tab to its page. */
+  position: relative;
+  top: 1px;
+  padding-bottom: 5px;
+}
+.tm-txnform-tab:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.tm-txnform-tab:focus-visible {
+  outline: 2px solid var(--tm-ms-text-link);
+  outline-offset: -3px;
+}
+.tm-txnform-what {
+  margin-left: auto;
+  padding: 0 8px 3px;
+  color: var(--tm-ms-text-muted);
+  font-size: 11px;
+}
+.tm-txnform-body {
+  border: 1px solid var(--tm-ms-card-border);
+  background: var(--tm-ms-row-active);
+  color: var(--tm-ms-text);
+  padding: 6px 10px 2px;
+}
+.tm-txnform-grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+  padding-bottom: 4px;
+}
+.tm-txnform-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.tm-txnform-field > span,
+.tm-txnform-field > label {
+  font-size: 11px;
+}
+.tm-txnform-grow {
+  flex: 1 1 220px;
+  max-width: 420px;
+}
+@media print {
+  .tm-txnform {
+    display: none;
+  }
+}
+
 /* An amount box with its calculator button (AmountCalcButton.tsx). The amount
    is right-aligned, so the button sits at the left, shown on hover or focus. */
 .tm-amountfield {

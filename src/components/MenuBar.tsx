@@ -59,11 +59,15 @@ export function useMenuAccelerators(menus: Menu[]): void {
       // Never steal a plain Del or a typing key from a field being edited.
       const el = e.target as HTMLElement | null;
       const typing = !!el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable);
+      // Inside the register's docked entry form a tab, list or button has
+      // the focus while a row stays selected; a plain Del there is not for
+      // the row. Ctrl+Z and the like still reach the menu.
+      const inForm = !!el?.closest?.("[data-entry-form]");
       for (const l of leaves) {
         if (!accelMatches(l.accel!, e)) continue;
-        if (typing && !e.ctrlKey && !e.metaKey && !e.altKey) return;
+        if ((typing || inForm) && !e.ctrlKey && !e.metaKey && !e.altKey) return;
         // ⌘⌫ in a field deletes the line being typed, not a transaction.
-        if (typing && l.accel === "Del") return;
+        if ((typing || inForm) && l.accel === "Del") return;
         // Ctrl+C / Ctrl+X / Ctrl+V inside a field belong to the field.
         if (typing && FIELD_OWNS.includes(l.command!)) return;
         if (runCommand(l.command!)) e.preventDefault();

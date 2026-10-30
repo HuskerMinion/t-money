@@ -12,7 +12,7 @@ import RegisterGrid, { type RegisterGroup } from "./RegisterGrid";
 import { categoryKey } from "./CategoryCombo";
 import ContextMenu, { useContextMenu, type MenuEntry } from "./ContextMenu";
 import FindInRegisterDialog from "./FindInRegisterDialog";
-import TransactionEditRow, { type TransactionDraft } from "./TransactionEditRow";
+import TransactionEditRow, { type FormTab, type TransactionDraft } from "./TransactionEditRow";
 import { onRegisterRequest, takeRegisterAction, type RegisterAction } from "../lib/registerRequest";
 import InvestmentEditRow, { type ShareTransferDraft } from "./InvestmentEditRow";
 import UpdateHoldingsDialog from "./UpdateHoldingsDialog";
@@ -63,6 +63,25 @@ export type RegisterView = RegisterShow;
 
 /** Fill the viewport with empty rows, as Money does. */
 const MIN_ROWS = 24;
+
+/** "Show transaction forms", remembered in localStorage like the ribbon: a
+ *  preference about this screen, not the file. On unless turned off, as in
+ *  Money. Reading it can throw in a locked-down webview; the form is then on. */
+const FORMS_KEY = "tm.register.forms";
+function readShowForms(): boolean {
+  try {
+    return localStorage.getItem(FORMS_KEY) !== "0";
+  } catch {
+    return true;
+  }
+}
+function writeShowForms(on: boolean) {
+  try {
+    localStorage.setItem(FORMS_KEY, on ? "1" : "0");
+  } catch {
+    // Not being able to remember the choice is not a reason to refuse it.
+  }
+}
 
 /** The first monthly date after `date`, on its day of the month, that is not
  *  before `notBefore`. Jan 31 → Feb 28, not Mar 3; a row from two years ago
@@ -140,7 +159,14 @@ export default function AccountRegister() {
   const [sort, setSort] = useState<RegisterSort>(DEFAULT_VIEW.sort);
   const viewOpts = { show: view, dates, sort };
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
-  const [showForms, setShowForms] = useState(false);
+  // Money's "Show transaction forms": on, a new transaction and an opened
+  // row are entered in the tabbed form docked under the register; off, in the
+  // register's own row. Remembered on this machine, like the ribbon.
+  const [showForms, setShowForms] = useState(readShowForms);
+  // The tab the last entry used, so the next new one opens on it.
+  const [formTab, setFormTab] = useState<FormTab | null>(null);
+  // The docked form takes the caret only once you start an entry.
+  const [formFocus, setFormFocus] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [addingNew, setAddingNew] = useState(false);
   // Enter on a new transaction opens the NEXT one, as Money's
@@ -209,13 +235,22 @@ export default function AccountRegister() {
   /** Save whatever form is open before moving on. False = it could not be
    *  saved (the form shows why) and the move should not happen. */
   async function leaveOpenForm(): Promise<boolean> {
+    return (await leaveCurrent()) !== "failed";
+  }
+  async function leaveCurrent(): Promise<"saved" | "clean" | "failed"> {
     const leave = leaveRef.current;
-    if (!leave) return true;
+    if (!leave) return "clean";
     const r = await leave();
-    return r !== "failed";
+    // A docked new entry saved on the way out is done with: the form
+    // empties for the next one, and the click that left it keeps the caret.
+    if (r === "saved") {
+      setEntrySerial((n) => n + 1);
+      setFormFocus(false);
+    }
+    return r;
   }
   // Back and Forward ask the same before taking the register away.
-  useEffect(() => setLeaveGuard(() => leaveRef.current?.() ?? Promise.resolve("clean")), []);
+  useEffect(() => setLeaveGuard(leaveCurrent), []);
   // Money's "add / remove a single transaction to a tax line": the
   // row whose tax line is being chosen.
   const [taxLineFor, setTaxLineFor] = useState<string | null>(null);
@@ -276,6 +311,15 @@ export default function AccountRegister() {
 
   const account = accounts.find((a) => a.id === selectedAccountId) ?? null;
   const isInvestment = account?.type === "investment" || account?.type === "retirement";
+  // Money's tabbed form is for cash accounts; an investment register keeps
+  // its buy and sell rows in the register.
+  const formMode = showForms && !isInvestment;
+  // A row open in the docked form that has gone from the register (an
+  // undo took it back, another screen deleted it) leaves the form, which
+  // would otherwise say "Opening…" for good.
+  useEffect(() => {
+    if (formMode && editingId && !registerLoading && !register.some((r) => r.id === editingId)) setEditingId(null);
+  }, [formMode, editingId, registerLoading, register]);
   // A house or a car is worth what it is worth; its balance is not the
   // sum of anything.
   const isAsset = !!account && isValuedAsset(account.type);
@@ -993,6 +1037,9 @@ export default function AccountRegister() {
   function closeForm() {
     setEditingId(null);
     setAddingNew(false);
+    // The docked form goes back to an empty new entry, without the caret.
+    setFormFocus(false);
+    setEntrySerial((n) => n + 1);
     setEntryPreset(null);
     // Split… or Attachments… was for that one opening; a row opened
     // again later opens plain.
@@ -1007,7 +1054,7 @@ export default function AccountRegister() {
     setSelectedRowId(id);
     setAddingNew(false);
     setEditingId(id);
-    setShowForms(true);
+    setFormFocus(true);
     return true;
   }
 
@@ -1044,7 +1091,6 @@ export default function AccountRegister() {
     setCashPreset({ payee: kind.payee, categoryId, side: kind.side });
     setNewKind("cash");
     setAddingNew(true);
-    setShowForms(true);
   }
 
   async function startNew(kind: "investment" | "cash" = "investment", preset: typeof entryPreset = null) {
@@ -1054,7 +1100,9 @@ export default function AccountRegister() {
     setNewKind(kind);
     setEditingId(null);
     setAddingNew(true);
-    setShowForms(true);
+    // The docked form is already there; this puts the caret in a fresh one.
+    setFormFocus(true);
+    setEntrySerial((n) => n + 1);
   }
 
   // The register as shown, to a CSV file.
@@ -1120,7 +1168,9 @@ export default function AccountRegister() {
     try {
       await removeTransaction(id, selectedAccountId);
       if (selectedRowId === id) setSelectedRowId(null);
-      closeForm();
+      // The docked form may hold an entry being typed, which deleting
+      // another row has no business throwing away.
+      if (!formMode || editingId === id) closeForm();
     } catch (e) {
       // The same for a delete that is refused.
       setRefusal(String(e));
@@ -1136,10 +1186,7 @@ export default function AccountRegister() {
    *  too eager: you cannot look at a row, or pick one to clear or delete,
    *  without it unfolding under the cursor. Opening now always takes a
    *  deliberate second action — a second click on the already-selected row,
-   *  a double-click, or the Edit button.
-   *
-   *  Ticking "Show transaction forms" while a row is selected still opens
-   *  that row, which is what the toggle is for. */
+   *  a double-click, or the Edit button. */
   async function handleSelect(id: string) {
     // Moving to another row SAVES the open form first, as Money did —
     // a change followed by a click elsewhere is not thrown away. If it
@@ -1147,6 +1194,9 @@ export default function AccountRegister() {
     if (!(await leaveOpenForm())) return;
     setSelectedRowId(id);
     setAddingNew(false);
+    // The docked form goes back to a new entry without taking the caret, so
+    // the arrows keep moving through the register.
+    setFormFocus(false);
     // Selecting a different row closes whatever was open. Two expanded rows
     // at once is not a state Money has, and leaving the old one open pushes
     // the register around while you are trying to read it. The form is for
@@ -1214,7 +1264,7 @@ export default function AccountRegister() {
       // to the payee list picking its next match.
       if (editingId || addingNew) return;
       const target = e.target as HTMLElement | null;
-      if (target?.closest?.("input, textarea, select, [contenteditable='true'], [role='dialog'], [role='listbox'], [role='menu']")) return;
+      if (target?.closest?.("input, textarea, select, [contenteditable='true'], [role='dialog'], [role='listbox'], [role='menu'], [data-entry-form]")) return;
       // A dialog or menu open anywhere takes the keys even when focus has not
       // landed inside it yet.
       if (document.querySelector("[role='dialog'], [role='menu']")) return;
@@ -1473,7 +1523,9 @@ export default function AccountRegister() {
             entryRow
             entryNum={lastWasCheck ? nextCheckNumber(register) : null}
             entryDate={lastEntryDate}
-            editingId={editingId}
+            // With the forms on, a cash row is opened into the docked form
+            // below, and stays a plain selected row up here.
+            editingId={formMode ? null : editingId}
             investment={isInvestment}
             sort={sort}
             onSortColumn={(c) => setSort(nextSort(c, sort))}
@@ -1539,7 +1591,7 @@ export default function AccountRegister() {
               />
             )}
             renderNewRow={
-              addingNew
+              addingNew && !formMode
                 ? () => isInvestment && newKind === "investment" ? (
                     <InvestmentEditRow
                       accountId={account.id}
@@ -1569,7 +1621,6 @@ export default function AccountRegister() {
                         setEntrySerial((n) => n + 1);
                         setEditingId(null);
                         setAddingNew(true);
-                        setShowForms(true);
                       }}
                       columns={isInvestment ? 10 : 9}
                       goals={goals}
@@ -1598,6 +1649,67 @@ export default function AccountRegister() {
           />
         )}
       </div>
+
+      {/* Money's transaction form, docked under the register: always ready
+          for the next entry, and a row opened (double-click, Edit) comes
+          down into it. */}
+      {formMode && account && (() => {
+        const r = editingId ? register.find((x) => x.id === editingId) ?? null : null;
+        if (editingId && (!r || splitsLoad?.id !== r.id)) {
+          return (
+            <div className="tm-txnform tm-text-muted" aria-busy="true">
+              Opening…
+            </div>
+          );
+        }
+        return (
+          <TransactionEditRow
+            layout="form"
+            key={r ? `${r.id}:${splitsLoad?.token}:${openSeq}` : `new:${selectedAccountId}:${entrySerial}`}
+            row={r}
+            autoFocus={formFocus}
+            initialTab={formTab}
+            onTabChange={setFormTab}
+            accountName={account.name}
+            columnLabels={columnLabels}
+            goals={r ? goalsFor(r.transfer_account_id) : goals}
+            classifications={classifications}
+            leaveRef={leaveRef}
+            categories={categories}
+            payees={payees}
+            onCreateCategory={createCategoryInline}
+            initialSplits={r ? editingSplits : []}
+            openOnMount={r ? openPart : null}
+            onOpenedOnMount={() => setOpenPart(null)}
+            suggestedCheckNumber={r ? null : lastWasCheck ? nextCheckNumber(register) : null}
+            nextCheckNumber={nextCheckNumber(register)}
+            defaultDate={lastEntryDate}
+            // Open accounts, plus a closed one this row or its split lines
+            // already transfer to (N9).
+            transferTargets={pickableAccounts(
+              accounts,
+              r ? [r.transfer_account_id, ...editingSplits.map((l) => l.transfer_account_id)] : []
+            ).filter((a) => a.id !== selectedAccountId)}
+            currency={currency}
+            onCommit={commitDraft}
+            onCancel={closeForm}
+            busy={busy}
+            commonTransactions={commons}
+            onSaveCommon={saveCommon}
+            onUseCommon={useCommon}
+            onDeleteCommon={deleteCommon}
+            onAttachmentsChanged={() => void loadRegister(account.id)}
+            onEntered={() => {
+              // Saved: a fresh form on the same tab, caret in it, for the
+              // next receipt in the stack.
+              setEditingId(null);
+              setAddingNew(false);
+              setFormFocus(true);
+              setEntrySerial((n) => n + 1);
+            }}
+          />
+        );
+      })()}
 
       {/* Find, over the register. No backdrop: the register stays
           visible and the chosen row scrolls into view behind the window,
@@ -1685,18 +1797,25 @@ export default function AccountRegister() {
         >
           Export CSV…
         </button>
-        <label className="inline-flex items-center gap-1">
+        {!isInvestment && (
+        <label className="inline-flex items-center gap-1" title="Enter transactions in Money's tabbed form under the register, rather than in the register's row">
           <input
             type="checkbox"
             checked={showForms}
             onChange={(e) => {
-              setShowForms(e.target.checked);
-              if (!e.target.checked) closeForm();
-              else if (selectedRowId) setEditingId(selectedRowId);
+              const on = e.target.checked;
+              // What is being typed is saved first, in the place it was typed.
+              void leaveOpenForm().then((left) => {
+                if (!left) return;
+                closeForm();
+                setShowForms(on);
+                writeShowForms(on);
+              });
             }}
           />
           Show transaction forms
         </label>
+        )}
         <span className="flex-1" />
         <button
           className="aero-btn"

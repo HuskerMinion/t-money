@@ -239,18 +239,28 @@ Open an account from the rail or the Account List. The register lists transactio
 
 > **Trying the app out?** **File → New → Sample file with demo data…** makes a brand-new file with three years of invented accounts, transactions, bills, budgets and investments in it — twelve accounts including a line of credit paid as a split, a closed account, a 401(k) with employer matches and a rebalance, rename rules, attachments, a few raw bank-text rows to file, and charges for the forecast to notice — enough for every screen and every report to have something to show. It can only ever create a new file; nothing you already have is touched, and none of the data in it belongs to anybody.
 
-Click the **entry line** at the bottom (today's date, "Click here to enter a transaction"), click **New**, or click any empty row. The form opens in place:
+With **Show transaction forms** ticked (below the register, and on unless you turn it off), transactions are entered the way Money did it: in a form under the register with three tabs.
+
+- **Withdrawal** — money out: **Pay to**, **Amount**, **Category**.
+- **Deposit** — money in: **From**, **Amount**, **Category**.
+- **Transfer** — money between two of your accounts: **From** and **To** instead of a category. One of them is this account; pick the other in either list, and the money goes out of or comes into this one accordingly. The Pay to is filled in as "Transfer Money" and can be typed over.
+
+The form is always there, ready for the next entry: click a tab, or click into it, and type. **New** or the entry line puts the caret in it. Double-click a row (or select it and click **Edit**) to bring it down into the form on its own tab. After **Enter** the form is empty again, on the same tab, for the next receipt in the pile; **Cancel** empties it. ← and → move between the tabs. Investment accounts keep their buy and sell rows in the register.
+
+Untick **Show transaction forms** to type in the register's own row instead: click the **entry line** at the bottom (today's date, "Click here to enter a transaction"), click **New**, or click any empty row, and the form opens in place, with Payment and Deposit in their columns. T-Money remembers which you chose.
+
+The fields, either way:
 
 - **Num** — a check number, or a marker like ATM or EFT. Free text. Type **+** to fill in the next check number (one past the highest in this account). After you enter a check, the next new transaction offers the following number automatically; delete it if the next one is a card swipe, and the offer stops until you write another check.
 - **Date** — where the caret starts on a new transaction, because it is the one field that arrives as a guess. Type it: \`8/3\`, \`8/3/26\` or \`8/3/2026\` all work (in the order the file's region writes dates); **+** and **−** step a day, **T** is today, and the small ▾ opens a calendar. A new transaction starts on the date of the last one you entered, so a stack of receipts goes in without retyping the date — Tab straight past it when it is already right. Opening a transaction that already exists starts in the Payee instead.
-- **Payee** — offers the payees you have used before. A new name is added to the payee list when you save.
-- **Payment / Deposit** — the amount in one or the other, typed the way the file's region writes numbers. You can type a sum instead — \`12.99*4\` for four at $12.99, \`100+8.5%\` for tax on top — and it is worked out when you leave the field. The small calculator at the left of the field (or **Ctrl+K**) opens the calculator on the amount, and **Put in Payment** writes its total back.
+- **Payee** (Pay to, or From on a deposit) — offers the payees you have used before. A new name is added to the payee list when you save.
+- **Payment / Deposit** (the Amount, on the tabbed form) — the amount in one or the other, typed the way the file's region writes numbers. You can type a sum instead — \`12.99*4\` for four at $12.99, \`100+8.5%\` for tax on top — and it is worked out when you leave the field. The small calculator at the left of the field (or **Ctrl+K**) opens the calculator on the amount, and **Put in Payment** writes its total back.
 - **Category** — type any part of a name to filter: \`fuel\` finds "Automobile : Fuel". Type **Parent : Child** to reach a subcategory directly; the spaces around the colon and the capitals do not matter, so \`loan:heloc\` finds "Loan : HELOC" and Tab takes it rather than offering to add a second one. If what you typed does not exist, choose **+ Add …** and the new category is created without leaving the transaction; typing an existing parent and a new child ("Other Income : Garage Sale") adds the subcategory straight under that parent. To move money to another account choose **Transfer : (account)** in the same list — see [[splits-transfers|Splits, transfers and goals]].
 - **Memo** — notes; shown as the row's tooltip.
 - **Split** — divide the amount across several categories. See [[splits-transfers|Splits, transfers and goals]].
 - **Common transactions** — save the filled-in form as a named template (rent, the grocery run) and reuse it from the same menu.
 
-Press **Enter** to save, **Esc** to cancel — or just click another row: a changed form is saved on the way out, and one that cannot be saved stays open and says why. Check **Show transaction forms** to have the form open whenever a row is selected. Each row shows its category (or the transfer's other account) and memo in gray after the payee.
+Press **Enter** to save, **Esc** to cancel — or just click another row: a changed form is saved on the way out, and one that cannot be saved stays open and says why. Each row shows its category (or the transfer's other account) and memo in gray after the payee.
 
 # Editing, voiding, deleting
 
@@ -315,7 +325,7 @@ A split line can also be a **transfer**: the accounts are offered at the bottom 
 
 # Transfers
 
-Choose **Transfer : (account)** in the Category field. One transfer writes two linked rows — money out of this account, money into the other — and either side can be edited or deleted; the other follows. Transfers are not income or spending, so they never appear in the category and payee reports.
+On the tabbed form, use the **Transfer** tab and choose the other account as **From** or **To**. In the register's own row, choose **Transfer : (account)** in the Category field. One transfer writes two linked rows — money out of this account, money into the other — and either side can be edited or deleted; the other follows. Transfers are not income or spending, so they never appear in the category and payee reports.
 
 A transaction that is already in the register can become a transfer the same way: open it, choose **Transfer : (account)**, Enter. The row in the other account is written and linked for you, and this row keeps its date, Num, memo and cleared mark — which is how a bank download that only said "Transfer" is pointed at the account it actually went to. The reverse works too: give a transfer a category and it becomes an ordinary transaction, and the other account's row goes. Both can be undone.
 

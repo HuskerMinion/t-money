@@ -133,6 +133,9 @@ const initial = useAccountStore.getState();
 beforeEach(() => {
   resetIpc();
   useAccountStore.setState(initial, true);
+  // These tests edit in the register's own row; Money's tabbed form, the
+  // default, has its own block at the end.
+  localStorage.setItem("tm.register.forms", "0");
 });
 
 /** Body rows that carry data (skips the aria-hidden filler rows). */
@@ -975,9 +978,14 @@ describe("in-place transaction form", () => {
   it("selecting a row does not open its form", async () => {
     render(<AccountRegister />);
     await screen.findByRole("table");
-    await userEvent.click(screen.getByLabelText("Show transaction forms"));
     await userEvent.click(dataRows()[1]);
     expect(screen.queryByLabelText("Payee")).not.toBeInTheDocument();
+    // Nor, with the transaction forms showing, does it load into the form.
+    await userEvent.click(screen.getByLabelText("Show transaction forms"));
+    await screen.findByRole("tab", { name: "Withdrawal" });
+    await userEvent.click(dataRows()[0]);
+    expect(screen.getByLabelText("Payee")).toHaveValue("");
+    expect(screen.getByText("New transaction")).toBeInTheDocument();
   });
 
   it("a second click on the selected row opens it", async () => {
@@ -2405,11 +2413,13 @@ describe("register interactions", () => {
       await userEvent.click(screen.getByRole("menuitem", { name: "Split…" }));
       const split = await screen.findByRole("dialog", { name: "Transaction with Multiple Categories" });
       await userEvent.click(within(split).getByRole("button", { name: "Cancel" }));
-      // That path closes the form, then opens the selected row again without
-      // going through a double-click.
+      // Both changes close the form; the row opened again opens plain.
       const toggle = screen.getByRole("checkbox", { name: "Show transaction forms" });
       await userEvent.click(toggle);
+      await screen.findByRole("tab", { name: "Withdrawal" });
       await userEvent.click(toggle);
+      await waitFor(() => expect(screen.queryByRole("tab", { name: "Withdrawal" })).toBeNull());
+      await userEvent.dblClick(dataRows()[0]);
       expect(await screen.findByLabelText("Payee")).toBeInTheDocument();
       expect(screen.queryByRole("dialog", { name: "Transaction with Multiple Categories" })).toBeNull();
     });
@@ -3966,5 +3976,198 @@ describe("an action parked by the account list or the Investments view", () => {
     act(() => requestRegisterAction({ accountId: "acc-loan", action: { kind: "terms" } }));
     expect(await screen.findByRole("dialog", { name: "Loan terms" })).toBeInTheDocument();
     expect(takeRegisterAction("acc-loan")).toBeNull();
+  });
+});
+
+describe("Money's transaction forms", () => {
+  const savings: Account = { ...checking, id: "acc-2", name: "Everyday Savings 5678", balance_cents: 500000 };
+  const transfer: RegisterRow = {
+    ...withdrawal,
+    id: "t-5",
+    payee: "Transfer Money",
+    category_id: null,
+    category_name: null,
+    transfer_account_id: "acc-2",
+    transfer_account_name: "Everyday Savings 5678",
+    amount_cents: -10000,
+  };
+
+  const handlers = () => ({
+    get_register: () => [deposit, withdrawal, transfer],
+    list_categories: () => [{ id: "c-1", name: "Groceries", kind: "expense", full_name: "Groceries" }],
+    list_payees: () => [],
+    list_splits: () => [],
+    create_transfer: () => ({ id: "t-9" }),
+    create_transaction: () => ({ id: "t-3" }),
+    get_all_accounts: () => [checking, savings],
+  });
+
+  beforeEach(() => {
+    localStorage.removeItem("tm.register.forms");
+    setIpcHandlers(handlers());
+    useAccountStore.setState({ accounts: [checking, savings], selectedAccountId: "acc-1" });
+  });
+
+  const tab = (name: string) => screen.getByRole("tab", { name });
+
+  it("waits under the register with Withdrawal, Deposit and Transfer tabs, without taking the caret", async () => {
+    render(<AccountRegister />);
+    await screen.findByRole("table");
+    expect(tab("Withdrawal")).toHaveAttribute("aria-selected", "true");
+    expect(tab("Deposit")).toHaveAttribute("aria-selected", "false");
+    expect(tab("Transfer")).toBeInTheDocument();
+    expect(screen.getByLabelText("Category:")).toBeInTheDocument();
+    expect(screen.getByLabelText("Date")).not.toHaveFocus();
+    expect(screen.getByRole("checkbox", { name: /Show transaction forms/ })).toBeChecked();
+  });
+
+  it("a withdrawal is a payment: Pay to, Amount, Category", async () => {
+    render(<AccountRegister />);
+    await screen.findByRole("table");
+    expect(screen.getByText("Pay to")).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText("Payee"), "Safeway");
+    await userEvent.type(screen.getByLabelText("Amount"), "53.23");
+    await pickCategory("Groceries");
+    await userEvent.click(screen.getByRole("button", { name: "Enter" }));
+    await waitFor(() => expect(invokeCalls.some((c) => c.cmd === "create_transaction")).toBe(true));
+    const payload = (invokeCalls.find((c) => c.cmd === "create_transaction")!.args as { payload: Record<string, unknown> }).payload;
+    expect(payload).toMatchObject({ amount_cents: -5323, payee: "Safeway", category_id: "c-1" });
+  });
+
+  it("a deposit comes From someone, and the next entry opens on Deposit again", async () => {
+    render(<AccountRegister />);
+    await screen.findByRole("table");
+    await userEvent.click(tab("Deposit"));
+    expect(screen.getByText("From")).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText("Payee"), "Employer");
+    await userEvent.type(screen.getByLabelText("Amount"), "1200{Enter}");
+    await waitFor(() => expect(invokeCalls.some((c) => c.cmd === "create_transaction")).toBe(true));
+    const payload = (invokeCalls.find((c) => c.cmd === "create_transaction")!.args as { payload: Record<string, unknown> }).payload;
+    expect(payload.amount_cents).toBe(120000);
+    await waitFor(() => expect(screen.getByLabelText("Amount")).toHaveValue(""));
+    expect(tab("Deposit")).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("a transfer has From and To accounts and no category", async () => {
+    render(<AccountRegister />);
+    await screen.findByRole("table");
+    await userEvent.click(tab("Transfer"));
+    expect(screen.queryByLabelText("Category:")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("From")).toHaveValue("self");
+    await userEvent.selectOptions(screen.getByLabelText("To"), "acc-2");
+    expect(screen.getByLabelText("Payee")).toHaveValue("Transfer Money");
+    await userEvent.type(screen.getByLabelText("Amount"), "250");
+    await userEvent.click(screen.getByRole("button", { name: "Enter" }));
+    await waitFor(() => expect(invokeCalls.some((c) => c.cmd === "create_transfer")).toBe(true));
+    expect(invokeCalls.find((c) => c.cmd === "create_transfer")!.args).toMatchObject({ fromAccountId: "acc-1", toAccountId: "acc-2", amountCents: 25000 });
+  });
+
+  it("a transfer From the other account comes in", async () => {
+    render(<AccountRegister />);
+    await screen.findByRole("table");
+    await userEvent.click(tab("Transfer"));
+    await userEvent.selectOptions(screen.getByLabelText("From"), "acc-2");
+    expect(screen.getByLabelText("To")).toHaveValue("self");
+    await userEvent.type(screen.getByLabelText("Amount"), "75");
+    await userEvent.click(screen.getByRole("button", { name: "Enter" }));
+    await waitFor(() => expect(invokeCalls.some((c) => c.cmd === "create_transfer")).toBe(true));
+    expect(invokeCalls.find((c) => c.cmd === "create_transfer")!.args).toMatchObject({ fromAccountId: "acc-2", toAccountId: "acc-1", amountCents: 7500 });
+  });
+
+  it("a transfer with no account chosen says so and saves nothing", async () => {
+    render(<AccountRegister />);
+    await screen.findByRole("table");
+    await userEvent.click(tab("Transfer"));
+    await userEvent.type(screen.getByLabelText("Amount"), "75");
+    await userEvent.click(screen.getByRole("button", { name: "Enter" }));
+    expect(await screen.findByText(/Choose the account the money moves to or from/)).toBeInTheDocument();
+    expect(invokeCalls.some((c) => c.cmd === "create_transfer" || c.cmd === "create_transaction")).toBe(false);
+  });
+
+  it("a row opened into the form shows on its own tab", async () => {
+    render(<AccountRegister />);
+    await screen.findByRole("table");
+    await userEvent.dblClick(screen.getByText("Opening Deposit"));
+    await waitFor(() => expect(tab("Deposit")).toHaveAttribute("aria-selected", "true"));
+    expect(screen.getByLabelText("Amount")).toHaveValue("1,500.00");
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await userEvent.dblClick(screen.getAllByText("Transfer Money")[0]);
+    await waitFor(() => expect(tab("Transfer")).toHaveAttribute("aria-selected", "true"));
+    expect(screen.getByLabelText("To")).toHaveValue("acc-2");
+  });
+
+  it("unticked, entry goes back into the register's row, and that is remembered", async () => {
+    const { unmount } = render(<AccountRegister />);
+    await screen.findByRole("table");
+    await userEvent.click(screen.getByRole("checkbox", { name: /Show transaction forms/ }));
+    await waitFor(() => expect(screen.queryByRole("tab", { name: "Withdrawal" })).not.toBeInTheDocument());
+    expect(localStorage.getItem("tm.register.forms")).toBe("0");
+    unmount();
+    render(<AccountRegister />);
+    await screen.findByRole("table");
+    expect(screen.queryByRole("tab", { name: "Withdrawal" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "New" }));
+    expect(screen.getByLabelText("Payment")).toBeInTheDocument();
+  });
+
+  const creates = () => invokeCalls.filter((c) => c.cmd === "create_transaction").length;
+
+  it("an entry saved by clicking away is saved once, and the form empties", async () => {
+    render(<AccountRegister />);
+    await screen.findByRole("table");
+    await userEvent.type(screen.getByLabelText("Payee"), "Safeway");
+    await userEvent.type(screen.getByLabelText("Amount"), "10");
+    await userEvent.click(dataRows()[1]);
+    await waitFor(() => expect(creates()).toBe(1));
+    await waitFor(() => expect(screen.getByLabelText("Payee")).toHaveValue(""));
+    expect(screen.getByLabelText("Date")).not.toHaveFocus();
+    await userEvent.click(dataRows()[0]);
+    await userEvent.click(screen.getByRole("button", { name: "Enter" }));
+    expect(await screen.findByText(/Enter an amount/)).toBeInTheDocument();
+    expect(creates()).toBe(1);
+  });
+
+  it("an entry saved by switching accounts does not follow into the new one", async () => {
+    const { rerender } = render(<AccountRegister />);
+    await screen.findByRole("table");
+    await userEvent.type(screen.getByLabelText("Payee"), "Safeway");
+    await userEvent.type(screen.getByLabelText("Amount"), "20");
+    act(() => {
+      useAccountStore.setState({ selectedAccountId: "acc-2" });
+    });
+    rerender(<AccountRegister />);
+    await waitFor(() => expect(creates()).toBe(1));
+    expect(screen.getByLabelText("Payee")).toHaveValue("");
+    expect(screen.getByLabelText("Amount")).toHaveValue("");
+  });
+
+  it("a payee's last amount is offered only on the tab it went that way", async () => {
+    setIpcHandlers({
+      ...handlers(),
+      list_payees: () => [
+        { id: "p-1", name: "Paycheck", last_category_id: null, last_category_name: null, usage_count: 3, updated_at: "2026-09-01T00:00:00Z", last_amount_cents: 250000 },
+      ],
+    });
+    render(<AccountRegister />);
+    await screen.findByRole("table");
+    await userEvent.type(screen.getByLabelText("Payee"), "Paycheck");
+    await userEvent.tab();
+    expect(screen.getByLabelText("Amount")).toHaveValue("");
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await userEvent.click(tab("Deposit"));
+    await userEvent.type(screen.getByLabelText("Payee"), "Paycheck");
+    await userEvent.tab();
+    await waitFor(() => expect(screen.getByLabelText("Amount")).toHaveValue("2,500.00"));
+  });
+
+  it("deleting a selected row keeps what is being typed in the form", async () => {
+    setIpcHandlers({ ...handlers(), delete_transaction: () => null });
+    render(<AccountRegister />);
+    await screen.findByRole("table");
+    await userEvent.click(dataRows()[1]);
+    await userEvent.type(screen.getByLabelText("Payee"), "Safeway");
+    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+    await waitFor(() => expect(invokeCalls.some((c) => c.cmd === "delete_transaction")).toBe(true));
+    expect(screen.getByLabelText("Payee")).toHaveValue("Safeway");
   });
 });

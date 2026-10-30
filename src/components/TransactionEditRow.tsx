@@ -7,9 +7,9 @@
 //   2. a second line for the fields the grid does not show: Category, Memo
 //   3. a button strip: Common Transactions ▾ | Enter | Split | Cancel
 //
-// This is not a modal. Money reveals it with the "Show transaction forms"
-// checkbox at the foot of the register, and it edits the selected row where it
-// sits.
+// This is not a modal. With layout="row" it edits the selected row where it
+// sits. With layout="form" (Money's "Show transaction forms", the default) it
+// is the tabbed Withdrawal / Deposit / Transfer form docked under the register.
 import AmountCalcButton from "./AmountCalcButton";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -138,7 +138,23 @@ interface Props {
   openOnMount?: "split" | "attachments" | null;
   /** Called once `openOnMount` has been acted on, so the caller can forget it. */
   onOpenedOnMount?: () => void;
+  /** "row" edits in the register's own columns; "form" is Money's
+   *  transaction form docked under the register, with its Withdrawal,
+   *  Deposit and Transfer tabs. */
+  layout?: "row" | "form";
+  /** The tab a NEW form opens on: the one the last entry used. */
+  initialTab?: FormTab | null;
+  /** Told when the tab changes, so the next new entry opens on it. */
+  onTabChange?: (tab: FormTab) => void;
+  /** This account's name, for the Transfer tab's From and To. */
+  accountName?: string;
+  /** False for the form that waits under the register: it must not take
+   *  the caret from wherever it is until you start an entry. */
+  autoFocus?: boolean;
 }
+
+/** The tabs of Money's transaction form. */
+export type FormTab = "withdrawal" | "deposit" | "transfer";
 
 export type LeaveResult = "saved" | "clean" | "failed";
 
@@ -225,6 +241,11 @@ export default function TransactionEditRow({
   onAttachmentsChanged,
   openOnMount = null,
   onOpenedOnMount,
+  layout = "row",
+  initialTab = null,
+  onTabChange,
+  accountName = "This account",
+  autoFocus = true,
 }: Props) {
   const initial = seed(row, suggestedCheckNumber, defaultDate, preset);
 
@@ -241,6 +262,7 @@ export default function TransactionEditRow({
   // over both: that click said which field you meant.
   const startIn: "payment" | "deposit" | "date" | "payee" =
     preset?.side === "payment" ? "payment" : preset?.side === "deposit" ? "deposit" : row ? "payee" : "date";
+  const focusFirst = autoFocus ? startIn : null;
   const [goalId, setGoalId] = useState<string>(row?.goal_id ?? "");
   // What this row is FOR, one value per axis. A new row starts unset.
   const [classes, setClasses] = useState<ClassPick[]>(row?.classes ? [...row.classes] : []);
@@ -367,6 +389,72 @@ export default function TransactionEditRow({
       : "";
   });
 
+  // Money's transaction form: the tab says what kind of entry this is, and
+  // the one Amount box is the Payment or the Deposit accordingly. On the
+  // Transfer tab the money comes IN when the other account is the From.
+  const [tab, setTabState] = useState<FormTab>(() =>
+    transferToAccountId !== null
+      ? "transfer"
+      : row
+        ? row.amount_cents > 0 ? "deposit" : "withdrawal"
+        : initialTab ?? (preset?.side === "deposit" ? "deposit" : "withdrawal")
+  );
+  const [inbound, setInbound] = useState(initial.deposit !== "");
+  const side: "payment" | "deposit" = tab === "deposit" || (tab === "transfer" && inbound) ? "deposit" : "payment";
+  function setAmount(text: string) {
+    if (side === "deposit") {
+      setDeposit(text);
+      setPayment("");
+    } else {
+      setPayment(text);
+      setDeposit("");
+    }
+  }
+  /** Whatever amount is typed, moved to the side the tab now says. */
+  function moveAmountTo(to: "payment" | "deposit") {
+    const amount = payment || deposit;
+    setPayment(to === "payment" ? amount : "");
+    setDeposit(to === "deposit" ? amount : "");
+  }
+  // The tab a NEW entry used is the one the next new entry opens on; an
+  // edit of an existing row does not change it.
+  function noteTab(next: FormTab) {
+    if (row === null) onTabChange?.(next);
+  }
+  function setTab(next: FormTab) {
+    if (next === tab) return;
+    setTabState(next);
+    noteTab(next);
+    if (next === "transfer") {
+      // A category is not a transfer: the From and To say where it goes.
+      if (transferToAccountId === null) setCategoryId("");
+      setInbound(false);
+      moveAmountTo("payment");
+    } else {
+      if (transferToAccountId !== null) {
+        setCategoryId("");
+        setOtherAmount("");
+        if (payee === "Transfer Money") setPayee("");
+      }
+      moveAmountTo(next === "deposit" ? "deposit" : "payment");
+    }
+  }
+  // The Transfer tab's two accounts. One of them is always this account:
+  // "self" in the lists, and "" until the other one is chosen.
+  const fromValue = inbound ? (transferToAccountId ?? "") : "self";
+  const toValue = inbound ? "self" : (transferToAccountId ?? "");
+  function pickTransfer(end: "from" | "to", value: string) {
+    const otherEnd = end === "from" ? toValue : fromValue;
+    // This account at one end puts the other account at the other end.
+    const nowInbound = value === "self" ? end === "to" : end === "from";
+    const otherId = value === "self" ? (otherEnd === "self" ? "" : otherEnd) : value;
+    setInbound(nowInbound);
+    moveAmountTo(nowInbound ? "deposit" : "payment");
+    if (currencyOfTarget(otherId || null) !== otherCurrency) setOtherAmount("");
+    setCategoryId(otherId ? `${TRANSFER_PREFIX}${otherId}` : "");
+    if (otherId && !payee.trim()) setPayee("Transfer Money");
+  }
+
   /** Money offers a known payee's last category when you re-enter it.
    *  Only ever fills a category the user has not chosen, and only on a NEW
    *  transaction — silently re-filing something they are editing would be a
@@ -383,7 +471,8 @@ export default function TransactionEditRow({
     // (Consequence: changing the payee afterwards does not re-suggest. That
     // needs tracking whether the value was auto-filled; not worth the state
     // until somebody asks for it.)
-    if (categoryId === "" && match.last_category_id) {
+    // On the Transfer tab the accounts say where it goes, not a category.
+    if (categoryId === "" && match.last_category_id && !(layout === "form" && tab === "transfer")) {
       setCategoryId(match.last_category_id);
     }
 
@@ -393,7 +482,12 @@ export default function TransactionEditRow({
     // Deposit, which is how the user reads it back.
     if (payment === "" && deposit === "" && match.last_amount_cents != null) {
       const cents = match.last_amount_cents;
-      if (cents < 0) setPayment(formatAmountBare(cents));
+      // On the tabbed form the tab you are on decides which way the money
+      // goes, so the figure is offered only when it went that way last time:
+      // a paycheck's amount is not put in as a withdrawal.
+      if (layout === "form") {
+        if ((tab === "withdrawal" && cents < 0) || (tab === "deposit" && cents > 0)) setAmount(formatAmountBare(cents));
+      } else if (cents < 0) setPayment(formatAmountBare(cents));
       else if (cents > 0) setDeposit(formatAmountBare(cents));
     }
   }
@@ -416,9 +510,17 @@ export default function TransactionEditRow({
 
   function commit(): Promise<boolean> {
     if (inFlight.current) return inFlight.current;
-    const saving = save().finally(() => {
-      inFlight.current = null;
-    });
+    const saving = save()
+      .then((ok) => {
+        // A new entry, once saved, is not saved again on the way out: the
+        // register gives it a fresh form, but a leave that arrives first
+        // must not write a second copy.
+        if (ok && row === null) savedNew.current = true;
+        return ok;
+      })
+      .finally(() => {
+        inFlight.current = null;
+      });
     inFlight.current = saving;
     return saving;
   }
@@ -430,9 +532,13 @@ export default function TransactionEditRow({
       setError("Type a date the form can read, such as 8/3/2026.");
       return false;
     }
+    if (layout === "form" && tab === "transfer" && transferToAccountId === null) {
+      setError("Choose the account the money moves to or from.");
+      return false;
+    }
     const cents = resolveAmountCents();
     if (cents === null) {
-      setError("Enter a Payment or a Deposit amount.");
+      setError(layout === "form" ? "Enter an amount." : "Enter a Payment or a Deposit amount.");
       return false;
     }
     if (!payee.trim() && transferToAccountId === null) {
@@ -517,11 +623,12 @@ export default function TransactionEditRow({
   const snapshot = () => JSON.stringify([checkNumber, date, payee, payment, deposit, categoryId, otherAmount, notes, goalId, splits, [...classes].sort((a, b) => a.classification_id.localeCompare(b.classification_id)).map((c) => `${c.classification_id}:${c.value_id}`)]);
   const opened = useRef<string | null>(null);
   if (opened.current === null) opened.current = snapshot();
+  const savedNew = useRef(false);
   const dirty = snapshot() !== opened.current || (row === null && (payee.trim() !== "" || payment.trim() !== "" || deposit.trim() !== ""));
   useLayoutEffect(() => {
     if (!leaveRef) return;
     leaveRef.current = async () => {
-      if (!dirty) return "clean";
+      if (!dirty || savedNew.current) return "clean";
       return (await commit()) ? "saved" : "failed";
     };
     return () => {
@@ -545,6 +652,16 @@ export default function TransactionEditRow({
       const bare = formatAmountBare(t.amount_cents);
       setPayment(t.amount_cents < 0 ? bare : "");
       setDeposit(t.amount_cents > 0 ? bare : "");
+      // A template is a payment or a deposit; the form shows it on that tab.
+      if (layout === "form" && t.amount_cents !== 0) {
+        const next: FormTab = t.amount_cents < 0 ? "withdrawal" : "deposit";
+        setTabState(next);
+        noteTab(next);
+      }
+    } else if (layout === "form" && tab === "transfer") {
+      // No amount, and no account to transfer to: an ordinary entry.
+      setTabState("withdrawal");
+      noteTab("withdrawal");
     }
     setSplits(t.splits.length ? t.splits.map((l) => ({ ...l })) : null);
     setCommonMenu(null);
@@ -621,58 +738,562 @@ export default function TransactionEditRow({
     }
   }
 
+  // The pieces of the form, laid out below either along the register's
+  // columns or as Money's tabbed transaction form.
+  const numInput = (
+    // Money's Num column: free text, and FIRST in the tab order — a check is
+    // written before it is recorded. The column has existed since migration
+    // 0011; this field is what finally writes it.
+    <input
+      className="aero-field w-full"
+      aria-label="Num"
+      placeholder="Number"
+      autoComplete="off"
+      value={checkNumber}
+      onChange={(e) => setCheckNumber(e.target.value)}
+      // Money's shortcut: "+" fills in the next check number.
+      onKeyDown={(e) => {
+        if (e.key === "+" && nextCheckNumber) {
+          e.preventDefault();
+          setCheckNumber(nextCheckNumber);
+        }
+      }}
+      // A transfer's two rows are written by the backend and carry no
+      // Num or Payee of their own; a change typed here was saved
+      // "successfully" and then not there.
+      readOnly={transferToAccountId !== null}
+      title={transferToAccountId !== null ? "Not used on a transfer" : nextCheckNumber ? `Type + for the next check number (${nextCheckNumber})` : undefined}
+    />
+  );
+  const dateInput = <DateField value={date} onChange={setDate} autoFocus={focusFirst === "date"} readOnly={farRow} title={farTitle} />;
+  const payeeInput = (
+    <PayeeField
+      value={payee}
+      onChange={(v) => {
+        setPayee(v);
+        // Recall runs as the name is typed as well as when it settles,
+        // so an exact name typed in full fills the category at once.
+        recallCategoryFor(v);
+      }}
+      onSettle={recallCategoryFor}
+      payees={payees}
+      placeholder={transferToAccountId !== null || (layout === "form" && tab === "transfer") ? "Transfer Money" : "Payee"}
+      // A transfer's payee can be typed over ("Store Card" for a card
+      // payment); left blank it is "Transfer Money", as Money fills it.
+      autoFocus={focusFirst === "payee"}
+    />
+  );
+  const amountTitle = farTitle ?? (isSplit ? "Set by the split lines — open the split to change it" : undefined);
+  const categoryInput = isSplit ? (
+    // A split transaction has no single category — Money shows the field as
+    // "Split" and sends you to the dialog to change it.
+    <button type="button" className="aero-field text-left" style={{ minWidth: 260 }} onClick={() => setShowSplit(true)}>
+      Split ({splits!.length} categories)
+    </button>
+  ) : (
+    <CategoryCombo
+      id="txn-category"
+      label="Category:"
+      // On the tabbed form a transfer is the Transfer tab's, not a category.
+      items={layout === "form" ? categoryItems.filter((i) => i.group !== "Transfer") : categoryItems}
+      value={categoryId}
+      style={{ minWidth: 260 }}
+      disabled={farRow}
+      onChange={(next) => {
+        // An amount typed in one currency is not an amount in
+        // another; a move to an account in a different one clears it.
+        const nextId = next.startsWith(TRANSFER_PREFIX) ? next.slice(TRANSFER_PREFIX.length) : null;
+        if (currencyOfTarget(nextId) !== otherCurrency) setOtherAmount("");
+        setCategoryId(next);
+        if (next.startsWith(TRANSFER_PREFIX) && !payee.trim()) {
+          setPayee("Transfer Money");
+        }
+      }}
+      onAddNew={
+        onCreateCategory
+          ? (q) => {
+              setAddError(null);
+              setAddingCategory(q);
+            }
+          : undefined
+      }
+    />
+  );
+  const otherAmountField = crossCurrency && (
+    <>
+      <label htmlFor="txn-other-amount">Amount in {otherCurrency}:</label>
+      <input
+        id="txn-other-amount"
+        className="aero-field text-right"
+        style={{ width: 110 }}
+        autoComplete="off"
+        data-amount
+        value={otherAmount}
+        onChange={(e) => setOtherAmount(e.target.value)}
+        readOnly={farRow}
+        title={`What arrives in or leaves the other account, in ${otherCurrency}`}
+      />
+    </>
+  );
+  const memoInput = (
+    <input
+      id="txn-memo"
+      ref={memoRef}
+      className="aero-field"
+      style={{ minWidth: 400 }}
+      placeholder="Memo"
+      value={notes}
+      onChange={(e) => setNotes(e.target.value)}
+    />
+  );
+  const classAndGoal = (
+    <>
+      <ClassPicker classifications={classifications} value={classes} onChange={setClasses} idPrefix="txn-class" />
+      {/* This field is the TRANSACTION's value. On a split whose lines carry
+          their own, an empty field here means "the lines answer for
+          themselves", not "not classified", and the difference is invisible
+          unless it is written down. */}
+      {isSplit && (row?.line_classes ?? []).some((c) => c.label) && (
+        <span className="tm-text-muted">
+          (the split lines carry{" "}
+          {(row?.line_classes ?? [])
+            .filter((c) => c.label)
+            .map((c) => c.label)
+            .join(", ")}{" "}
+          — open Split to change)
+        </span>
+      )}
+      {goals.length > 0 && (
+        <>
+          <label htmlFor="txn-goal">For goal:</label>
+          <select id="txn-goal" className="aero-field" value={goalId} onChange={(e) => setGoalId(e.target.value)} title="Counts this row toward a savings goal that watches the account it lands in">
+            <option value="">(none)</option>
+            {goals.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.name}
+                {g.account_name ? ` — ${g.account_name}` : ""}
+              </option>
+            ))}
+          </select>
+        </>
+      )}
+    </>
+  );
+  const notices = (
+    <>
+      {/* A refused save says so here, above the fields, in red, and the form
+          stays open with what was typed. It was a short span in the button
+          strip, easy to miss beside four buttons — "prevents edit but no
+          warning or message". */}
+      {error && (
+        <Notice tone="error" boxed>
+          {error}
+        </Notice>
+      )}
+      {farRow && (
+        <Notice boxed>
+          The amount, date and category belong to the payment in{" "}
+          <strong>{row?.split_payment_account_name ?? "another account"}</strong> — change them there. The
+          payee, Num and memo can be changed here.
+        </Notice>
+      )}
+    </>
+  );
+  const buttonStrip = (
+    <div className="flex items-center gap-2 py-1">
+      <button
+        ref={commonBtnRef}
+        className="aero-btn"
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={commonMenu !== null}
+        onClick={() => {
+          setCommonError(null);
+          setCommonMenu(commonMenu === null ? "list" : null);
+        }}
+      >
+        Common Transactions ▾
+      </button>
+      {commonMenu !== null &&
+        createPortal(
+          <>
+            {/* Click anywhere else to dismiss, as a menu should. */}
+            <div className="fixed inset-0 z-10" onMouseDown={() => setCommonMenu(null)} />
+            <ul className="tm-common-menu" role="menu" aria-label="Common transactions" style={commonMenuStyle}>
+              {commonError && (
+                <li>
+                  <Notice tone="error" boxed>
+                    {commonError}
+                  </Notice>
+                </li>
+              )}
+              {commonTransactions.length === 0 && commonMenu === "list" && (
+                <li className="tm-common-empty">Nothing saved yet — fill the form, then “Save this one…”.</li>
+              )}
+              {commonMenu === "list" &&
+                commonTransactions.map((t) => (
+                  <li key={t.id} className="tm-common-row">
+                    <button type="button" role="menuitem" className="tm-common-item" onClick={() => applyCommon(t)}>
+                      <span className="tm-common-name">{t.name}</span>
+                      <span className="tm-common-detail">
+                        {[
+                          t.payee || null,
+                          t.splits.length ? `${t.splits.length} split lines` : t.category_name,
+                          t.amount_cents == null ? "no fixed amount" : formatAmountBare(t.amount_cents),
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </span>
+                    </button>
+                    {onDeleteCommon && (
+                      <button
+                        type="button"
+                        className="tm-common-remove"
+                        aria-label={`Remove ${t.name}`}
+                        title="Remove this common transaction"
+                        onClick={() => void deleteCommon(t.id)}
+                      >
+                        ×
+                      </button>
+                    )}
+                  </li>
+                ))}
+              {onSaveCommon && commonMenu === "list" && (
+                <li>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="tm-common-item tm-common-save"
+                    onClick={() => {
+                      // Said before a name is typed, not after.
+                      if (transferToAccountId !== null) {
+                        setCommonError(TRANSFER_TEMPLATE_REFUSAL);
+                        return;
+                      }
+                      setCommonError(null);
+                      setCommonMenu("save");
+                    }}
+                  >
+                    Save this one…
+                  </button>
+                </li>
+              )}
+              {commonMenu === "save" && (
+                <li className="tm-common-saverow">
+                  <input
+                    className="aero-field"
+                    aria-label="Common transaction name"
+                    placeholder="Name it, e.g. Rent"
+                    autoFocus
+                    value={commonName}
+                    onChange={(e) => setCommonName(e.target.value)}
+                    onKeyDown={(e) => {
+                      // The strip's Enter commits the TRANSACTION; this
+                      // input must not let that through.
+                      e.stopPropagation();
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        void saveCommon();
+                      } else if (e.key === "Escape") {
+                        e.preventDefault();
+                        setCommonError(null);
+                        setCommonMenu(null);
+                      }
+                    }}
+                  />
+                  <button className="aero-btn" type="button" disabled={!commonName.trim()} onClick={() => void saveCommon()}>
+                    Save
+                  </button>
+                </li>
+              )}
+            </ul>
+          </>,
+          document.body
+        )}
+      <span className="flex-1" />
+      <button className="aero-btn default" type="button" onClick={enter} disabled={busy}>
+        Enter
+      </button>
+      <button
+        className="aero-btn"
+        type="button"
+        onClick={() => setShowSplit(true)}
+        disabled={farRow || (layout === "form" && tab === "transfer")}
+        title={farRow ? farTitle : layout === "form" && tab === "transfer" ? "A transfer is not split; use Withdrawal or Deposit" : undefined}
+      >
+        Split
+      </button>
+      <button
+        className="aero-btn"
+        type="button"
+        disabled={!row}
+        title={row ? "Receipts, statements, photos attached to this transaction" : "Enter the transaction first, then attach files to it"}
+        onClick={() => setShowAttachments(true)}
+      >
+        Attachments{attachmentCount ? ` (${attachmentCount})` : ""}
+      </button>
+      <button className="aero-btn" type="button" onClick={onCancel}>
+        Cancel
+      </button>
+    </div>
+  );
+  const newCategoryDialog = addingCategory !== null && onCreateCategory && (
+    <NewCategoryDialog
+      initialName={addingCategory}
+      categories={categories}
+      busy={addBusy}
+      error={addError}
+      onCancel={() => {
+        setAddingCategory(null);
+        setAddError(null);
+      }}
+      onCreate={async (draft) => {
+        setAddBusy(true);
+        setAddError(null);
+        try {
+          // Resolves to the id to select — the subcategory when one was
+          // added, otherwise the category itself.
+          setCategoryId(await onCreateCategory(draft));
+          setAddingCategory(null);
+        } catch (e) {
+          setAddError(String(e));
+        } finally {
+          setAddBusy(false);
+        }
+      }}
+    />
+  );
+  const attachmentsDialog = showAttachments && row && (
+    <>
+      <div className="tm-dialog-backdrop" onClick={() => setShowAttachments(false)} />
+      <div
+        className="tm-dialog"
+        role="dialog"
+        aria-label="Attachments"
+        style={{ minWidth: 560 }}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            e.preventDefault();
+            e.stopPropagation();
+            setShowAttachments(false);
+          }
+        }}
+      >
+        <div className="tm-dialog-title">Attachments — {row.payee}</div>
+        <div className="tm-dialog-body">
+          <AttachmentsPanel
+            transactionId={row.id}
+            onChanged={(n) => {
+              setAttachmentCount(n);
+              onAttachmentsChanged?.();
+            }}
+          />
+          <div className="flex justify-end pt-3">
+            <button className="aero-btn default" type="button" onClick={() => setShowAttachments(false)}>
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+  const splitDialog = showSplit && (
+    <>
+      <div
+        className="tm-dialog-backdrop"
+        onClick={() => {
+          returnFocus.current = true;
+          setShowSplit(false);
+        }}
+      />
+      <SplitDialog
+        categories={categories}
+        classifications={classifications}
+        parentClasses={classes}
+        // The same accounts the Category field offers, so a split line can be
+        // a transfer exactly as a whole transaction can. `transferTargets`
+        // already excludes this account.
+        transferTargets={transferTargets}
+        currency={currency}
+        parentAmountCents={resolveAmountCents()}
+        reconciled={row?.is_reconciled ?? false}
+        initialSplits={splits ?? []}
+        onCancel={() => {
+          returnFocus.current = true;
+          setShowSplit(false);
+        }}
+        onDone={(lines, totalCents) => {
+          setSplits(lines);
+          returnFocus.current = true;
+          setShowSplit(false);
+          // The split total IS the transaction amount.
+          if (totalCents < 0) {
+            setPayment(formatAmountBare(totalCents));
+            setDeposit("");
+            if (layout === "form") {
+              setTabState("withdrawal");
+              noteTab("withdrawal");
+            }
+          } else if (totalCents > 0) {
+            setDeposit(formatAmountBare(totalCents));
+            setPayment("");
+            if (layout === "form") {
+              setTabState("deposit");
+              noteTab("deposit");
+            }
+          }
+          setCategoryId("");
+        }}
+      />
+    </>
+  );
+
+  if (layout === "form") {
+    const tabs: { id: FormTab; label: string }[] = [
+      { id: "withdrawal", label: columnLabels.payment === "Payment" ? "Withdrawal" : columnLabels.payment },
+      { id: "deposit", label: columnLabels.deposit },
+      { id: "transfer", label: "Transfer" },
+    ];
+    // A split keeps its tab: its lines carry their own signs, and a
+    // transfer has no lines.
+    const tabOff = (t: FormTab) => farRow || (isSplit && t !== tab);
+    const accountOptions = (
+      <>
+        <option value="">(choose an account)</option>
+        <option value="self">{accountName}</option>
+        {transferTargets.map((a) => (
+          <option key={a.id} value={a.id}>
+            {a.name}
+          </option>
+        ))}
+      </>
+    );
+    return (
+      <div className="tm-txnform" data-entry-form>
+        {/* Money's three tabs. Arrows move between them, as tabs do. */}
+        <div
+          className="tm-txnform-tabs"
+          role="tablist"
+          aria-label="Kind of transaction"
+          onKeyDown={(e) => {
+            if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+            e.preventDefault();
+            const on = tabs.filter((t) => !tabOff(t.id)).map((t) => t.id);
+            const at = on.indexOf(tab);
+            const next = on[(at + (e.key === "ArrowRight" ? 1 : on.length - 1)) % on.length];
+            if (next) {
+              setTab(next);
+              e.currentTarget.querySelector<HTMLButtonElement>(`#txnform-tab-${next}`)?.focus();
+            }
+          }}
+        >
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              id={`txnform-tab-${t.id}`}
+              type="button"
+              role="tab"
+              aria-selected={tab === t.id}
+              aria-controls="txnform-panel"
+              tabIndex={tab === t.id ? 0 : -1}
+              className={`tm-txnform-tab${tab === t.id ? " active" : ""}`}
+              disabled={tabOff(t.id) && tab !== t.id}
+              onClick={() => setTab(t.id)}
+            >
+              {t.label}
+            </button>
+          ))}
+          <span className="tm-txnform-what">{row ? "Editing the selected transaction" : "New transaction"}</span>
+        </div>
+        <div id="txnform-panel" className="tm-txnform-body" role="tabpanel" aria-labelledby={`txnform-tab-${tab}`}>
+          {/* Enter and Esc work in the fields; the buttons below are buttons. */}
+          <div onKeyDown={onKeyDown}>
+          {notices}
+          <div className="tm-txnform-grid">
+            {tab !== "transfer" && (
+              <div className="tm-txnform-field" style={{ width: 90 }}>
+                <span>Number</span>
+                {numInput}
+              </div>
+            )}
+            <div className="tm-txnform-field" style={{ width: 130 }}>
+              <span>Date</span>
+              {dateInput}
+            </div>
+            {tab === "transfer" && (
+              <>
+                <div className="tm-txnform-field">
+                  <label htmlFor="txn-from">From</label>
+                  <select id="txn-from" className="aero-field" value={fromValue} disabled={farRow} onChange={(e) => pickTransfer("from", e.target.value)}>
+                    {accountOptions}
+                  </select>
+                </div>
+                <div className="tm-txnform-field">
+                  <label htmlFor="txn-to">To</label>
+                  <select id="txn-to" className="aero-field" value={toValue} disabled={farRow} onChange={(e) => pickTransfer("to", e.target.value)}>
+                    {accountOptions}
+                  </select>
+                </div>
+              </>
+            )}
+            <div className="tm-txnform-field tm-txnform-grow">
+              <span>{tab === "deposit" ? "From" : "Pay to"}</span>
+              {payeeInput}
+            </div>
+            <div className="tm-txnform-field" style={{ width: 130 }}>
+              <span>Amount</span>
+              <AmountCalcButton off={isSplit || farRow}>
+                <input
+                  className="aero-field w-full text-right"
+                  aria-label="Amount"
+                  autoFocus={focusFirst === "payment" || focusFirst === "deposit"}
+                  data-amount
+                  value={side === "deposit" ? deposit : payment}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="0.00"
+                  readOnly={isSplit || farRow}
+                  title={amountTitle}
+                />
+              </AmountCalcButton>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 py-1">
+            {tab !== "transfer" && (
+              <>
+                <label htmlFor="txn-category" className="text-right" style={{ width: 70 }}>
+                  Category:
+                </label>
+                {categoryInput}
+              </>
+            )}
+            {otherAmountField}
+          </div>
+          <div className="flex items-center gap-2 pb-1">
+            <label htmlFor="txn-memo" className="text-right" style={{ width: 70 }}>
+              Memo:
+            </label>
+            {memoInput}
+            {classAndGoal}
+          </div>
+          </div>
+          {buttonStrip}
+        </div>
+        {newCategoryDialog}
+        {attachmentsDialog}
+        {splitDialog}
+      </div>
+    );
+  }
+
   return (
     <>
       {/* 1 — the grid row, edited in its own columns */}
       <tr className="active" onKeyDown={onKeyDown}>
         <td />
         <td />
-        <td>
-          {/* Money's Num column: free text, and FIRST in the tab order —
-              a check is written before it is recorded. The column has
-              existed since migration 0011; this field is what finally
-              writes it. */}
-          <input
-            className="aero-field w-full"
-            aria-label="Num"
-            placeholder="Number"
-            autoComplete="off"
-            value={checkNumber}
-            onChange={(e) => setCheckNumber(e.target.value)}
-            // Money's shortcut: "+" fills in the next check number.
-            onKeyDown={(e) => {
-              if (e.key === "+" && nextCheckNumber) {
-                e.preventDefault();
-                setCheckNumber(nextCheckNumber);
-              }
-            }}
-            // A transfer's two rows are written by the backend and carry no
-            // Num or Payee of their own; a change typed here was saved
-            // "successfully" and then not there.
-            readOnly={transferToAccountId !== null}
-            title={transferToAccountId !== null ? "Not used on a transfer" : nextCheckNumber ? `Type + for the next check number (${nextCheckNumber})` : undefined}
-          />
-        </td>
-        <td>
-          <DateField value={date} onChange={setDate} autoFocus={startIn === "date"} readOnly={farRow} title={farTitle} />
-        </td>
-        <td>
-          <PayeeField
-            value={payee}
-            onChange={(v) => {
-              setPayee(v);
-              // Recall runs as the name is typed as well as when it settles,
-              // so an exact name typed in full fills the category at once.
-              recallCategoryFor(v);
-            }}
-            onSettle={recallCategoryFor}
-            payees={payees}
-            placeholder={transferToAccountId !== null ? "Transfer Money" : "Payee"}
-            // A transfer's payee can be typed over ("Store Card" for a card
-            // payment); left blank it is "Transfer Money", as Money fills it.
-            autoFocus={startIn === "payee"}
-          />
-        </td>
+        <td>{numInput}</td>
+        <td>{dateInput}</td>
+        <td>{payeeInput}</td>
         <td className="mid">
           {row && onToggleCleared ? (
             <button
@@ -693,7 +1314,7 @@ export default function TransactionEditRow({
             <input
               className="aero-field w-full text-right"
               aria-label={columnLabels.payment}
-              autoFocus={startIn === "payment"}
+              autoFocus={focusFirst === "payment"}
               data-amount
               value={payment}
               onChange={(e) => {
@@ -702,7 +1323,7 @@ export default function TransactionEditRow({
               }}
               placeholder={columnLabels.payment}
               readOnly={isSplit || farRow}
-              title={farTitle ?? (isSplit ? "Set by the split lines — open the split to change it" : undefined)}
+              title={amountTitle}
             />
           </AmountCalcButton>
         </td>
@@ -711,7 +1332,7 @@ export default function TransactionEditRow({
             <input
               className="aero-field w-full text-right"
               aria-label={columnLabels.deposit}
-              autoFocus={startIn === "deposit"}
+              autoFocus={focusFirst === "deposit"}
               data-amount
               value={deposit}
               onChange={(e) => {
@@ -720,7 +1341,7 @@ export default function TransactionEditRow({
               }}
               placeholder={columnLabels.deposit}
               readOnly={isSplit || farRow}
-              title={farTitle ?? (isSplit ? "Set by the split lines — open the split to change it" : undefined)}
+              title={amountTitle}
             />
           </AmountCalcButton>
         </td>
@@ -731,405 +1352,38 @@ export default function TransactionEditRow({
       {/* 2 — the fields the grid does not show */}
       <tr className="active" onKeyDown={onKeyDown}>
         <td colSpan={columns}>
-          {/* A refused save says so here, above the fields, in red,
-              and the form stays open with what was typed. It was a short
-              span in the button strip, easy to miss beside four buttons —
-              "prevents edit but no warning or message". */}
-          {error && (
-            <Notice tone="error" boxed>
-              {error}
-            </Notice>
-          )}
-          {farRow && (
-            <Notice boxed>
-              The amount, date and category belong to the payment in{" "}
-              <strong>{row?.split_payment_account_name ?? "another account"}</strong> — change them there. The
-              payee, Num and memo can be changed here.
-            </Notice>
-          )}
+          {notices}
           <div className="flex items-center gap-2 py-1">
             <label htmlFor="txn-category" className="text-right" style={{ width: 90 }}>
               Category:
             </label>
-            {isSplit ? (
-              // A split transaction has no single category — Money shows the
-              // field as "Split" and sends you to the dialog to change it.
-              <button
-                type="button"
-                className="aero-field text-left"
-                style={{ minWidth: 260 }}
-                onClick={() => setShowSplit(true)}
-              >
-                Split ({splits!.length} categories)
-              </button>
-            ) : (
-              <CategoryCombo
-                id="txn-category"
-                label="Category:"
-                items={categoryItems}
-                value={categoryId}
-                style={{ minWidth: 260 }}
-                disabled={farRow}
-                onChange={(next) => {
-                  // An amount typed in one currency is not an amount in
-                  // another; a move to an account in a different one clears it.
-                  const nextId = next.startsWith(TRANSFER_PREFIX) ? next.slice(TRANSFER_PREFIX.length) : null;
-                  if (currencyOfTarget(nextId) !== otherCurrency) setOtherAmount("");
-                  setCategoryId(next);
-                  if (next.startsWith(TRANSFER_PREFIX) && !payee.trim()) {
-                    setPayee("Transfer Money");
-                  }
-                }}
-                onAddNew={
-                  onCreateCategory
-                    ? (q) => {
-                        setAddError(null);
-                        setAddingCategory(q);
-                      }
-                    : undefined
-                }
-              />
-            )}
-            {crossCurrency && (
-              <>
-                <label htmlFor="txn-other-amount">Amount in {otherCurrency}:</label>
-                <input
-                  id="txn-other-amount"
-                  className="aero-field text-right"
-                  style={{ width: 110 }}
-                  autoComplete="off"
-                  data-amount
-                  value={otherAmount}
-                  onChange={(e) => setOtherAmount(e.target.value)}
-                  readOnly={farRow}
-                  title={`What arrives in or leaves the other account, in ${otherCurrency}`}
-                />
-              </>
-            )}
+            {categoryInput}
+            {otherAmountField}
           </div>
           <div className="flex items-center gap-2 pb-1">
             <label htmlFor="txn-memo" className="text-right" style={{ width: 90 }}>
               Memo:
             </label>
-            <input
-              id="txn-memo"
-              ref={memoRef}
-              className="aero-field"
-              style={{ minWidth: 400 }}
-              placeholder="Memo"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-            />
-            <ClassPicker
-              classifications={classifications}
-              value={classes}
-              onChange={setClasses}
-              idPrefix="txn-class"
-            />
-            {/* This field is the TRANSACTION's value. On a split
-                whose lines carry their own, an empty field here means "the
-                lines answer for themselves", not "not classified", and the
-                difference is invisible unless it is written down. */}
-            {isSplit && (row?.line_classes ?? []).some((c) => c.label) && (
-              <span className="tm-text-muted">
-                (the split lines carry{" "}
-                {(row?.line_classes ?? [])
-                  .filter((c) => c.label)
-                  .map((c) => c.label)
-                  .join(", ")}
-                {" "}— open Split to change)
-              </span>
-            )}
-            {goals.length > 0 && (
-              <>
-                <label htmlFor="txn-goal">For goal:</label>
-                <select id="txn-goal" className="aero-field" value={goalId} onChange={(e) => setGoalId(e.target.value)} title="Counts this row toward a savings goal that watches the account it lands in">
-                  <option value="">(none)</option>
-                  {goals.map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.name}
-                      {g.account_name ? ` — ${g.account_name}` : ""}
-                    </option>
-                  ))}
-                </select>
-              </>
-            )}
+            {memoInput}
+            {classAndGoal}
           </div>
         </td>
       </tr>
 
       {/* 3 — the button strip */}
       <tr className="active">
-        <td colSpan={columns}>
-          <div className="flex items-center gap-2 py-1">
-            <button
-              ref={commonBtnRef}
-              className="aero-btn"
-              type="button"
-              aria-haspopup="menu"
-              aria-expanded={commonMenu !== null}
-              onClick={() => {
-                setCommonError(null);
-                setCommonMenu(commonMenu === null ? "list" : null);
-              }}
-            >
-              Common Transactions ▾
-            </button>
-            {commonMenu !== null &&
-              createPortal(
-                <>
-                {/* Click anywhere else to dismiss, as a menu should. */}
-                  <div
-                    className="fixed inset-0 z-10"
-                    onMouseDown={() => setCommonMenu(null)}
-                  />
-                  <ul
-                    className="tm-common-menu"
-                    role="menu"
-                    aria-label="Common transactions"
-                    style={commonMenuStyle}
-                  >
-                  {commonError && (
-                    <li>
-                      <Notice tone="error" boxed>
-                        {commonError}
-                      </Notice>
-                    </li>
-                  )}
-                  {commonTransactions.length === 0 && commonMenu === "list" && (
-                    <li className="tm-common-empty">
-                      Nothing saved yet — fill the form, then “Save this one…”.
-                    </li>
-                  )}
-                  {commonMenu === "list" &&
-                    commonTransactions.map((t) => (
-                      <li key={t.id} className="tm-common-row">
-                        <button
-                          type="button"
-                          role="menuitem"
-                          className="tm-common-item"
-                          onClick={() => applyCommon(t)}
-                        >
-                          <span className="tm-common-name">{t.name}</span>
-                          <span className="tm-common-detail">
-                            {[
-                              t.payee || null,
-                              t.splits.length
-                                ? `${t.splits.length} split lines`
-                                : t.category_name,
-                              t.amount_cents == null
-                                ? "no fixed amount"
-                                : formatAmountBare(t.amount_cents),
-                            ]
-                              .filter(Boolean)
-                              .join(" · ")}
-                          </span>
-                        </button>
-                        {onDeleteCommon && (
-                          <button
-                            type="button"
-                            className="tm-common-remove"
-                            aria-label={`Remove ${t.name}`}
-                            title="Remove this common transaction"
-                            onClick={() => void deleteCommon(t.id)}
-                          >
-                            ×
-                          </button>
-                        )}
-                      </li>
-                    ))}
-                  {onSaveCommon && commonMenu === "list" && (
-                    <li>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        className="tm-common-item tm-common-save"
-                        onClick={() => {
-                          // Said before a name is typed, not after.
-                          if (transferToAccountId !== null) {
-                            setCommonError(TRANSFER_TEMPLATE_REFUSAL);
-                            return;
-                          }
-                          setCommonError(null);
-                          setCommonMenu("save");
-                        }}
-                      >
-                        Save this one…
-                      </button>
-                    </li>
-                  )}
-                  {commonMenu === "save" && (
-                    <li className="tm-common-saverow">
-                      <input
-                        className="aero-field"
-                        aria-label="Common transaction name"
-                        placeholder="Name it, e.g. Rent"
-                        autoFocus
-                        value={commonName}
-                        onChange={(e) => setCommonName(e.target.value)}
-                        onKeyDown={(e) => {
-                          // The strip's Enter commits the TRANSACTION; this
-                          // input must not let that through.
-                          e.stopPropagation();
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            void saveCommon();
-                          } else if (e.key === "Escape") {
-                            e.preventDefault();
-                            setCommonError(null);
-                            setCommonMenu(null);
-                          }
-                        }}
-                      />
-                      <button
-                        className="aero-btn"
-                        type="button"
-                        disabled={!commonName.trim()}
-                        onClick={() => void saveCommon()}
-                      >
-                        Save
-                      </button>
-                    </li>
-                  )}
-                  </ul>
-                </>,
-                document.body
-              )}
-            <span className="flex-1" />
-            <button className="aero-btn default" type="button" onClick={enter} disabled={busy}>
-              Enter
-            </button>
-            <button
-              className="aero-btn"
-              type="button"
-              onClick={() => setShowSplit(true)}
-              disabled={farRow}
-              title={farRow ? farTitle : undefined}
-            >
-              Split
-            </button>
-            <button
-              className="aero-btn"
-              type="button"
-              disabled={!row}
-              title={row ? "Receipts, statements, photos attached to this transaction" : "Enter the transaction first, then attach files to it"}
-              onClick={() => setShowAttachments(true)}
-            >
-              Attachments{attachmentCount ? ` (${attachmentCount})` : ""}
-            </button>
-            <button className="aero-btn" type="button" onClick={onCancel}>
-              Cancel
-            </button>
-          </div>
-        </td>
+        <td colSpan={columns}>{buttonStrip}</td>
       </tr>
 
-      {addingCategory !== null && onCreateCategory && (
-        <NewCategoryDialog
-          initialName={addingCategory}
-          categories={categories}
-          busy={addBusy}
-          error={addError}
-          onCancel={() => {
-            setAddingCategory(null);
-            setAddError(null);
-          }}
-          onCreate={async (draft) => {
-            setAddBusy(true);
-            setAddError(null);
-            try {
-              // Resolves to the id to select — the subcategory when one was
-              // added, otherwise the category itself.
-              setCategoryId(await onCreateCategory(draft));
-              setAddingCategory(null);
-            } catch (e) {
-              setAddError(String(e));
-            } finally {
-              setAddBusy(false);
-            }
-          }}
-        />
-      )}
-
-      {showAttachments && row && (
+      {newCategoryDialog}
+      {attachmentsDialog && (
         <tr>
-          <td colSpan={columns}>
-            <div className="tm-dialog-backdrop" onClick={() => setShowAttachments(false)} />
-            <div
-              className="tm-dialog"
-              role="dialog"
-              aria-label="Attachments"
-              style={{ minWidth: 560 }}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setShowAttachments(false);
-                }
-              }}
-            >
-              <div className="tm-dialog-title">Attachments — {row.payee}</div>
-              <div className="tm-dialog-body">
-                <AttachmentsPanel
-                  transactionId={row.id}
-                  onChanged={(n) => {
-                    setAttachmentCount(n);
-                    onAttachmentsChanged?.();
-                  }}
-                />
-                <div className="flex justify-end pt-3">
-                  <button className="aero-btn default" type="button" onClick={() => setShowAttachments(false)}>
-                    Close
-                  </button>
-                </div>
-              </div>
-            </div>
-          </td>
+          <td colSpan={columns}>{attachmentsDialog}</td>
         </tr>
       )}
-
-      {showSplit && (
+      {splitDialog && (
         <tr>
-          <td colSpan={columns}>
-            <div
-              className="tm-dialog-backdrop"
-              onClick={() => {
-                returnFocus.current = true;
-                setShowSplit(false);
-              }}
-            />
-            <SplitDialog
-              categories={categories}
-              classifications={classifications}
-              parentClasses={classes}
-              // The same accounts the Category field offers, so a
-              // split line can be a transfer exactly as a whole transaction
-              // can. `transferTargets` already excludes this account.
-              transferTargets={transferTargets}
-              currency={currency}
-              parentAmountCents={resolveAmountCents()}
-              reconciled={row?.is_reconciled ?? false}
-              initialSplits={splits ?? []}
-              onCancel={() => {
-                returnFocus.current = true;
-                setShowSplit(false);
-              }}
-              onDone={(lines, totalCents) => {
-                setSplits(lines);
-                returnFocus.current = true;
-                setShowSplit(false);
-                // The split total IS the transaction amount.
-                if (totalCents < 0) {
-                  setPayment(formatAmountBare(totalCents));
-                  setDeposit("");
-                } else if (totalCents > 0) {
-                  setDeposit(formatAmountBare(totalCents));
-                  setPayment("");
-                }
-                setCategoryId("");
-              }}
-            />
-          </td>
+          <td colSpan={columns}>{splitDialog}</td>
         </tr>
       )}
     </>
