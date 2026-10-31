@@ -448,9 +448,12 @@ body {
   table-layout: fixed;
 }
 .register-table thead th {
-  /* The header stays put while the register scrolls under it. */
+  /* The header stays put while the register scrolls under it. At top: 0
+     WebView2 drew it a few pixels low once scrolled, and the bottoms of the
+     rows above showed through between it and the View bar; a pixel higher,
+     it covers them. */
   position: sticky;
-  top: 0;
+  top: -1px;
   z-index: 2;
   background: var(--tm-ms-grid-header); /* flat */
   border-top: 1px solid var(--tm-ms-grid-header-rule);
