@@ -19,7 +19,7 @@ machine. If you want your bank's transactions fetched for you, [bank sync](#bank
 goes through a separate service you sign up for.
 
 <p align="center">
-  <img src="docs/screenshots/register.png" alt="An account register: dated transactions with payees, categories, payments, deposits and a running balance" width="900">
+  <img src="docs/screenshots/register.png" alt="An account register: dated transactions with payees, categories, payments, deposits and a running balance, and the Withdrawal, Deposit and Transfer form under it" width="900">
 </p>
 
 ## Screenshots
