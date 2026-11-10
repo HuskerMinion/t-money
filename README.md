@@ -1,6 +1,8 @@
 <p align="center">
-  <img src="icon_branding/logo/png/tm-logo-horizontal-1200.png" alt="T-Money" width="480">
+  <img src="icon_branding/logo/png/tm-logo-mark-256.png" alt="" width="128">
 </p>
+
+<h1 align="center">T-Money</h1>
 
 <h3 align="center">Home finance on your own computer. One encrypted file, no account, no cloud.</h3>
 
