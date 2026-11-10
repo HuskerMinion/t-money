@@ -77,7 +77,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential pkg-config libssl-dev libwebkit2gtk-4.1-dev \
-            libayatana-appindicator3-dev librsvg2-dev libxdo-dev patchelf file
+            libayatana-appindicator3-dev librsvg2-dev libxdo-dev patchelf file squashfs-tools
 
       - name: Install
         run: npm ci
@@ -111,7 +111,37 @@ jobs:
         env:
           # The AppImage tools are AppImages themselves; this runs them without FUSE.
           APPIMAGE_EXTRACT_AND_RUN: '1'
-        run: npx tauri build --bundles deb,appimage
+        run: |
+          npx tauri build --bundles deb,appimage
+          # Tauri saves those tools in ~/.cache/tauri with mode 0770, and the AppImage's
+          # launcher (AppRun.wrapped) is copied from one of them, owned by root. Where the
+          # AppImage's own permissions are enforced (a sandbox, or a copy unpacked by
+          # root) nobody else could run it. Tauri keeps the mode of tools already in the
+          # cache, so open them up and bundle the AppImage again.
+          chmod 755 ~/.cache/tauri/*
+          npx tauri build --bundles appimage
+
+      # Every file in the AppImage readable by everyone, and runnable by everyone
+      # when it is runnable at all; every folder open to everyone.
+      - name: Check the AppImage's file modes
+        if: matrix.name == 'linux'
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: '1'
+        run: |
+          f=$(ls src-tauri/target/release/bundle/appimage/*.AppImage)
+          chmod +x "$f"
+          off=$("$f" --appimage-offset)
+          unsquashfs -lln -o "$off" "$f" > modes.txt
+          grep -c . modes.txt
+          bad=$(awk '{ p = $1; t = substr(p, 1, 1)
+            if ((t == "-" || t == "d") && substr(p, 8, 1) != "r") { print; next }
+            if (t == "d" && substr(p, 10, 1) != "x") { print; next }
+            if (t == "-" && substr(p, 4, 1) == "x" && substr(p, 10, 1) != "x") print }' modes.txt)
+          if [ -n "$bad" ]; then
+            echo "Files in the AppImage that not everyone can read or run:" >&2
+            echo "$bad" >&2
+            exit 1
+          fi
 
       - name: Collect
         shell: bash
