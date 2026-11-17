@@ -11,6 +11,9 @@
 //!   switched on. Same folder, same retention, same `VACUUM INTO`.
 //! - It writes `t-money-YYYY-MM-DD-HHMM.db` — a `VACUUM INTO` copy, so it is
 //!   a real database and **still encrypted with the same key**.
+//! - Each finance file has a persistent UUID and its own `t-money-<uuid>`
+//!   subfolder. Writing, listing and retention all use that subfolder.
+//!   Old backups in the chosen folder are left alone: their owner is unknown.
 //! - Retention only ever removes files matching that exact name shape. A
 //!   folder the user also keeps other things in is not ours to tidy.
 //!
@@ -47,6 +50,36 @@ const EXIT_MIN_GAP_MINUTES: i64 = 15;
 const PREFIX: &str = "t-money-";
 const SUFFIX: &str = ".db";
 const DEFAULT_KEEP: usize = 10;
+const FILE_ID: &str = "backup.file_id";
+
+/// A file keeps its backup identity when moved, renamed or restored. Initialize
+/// it in the database BEFORE copying it, so backups carry the same identity.
+/// INSERT OR IGNORE lets concurrent callers agree on the stored identity.
+pub fn directory(
+    conn: &r2d2::PooledConnection<r2d2_sqlite::SqliteConnectionManager>,
+    folder: &Path,
+) -> Result<PathBuf, String> {
+    conn.execute(
+        "INSERT OR IGNORE INTO app_settings (key, value) VALUES (?1, ?2)",
+        rusqlite::params![FILE_ID, uuid::Uuid::new_v4().to_string()],
+    )
+    .map_err(|e| format!("could not initialize backup identity: {e}"))?;
+    let id = queries::get_setting(conn, FILE_ID)?
+        .ok_or_else(|| "backup identity is missing".to_string())?;
+    // Never use an unchecked setting as a path component. An invalid identity
+    // must fail rather than silently choose another file's backup directory.
+    let id = uuid::Uuid::parse_str(&id)
+        .map_err(|_| "backup identity is invalid".to_string())?;
+    Ok(folder.join(format!("t-money-{id}")))
+}
+
+/// Backups belonging to this finance file only, oldest first.
+pub fn existing_in(
+    conn: &r2d2::PooledConnection<r2d2_sqlite::SqliteConnectionManager>,
+    folder: &Path,
+) -> Result<Vec<PathBuf>, String> {
+    Ok(ours_in(&directory(conn, folder)?))
+}
 
 /// Write a `VACUUM INTO` copy to `target`, replacing whatever is already there.
 ///
@@ -222,7 +255,7 @@ fn take(
     folder: &str,
     now: chrono::DateTime<Local>,
 ) -> Result<PathBuf, String> {
-    let dir = PathBuf::from(folder);
+    let dir = directory(conn, Path::new(folder))?;
     std::fs::create_dir_all(&dir).map_err(|e| format!("could not use {folder}: {e}"))?;
     let target = dir.join(backup_name(now));
 
@@ -296,6 +329,101 @@ pub fn run_on_exit(pool: &DbPool, now: chrono::DateTime<Local>) -> Result<Option
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn configured_file(dir: &Path, name: &str, key: &str, folder: &Path) -> DbPool {
+        let pool = crate::db::pool::init_pool(&dir.join(name), key).expect("open finance file");
+        let conn = pool.get().unwrap();
+        for (setting, value) in [
+            (FOLDER, folder.to_str().unwrap()),
+            (ENABLED, "1"),
+            (ON_EXIT, "1"),
+            (KEEP, "1"),
+            ("test.owner", name),
+        ] {
+            queries::set_setting(&conn, setting, value).unwrap();
+        }
+        drop(conn);
+        pool
+    }
+
+    fn assert_recoverable(path: &Path, key: &str, owner: &str) {
+        let bytes = std::fs::read(path).unwrap();
+        assert_ne!(&bytes[..16], b"SQLite format 3\0", "backup must stay encrypted");
+        let conn = rusqlite::Connection::open(path).unwrap();
+        conn.execute_batch(&format!("PRAGMA key = '{key}';")).unwrap();
+        let found: String = conn.query_row(
+            "SELECT value FROM app_settings WHERE key = 'test.owner'", [], |r| r.get(0),
+        ).expect("backup opens with its file's key");
+        assert_eq!(found, owner);
+    }
+
+    #[test]
+    fn shared_folder_preserves_each_files_backups_and_retention() {
+        let dir = scratch("shared");
+        let folder = dir.join("backups");
+        std::fs::create_dir_all(&folder).unwrap();
+        let legacy = folder.join("t-money-2026-09-01-0800.db");
+        std::fs::write(&legacy, b"legacy backup with unknown owner").unwrap();
+        let a = configured_file(&dir, "a.tmny", "key-a", &folder);
+        let b = configured_file(&dir, "b.tmny", "key-b", &folder);
+        let now = at("2026-09-10T12:00:00+00:00");
+        let a_first = run_if_due(&a, now).unwrap().unwrap();
+        let b_first = run_if_due(&b, now).unwrap().unwrap();
+        assert_ne!(a_first, b_first, "two files backed up in the same minute must not collide");
+        assert_recoverable(&a_first, "key-a", "a.tmny");
+        assert_recoverable(&b_first, "key-b", "b.tmny");
+        assert!(run_if_due(&a, now).unwrap().is_none(), "daily schedule is unchanged");
+
+        // The exit path shares the same isolation and retention as startup.
+        let later = now + chrono::Duration::minutes(20);
+        let a_latest = run_on_exit(&a, later).unwrap().unwrap();
+        assert!(!a_first.exists(), "A's own retention still runs");
+        assert_recoverable(&b_first, "key-b", "b.tmny");
+        assert_eq!(existing_in(&a.get().unwrap(), &folder).unwrap(), vec![a_latest.clone()]);
+        assert_eq!(existing_in(&b.get().unwrap(), &folder).unwrap(), vec![b_first.clone()]);
+
+        let b_latest = run_if_due(&b, now + chrono::Duration::days(1)).unwrap().unwrap();
+        assert!(!b_first.exists());
+        assert_recoverable(&a_latest, "key-a", "a.tmny");
+        assert_recoverable(&b_latest, "key-b", "b.tmny");
+        assert_eq!(std::fs::read(&legacy).unwrap(), b"legacy backup with unknown owner");
+        drop(a);
+        drop(b);
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn backup_identity_survives_reopen_rename_and_restore() {
+        let dir = scratch("identity");
+        let folder = dir.join("backups");
+        let pool = configured_file(&dir, "a.tmny", "key-a", &folder);
+        let destination = directory(&pool.get().unwrap(), &folder).unwrap();
+        assert_eq!(directory(&pool.get().unwrap(), &folder).unwrap(), destination);
+        let backup = run_if_due(&pool, at("2026-09-10T12:00:00+00:00")).unwrap().unwrap();
+        drop(pool);
+        std::fs::rename(dir.join("a.tmny"), dir.join("renamed.tmny")).unwrap();
+        let renamed = crate::db::pool::init_pool(&dir.join("renamed.tmny"), "key-a").unwrap();
+        assert_eq!(directory(&renamed.get().unwrap(), &folder).unwrap(), destination);
+        drop(renamed);
+        let restored = crate::db::pool::init_pool(&backup, "key-a").unwrap();
+        assert_eq!(directory(&restored.get().unwrap(), &folder).unwrap(), destination);
+        drop(restored);
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn invalid_backup_identity_cannot_select_another_directory() {
+        let dir = scratch("bad-identity");
+        let pool = configured_file(&dir, "a.tmny", "key-a", &dir.join("backups"));
+        let conn = pool.get().unwrap();
+        queries::set_setting(&conn, FILE_ID, "../other-file").unwrap();
+        assert!(directory(&conn, &dir).unwrap_err().contains("invalid"));
+        drop(conn);
+        assert!(run_if_due(&pool, at("2026-09-10T12:00:00+00:00")).is_err());
+        assert!(!dir.join("backups").exists());
+        drop(pool);
+        std::fs::remove_dir_all(dir).unwrap();
+    }
 
     // --- vacuum_into: replacing an existing backup -------------------
 

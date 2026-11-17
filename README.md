@@ -100,6 +100,12 @@ pick which account each one fills. It covers most US and Canadian banks.
   you need it to open the file or a backup on another computer.
 - **Settings → File → Backups** saves copies to a folder of your choice: once a day, and if you
   choose, whenever you close the app or the file.
+  Each finance file uses its own subfolder inside your chosen backup folder,
+  so files can share a folder without overwriting or pruning each other's backups.
+  Moving, renaming or restoring a file keeps its backup identity. Copies of the
+  same file share that identity; choose different backup folders if you use them
+  independently. Older backups directly in the chosen folder are left untouched
+  and do not count toward the retention limit.
 - Without bank sync, the only things T-Money ever sends over the internet are ticker symbols when
   you ask it to update share prices, and currency codes when you ask it for today's exchange rates
   (both from Yahoo Finance). No amounts, no account names, no account or sign-in. Prices are off
