@@ -999,6 +999,9 @@ export default function SettingsView() {
             want it — another every time you close. Backups are encrypted with the
             same master key, so keep a copy of the key somewhere other than the
             backup folder.
+            {" "}Each finance file keeps its backups in a separate subfolder;
+            the number to keep applies to this file only. Older backups directly
+            in the chosen folder stay there and are never cleaned up automatically.
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <label className="inline-flex items-center gap-1">

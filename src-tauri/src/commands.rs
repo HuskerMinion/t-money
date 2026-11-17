@@ -2065,14 +2065,16 @@ pub fn get_backup_config(state: State<AppState>) -> Result<BackupConfig, String>
     let folder = queries::get_setting(&conn, backup::FOLDER)?;
     let existing = folder
         .as_deref()
+        .filter(|f| !f.trim().is_empty())
         .map(|f| {
-            let mut names: Vec<String> = backup::ours_in(std::path::Path::new(f))
+            let mut names: Vec<String> = backup::existing_in(&conn, std::path::Path::new(f))?
                 .iter()
                 .filter_map(|p| p.file_name().and_then(|n| n.to_str()).map(String::from))
                 .collect();
             names.reverse(); // newest first, for a list the user reads
-            names
+            Ok::<_, String>(names)
         })
+        .transpose()?
         .unwrap_or_default();
     Ok(BackupConfig {
         enabled: queries::get_setting(&conn, backup::ENABLED)?.as_deref() == Some("1"),
