@@ -1349,6 +1349,8 @@ export interface BackupConfig {
   last_at: string | null;
   /** Backups already in the folder, newest first. */
   existing: string[];
+  /** This file's own subfolder inside `folder`, where its backups go. */
+  file_folder: string | null;
 }
 
 /** One row a payee rule would change.

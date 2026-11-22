@@ -43,7 +43,7 @@ const SAVINGS = account("a-sav", "Demo Savings");
 // Sorts first, and is closed — the rail does not list it.
 const OLD = account("a-old", "Aardvark Old Checking", { balance_cents: 0, is_closed: true });
 
-const BACKUP_CFG = { enabled: false, on_exit: false, folder: "D:\\Backups", keep: 10, last_at: null, existing: [] };
+const BACKUP_CFG = { enabled: false, on_exit: false, folder: "D:\\Backups", keep: 10, last_at: null, existing: [], file_folder: null };
 
 function stubEverything(overrides: Record<string, () => unknown> = {}) {
   setIpcHandlers(

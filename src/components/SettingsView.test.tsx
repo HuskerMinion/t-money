@@ -13,7 +13,7 @@ import SettingsView, { aimSettingsAt } from "./SettingsView";
 import { invokeCalls, resetIpc, setIpcHandlers, type IpcHandler } from "../test/tauriMock";
 import { useFileFormat } from "../lib/region";
 
-const CFG = { enabled: false, on_exit: false, folder: "D:\\Old", keep: 10, last_at: null, existing: [] };
+const CFG = { enabled: false, on_exit: false, folder: "D:\\Old", keep: 10, last_at: null, existing: [], file_folder: null };
 const PRICES = { with_symbol: 3, newest_date: "2026-09-14", oldest_date: "2026-09-10", never_priced: 0, last_auto: null, interval: "off" };
 
 function stub(over: Record<string, IpcHandler> = {}) {
@@ -75,6 +75,31 @@ describe("Change folder… keeps the backup switch where it was", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Change folder…" }));
     await waitFor(() => expect(invokeCalls.some((c) => c.cmd === "set_backup_config")).toBe(true));
     expect(invokeCalls.find((c) => c.cmd === "set_backup_config")!.args).toMatchObject({ enabled: false, folder: "E:\\New" });
+  });
+});
+
+// Each finance file keeps its automatic backups in its own subfolder.
+describe("Backups live in this file's own subfolder", () => {
+  const MINE = { ...CFG, folder: "D:\\Backups", file_folder: "D:\\Backups\\t-money-0b5c" };
+
+  it("names the file's subfolder", async () => {
+    stub({ get_backup_config: () => MINE });
+    dialog.open.mockResolvedValue(null);
+    aimSettingsAt("file", "backup");
+    render(<SettingsView />);
+    expect(await screen.findByText("D:\\Backups\\t-money-0b5c")).toBeInTheDocument();
+    expect(screen.getByText(/This file's backups/)).toBeInTheDocument();
+  });
+
+  it("Restore starts in the file's own subfolder", async () => {
+    stub({ get_backup_config: () => MINE });
+    dialog.open.mockResolvedValue(null);
+    aimSettingsAt("file", "database");
+    render(<SettingsView />);
+    await waitFor(() => expect(invokeCalls.some((c) => c.cmd === "get_backup_config")).toBe(true));
+    await userEvent.click(screen.getByRole("button", { name: /Restore…/ }));
+    await waitFor(() => expect(dialog.open).toHaveBeenCalled());
+    expect(dialog.open.mock.calls[0][0]).toMatchObject({ defaultPath: "D:\\Backups\\t-money-0b5c" });
   });
 });
 

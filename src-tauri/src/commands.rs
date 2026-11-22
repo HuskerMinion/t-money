@@ -2063,18 +2063,21 @@ fn reopen_after_keyring_refused(
 pub fn get_backup_config(state: State<AppState>) -> Result<BackupConfig, String> {
     let (_g, conn) = with_conn(&state)?;
     let folder = queries::get_setting(&conn, backup::FOLDER)?;
-    let existing = folder
+    let file_folder = folder
         .as_deref()
         .filter(|f| !f.trim().is_empty())
-        .map(|f| {
-            let mut names: Vec<String> = backup::existing_in(&conn, std::path::Path::new(f))?
+        .map(|f| backup::directory(&conn, std::path::Path::new(f)))
+        .transpose()?;
+    let existing = file_folder
+        .as_deref()
+        .map(|dir| {
+            let mut names: Vec<String> = backup::ours_in(dir)
                 .iter()
                 .filter_map(|p| p.file_name().and_then(|n| n.to_str()).map(String::from))
                 .collect();
             names.reverse(); // newest first, for a list the user reads
-            Ok::<_, String>(names)
+            names
         })
-        .transpose()?
         .unwrap_or_default();
     Ok(BackupConfig {
         enabled: queries::get_setting(&conn, backup::ENABLED)?.as_deref() == Some("1"),
@@ -2085,6 +2088,7 @@ pub fn get_backup_config(state: State<AppState>) -> Result<BackupConfig, String>
             .unwrap_or(10),
         last_at: queries::get_setting(&conn, backup::LAST_AT)?,
         existing,
+        file_folder: file_folder.map(|p| p.to_string_lossy().to_string()),
     })
 }
 

@@ -408,6 +408,9 @@ export default function SettingsView() {
     setError(null);
     const path = await open({
       multiple: false,
+      // Start in this file's own backup subfolder, not its parent full of
+      // other files' folders.
+      defaultPath: backupCfg?.file_folder ?? backupCfg?.folder ?? undefined,
       filters: [{ name: "T-Money backup", extensions: ["db"] }],
     });
     if (typeof path !== "string") return; // canceled
@@ -1081,7 +1084,7 @@ export default function SettingsView() {
           <div className="text-slate-600">
             {backupCfg?.folder ? (
               <>
-                Folder: <code>{backupCfg.folder}</code> ·{" "}
+                {backupCfg.file_folder ? "This file's backups" : "Folder"}: <code>{backupCfg.file_folder ?? backupCfg.folder}</code> ·{" "}
                 {backupCfg.last_at
                   ? `last backup ${new Date(backupCfg.last_at).toLocaleString()}`
                   : "no backup taken yet"}

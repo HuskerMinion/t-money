@@ -1762,6 +1762,8 @@ pub struct BackupConfig {
     pub last_at: Option<String>,
     /// Backups already sitting in the folder, newest first.
     pub existing: Vec<String>,
+    /// This file's own subfolder inside `folder`, where its backups go.
+    pub file_folder: Option<String>,
 }
 
 /// Cents as a dollars string for error messages: `-1234567` → `-$12,345.67`.
