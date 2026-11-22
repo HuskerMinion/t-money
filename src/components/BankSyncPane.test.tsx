@@ -301,7 +301,7 @@ describe("New account… from a SimpleFIN account", () => {
     render(<BankSyncPane />);
     fireEvent.change(await screen.findByLabelText("T-Money account for Everyday Checking"), { target: { value: "__new__" } });
     fireEvent.submit(await screen.findByRole("form", { name: "New account for Everyday Checking" }));
-    expect(await screen.findByText(/Money → Currencies, on the left of this window, then try again/)).toBeInTheDocument();
+    expect(await screen.findByText(/Money → Currencies at the top of this window, then try again/)).toBeInTheDocument();
     expect(screen.getByRole("form", { name: /New account for/ })).toBeInTheDocument();
   });
 

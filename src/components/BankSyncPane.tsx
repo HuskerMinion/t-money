@@ -257,7 +257,7 @@ export default function BankSyncPane() {
       // The New Account wizard can fetch a rate; this short form cannot.
       setError(
         /no exchange rate/i.test(msg)
-          ? `${msg} Add one under Money → Currencies, on the left of this window, then try again.`
+          ? `${msg} Add one under Money → Currencies at the top of this window, then try again.`
           : msg
       );
       setBusy(false);
