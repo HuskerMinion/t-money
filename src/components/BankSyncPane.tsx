@@ -47,9 +47,10 @@ export const NEW_TYPES: AccountType[] = ["checking", "savings", "credit", "cash"
 export function guessType(name: string): AccountType {
   // "Credit Union Checking" is a checking account, so a bare "credit" is
   // not enough; a line of credit is tested before a card.
+  // Savings first: "Discover Online Savings" is a deposit account.
+  if (/saving|money market/i.test(name)) return "savings";
   if (/line of credit|\bloc\b/i.test(name)) return "line_of_credit";
   if (/credit card|\bcard\b|visa|mastercard|amex|discover/i.test(name)) return "credit";
-  if (/saving|money market/i.test(name)) return "savings";
   if (/loan/i.test(name)) return "loan";
   return "checking";
 }
@@ -256,7 +257,7 @@ export default function BankSyncPane() {
       // The New Account wizard can fetch a rate; this short form cannot.
       setError(
         /no exchange rate/i.test(msg)
-          ? `${msg} Add one under Tools → Settings… → Money → Currencies, then try again.`
+          ? `${msg} Add one under Money → Currencies, on the left of this window, then try again.`
           : msg
       );
       setBusy(false);

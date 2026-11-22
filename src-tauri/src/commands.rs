@@ -2072,7 +2072,7 @@ pub fn get_backup_config(state: State<AppState>) -> Result<BackupConfig, String>
         .and_then(|f| match backup::directory(&conn, std::path::Path::new(f)) {
             Ok(dir) => Some(dir),
             Err(e) => {
-                eprintln!("backup folder for this file: {e}");
+                eprintln!("[t-money] backup folder for this file: {e}");
                 None
             }
         });

@@ -223,6 +223,7 @@ describe("New account… from a SimpleFIN account", () => {
     expect(guessType("Rewards Card")).toBe("credit");
     expect(guessType("Credit Union Checking")).toBe("checking");
     expect(guessType("Home Equity Line of Credit")).toBe("line_of_credit");
+    expect(guessType("Discover Online Savings")).toBe("savings");
     expect(guessType("High Yield Savings")).toBe("savings");
     expect(guessType("Auto Loan")).toBe("loan");
     expect(guessType("Everyday Checking")).toBe("checking");
@@ -300,7 +301,7 @@ describe("New account… from a SimpleFIN account", () => {
     render(<BankSyncPane />);
     fireEvent.change(await screen.findByLabelText("T-Money account for Everyday Checking"), { target: { value: "__new__" } });
     fireEvent.submit(await screen.findByRole("form", { name: "New account for Everyday Checking" }));
-    expect(await screen.findByText(/Money → Currencies, then try again/)).toBeInTheDocument();
+    expect(await screen.findByText(/Money → Currencies, on the left of this window, then try again/)).toBeInTheDocument();
     expect(screen.getByRole("form", { name: /New account for/ })).toBeInTheDocument();
   });
 
