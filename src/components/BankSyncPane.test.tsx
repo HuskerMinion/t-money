@@ -2,7 +2,7 @@
 // and that SimpleFIN's own messages reach the screen. (The credential never
 // reaches the frontend at all: no command returns it.)
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { vi } from "vitest";
 
 vi.mock("@tauri-apps/api/core", () => import("../test/tauriMock"));
@@ -192,7 +192,7 @@ describe("BankSyncPane", () => {
 
 // Issue #3: make the T-Money account from the bank's, and link it.
 describe("New account… from a SimpleFIN account", () => {
-  function stubNew(type = "checking") {
+  function stubNew() {
     let s = status({ accounts: [sf("A", "Everyday Checking", { currency: "USD" })] });
     setIpcHandlers({
       simplefin_status: () => s,
@@ -205,16 +205,24 @@ describe("New account… from a SimpleFIN account", () => {
       list_payees: () => [],
       list_categories: () => [],
     });
-    return type;
   }
 
   beforeEach(() => {
     resetIpc();
     useAccountStore.setState({ accounts: [savings] });
+    // One fixed day, so a run across midnight cannot move the default date.
+    vi.useFakeTimers({ toFake: ["Date"], now: new Date(2026, 10, 22, 12) });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("guesses the kind from the bank's name", () => {
     expect(guessType("Visa Signature")).toBe("credit");
+    expect(guessType("Rewards Card")).toBe("credit");
+    expect(guessType("Credit Union Checking")).toBe("checking");
+    expect(guessType("Home Equity Line of Credit")).toBe("line_of_credit");
     expect(guessType("High Yield Savings")).toBe("savings");
     expect(guessType("Auto Loan")).toBe("loan");
     expect(guessType("Everyday Checking")).toBe("checking");
@@ -238,7 +246,7 @@ describe("New account… from a SimpleFIN account", () => {
       name: "Everyday Checking",
       accountType: "checking",
       openingBalanceCents: 125_000,
-      openedOn: daysAgoIso(89),
+      openedOn: "2026-08-25",
       currency: "USD",
     });
     expect(invokeCalls.find((c) => c.cmd === "simplefin_link")?.args).toEqual({ sfId: "A", accountId: "a-new" });
@@ -251,11 +259,49 @@ describe("New account… from a SimpleFIN account", () => {
     fireEvent.change(await screen.findByLabelText("T-Money account for Everyday Checking"), { target: { value: "__new__" } });
     const form = await screen.findByRole("form", { name: "New account for Everyday Checking" });
     fireEvent.change(screen.getByDisplayValue("Checking"), { target: { value: "credit" } });
-    expect(screen.getByText("Amount you owed")).toBeInTheDocument();
+    expect(screen.getByText("Amount you owe")).toBeInTheDocument();
     fireEvent.change(screen.getByPlaceholderText("0.00"), { target: { value: "250" } });
     fireEvent.submit(form);
     await waitFor(() => expect(invokeCalls.some((c) => c.cmd === "create_account")).toBe(true));
     expect(invokeCalls.find((c) => c.cmd === "create_account")?.args).toMatchObject({ accountType: "credit", openingBalanceCents: -25_000 });
+  });
+
+  it("a failed link closes the form, so a retry cannot make a second account", async () => {
+    stubNew();
+    setIpcHandlers({
+      simplefin_status: () => status({ accounts: [sf("A", "Everyday Checking")] }),
+      create_account: (args) => acct("a-new", args.name as string),
+      simplefin_link: () => {
+        throw "the file was switched";
+      },
+      get_all_accounts: () => [savings],
+      list_payees: () => [],
+      list_categories: () => [],
+    });
+    render(<BankSyncPane />);
+    fireEvent.change(await screen.findByLabelText("T-Money account for Everyday Checking"), { target: { value: "__new__" } });
+    fireEvent.submit(await screen.findByRole("form", { name: "New account for Everyday Checking" }));
+    expect(await screen.findByText("the file was switched")).toBeInTheDocument();
+    expect(screen.queryByRole("form", { name: /New account for/ })).toBeNull();
+    expect(invokeCalls.filter((c) => c.cmd === "create_account")).toHaveLength(1);
+  });
+
+  it("a currency with no rate says where to add one", async () => {
+    stubNew();
+    setIpcHandlers({
+      simplefin_status: () => status({ accounts: [sf("A", "Everyday Checking")] }),
+      create_account: () => {
+        throw "There is no exchange rate for CAD yet. Enter one first, so this account's money can be counted in USD.";
+      },
+      get_all_accounts: () => [savings],
+      list_payees: () => [],
+      list_categories: () => [],
+    });
+    render(<BankSyncPane />);
+    fireEvent.change(await screen.findByLabelText("T-Money account for Everyday Checking"), { target: { value: "__new__" } });
+    fireEvent.submit(await screen.findByRole("form", { name: "New account for Everyday Checking" }));
+    expect(await screen.findByText(/Money → Currencies, then try again/)).toBeInTheDocument();
+    expect(screen.getByRole("form", { name: /New account for/ })).toBeInTheDocument();
   });
 
   it("Cancel makes nothing", async () => {

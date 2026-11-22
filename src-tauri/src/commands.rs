@@ -2063,11 +2063,19 @@ fn reopen_after_keyring_refused(
 pub fn get_backup_config(state: State<AppState>) -> Result<BackupConfig, String> {
     let (_g, conn) = with_conn(&state)?;
     let folder = queries::get_setting(&conn, backup::FOLDER)?;
+    // A broken identity (or a file that cannot be written) must not blank
+    // all of Settings: the subfolder is then just not shown. A backup still
+    // fails loudly in `take`.
     let file_folder = folder
         .as_deref()
         .filter(|f| !f.trim().is_empty())
-        .map(|f| backup::directory(&conn, std::path::Path::new(f)))
-        .transpose()?;
+        .and_then(|f| match backup::directory(&conn, std::path::Path::new(f)) {
+            Ok(dir) => Some(dir),
+            Err(e) => {
+                eprintln!("backup folder for this file: {e}");
+                None
+            }
+        });
     let existing = file_folder
         .as_deref()
         .map(|dir| {

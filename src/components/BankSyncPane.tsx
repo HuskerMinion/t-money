@@ -45,7 +45,10 @@ export const NEW_TYPES: AccountType[] = ["checking", "savings", "credit", "cash"
 
 /** A first guess at the kind from the bank's name for the account. */
 export function guessType(name: string): AccountType {
-  if (/card|visa|mastercard|amex|credit/i.test(name)) return "credit";
+  // "Credit Union Checking" is a checking account, so a bare "credit" is
+  // not enough; a line of credit is tested before a card.
+  if (/line of credit|\bloc\b/i.test(name)) return "line_of_credit";
+  if (/credit card|\bcard\b|visa|mastercard|amex|discover/i.test(name)) return "credit";
   if (/saving|money market/i.test(name)) return "savings";
   if (/loan/i.test(name)) return "loan";
   return "checking";
@@ -123,7 +126,7 @@ function NewAccountForm({
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <label className="inline-flex items-center gap-1">
-          {owed ? "Amount you owed" : "Opening balance"}
+          {owed ? "Amount you owe" : "Opening balance"}
           <input
             className="aero-field w-28 text-right"
             inputMode="decimal"
@@ -249,11 +252,21 @@ export default function BankSyncPane() {
     try {
       made = await useAccountStore.getState().addAccount(name, type, openingCents, openedOn, sf.currency ?? undefined);
     } catch (e) {
-      setError(String(e));
+      const msg = String(e);
+      // The New Account wizard can fetch a rate; this short form cannot.
+      setError(
+        /no exchange rate/i.test(msg)
+          ? `${msg} Add one under Tools → Settings… → Money → Currencies, then try again.`
+          : msg
+      );
       setBusy(false);
       return;
     }
-    if (await run(() => api.simplefinLink(sf.sf_id, made.id))) setCreating(null);
+    // The account exists now. Close the form before linking, so a failed
+    // link cannot be retried into a second account: the new one is in the
+    // list to pick instead.
+    setCreating(null);
+    await run(() => api.simplefinLink(sf.sf_id, made.id));
   }
 
   async function connect(e: React.FormEvent) {

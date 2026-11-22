@@ -410,7 +410,9 @@ export default function SettingsView() {
       multiple: false,
       // Start in this file's own backup subfolder, not its parent full of
       // other files' folders.
-      defaultPath: backupCfg?.file_folder ?? backupCfg?.folder ?? undefined,
+      // Until this file's first backup the subfolder does not exist yet.
+      defaultPath:
+        (backupCfg?.existing.length ? backupCfg.file_folder : null) ?? backupCfg?.folder ?? undefined,
       filters: [{ name: "T-Money backup", extensions: ["db"] }],
     });
     if (typeof path !== "string") return; // canceled

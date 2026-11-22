@@ -80,7 +80,7 @@ describe("Change folder… keeps the backup switch where it was", () => {
 
 // Each finance file keeps its automatic backups in its own subfolder.
 describe("Backups live in this file's own subfolder", () => {
-  const MINE = { ...CFG, folder: "D:\\Backups", file_folder: "D:\\Backups\\t-money-0b5c" };
+  const MINE = { ...CFG, folder: "D:\\Backups", file_folder: "D:\\Backups\\t-money-0b5c", existing: ["t-money-2026-11-22-0900.db"] };
 
   it("names the file's subfolder", async () => {
     stub({ get_backup_config: () => MINE });
@@ -100,6 +100,17 @@ describe("Backups live in this file's own subfolder", () => {
     await userEvent.click(screen.getByRole("button", { name: /Restore…/ }));
     await waitFor(() => expect(dialog.open).toHaveBeenCalled());
     expect(dialog.open.mock.calls[0][0]).toMatchObject({ defaultPath: "D:\\Backups\\t-money-0b5c" });
+  });
+
+  it("before this file's first backup, Restore starts in the backup folder itself", async () => {
+    stub({ get_backup_config: () => ({ ...MINE, existing: [] }) });
+    dialog.open.mockResolvedValue(null);
+    aimSettingsAt("file", "database");
+    render(<SettingsView />);
+    await waitFor(() => expect(invokeCalls.some((c) => c.cmd === "get_backup_config")).toBe(true));
+    await userEvent.click(screen.getByRole("button", { name: /Restore…/ }));
+    await waitFor(() => expect(dialog.open).toHaveBeenCalled());
+    expect(dialog.open.mock.calls[0][0]).toMatchObject({ defaultPath: "D:\\Backups" });
   });
 });
 
