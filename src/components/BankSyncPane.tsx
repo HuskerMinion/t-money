@@ -7,16 +7,18 @@
 //
 // Nothing is fetched on a timer. Each button press is one request, and
 // SimpleFIN asks apps to stay under 24 a day, so the count is shown.
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import TmIcon from "./TmIcon";
 import Notice from "./Notice";
+import DateField from "./DateField";
 import { api } from "../lib/ipc";
 import { currencyOf } from "../lib/currency";
-import { formatDate, formatMoney } from "../lib/format";
+import { formatDate, formatMoney, parseMoneyToCents } from "../lib/format";
+import { isDebt, labelFor } from "../lib/accountTypes";
 import { refreshUndo } from "../lib/undo";
 import { useAccountStore } from "../stores/useAccountStore";
-import type { Account, SimplefinAccount, SimplefinStatus, SimplefinSync } from "../lib/types";
+import type { Account, AccountType, SimplefinAccount, SimplefinStatus, SimplefinSync } from "../lib/types";
 
 /** Shares, not cash: SimpleFIN cannot fill these. */
 const NOT_FILLABLE = ["investment", "retirement", "employee_stock_option", "watch"];
@@ -31,6 +33,121 @@ export function fillable(sf: SimplefinAccount, accounts: Account[], all: Simplef
       !NOT_FILLABLE.includes(a.type) &&
       currencyOf(a) === sf.currency &&
       !taken.has(a.id)
+  );
+}
+
+/** The Fills list's "make one" choice. Not an account id: ids are UUIDs. */
+export const NEW_ACCOUNT = "__new__";
+
+/** The kinds a new account made from a SimpleFIN account can be: the
+ *  cash-like ones SimpleFIN fills. */
+export const NEW_TYPES: AccountType[] = ["checking", "savings", "credit", "cash", "line_of_credit", "loan"];
+
+/** A first guess at the kind from the bank's name for the account. */
+export function guessType(name: string): AccountType {
+  if (/card|visa|mastercard|amex|credit/i.test(name)) return "credit";
+  if (/saving|money market/i.test(name)) return "savings";
+  if (/loan/i.test(name)) return "loan";
+  return "checking";
+}
+
+/** YYYY-MM-DD, `days` before today in local time. */
+export function daysAgoIso(days: number, now = new Date()): string {
+  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - days);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+/** The first fetch reaches back 88 days. An opening balance dated the day
+ *  before heads the register instead of landing under the fetched rows. */
+const OPENING_DAYS_BACK = 89;
+
+/** Make a T-Money account for a SimpleFIN account, in its currency. The
+ *  caller links it. */
+function NewAccountForm({
+  sf,
+  busy,
+  onCreate,
+  onCancel,
+}: {
+  sf: SimplefinAccount;
+  busy: boolean;
+  onCreate: (name: string, type: AccountType, openingCents: number, openedOn: string) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const [name, setName] = useState(sf.name);
+  const [type, setType] = useState<AccountType>(guessType(sf.name));
+  const [opening, setOpening] = useState("");
+  const [asOf, setAsOf] = useState(daysAgoIso(OPENING_DAYS_BACK));
+  const [error, setError] = useState<string | null>(null);
+  const owed = isDebt(type);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (!name.trim()) {
+      setError("Give the account a name.");
+      return;
+    }
+    const typed = opening.trim() === "" ? 0 : parseMoneyToCents(opening);
+    if (typed === null) {
+      setError(`"${opening}" is not an amount.`);
+      return;
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(asOf)) {
+      setError(`Type a date the form can read, such as ${formatDate("2026-08-03")}.`);
+      return;
+    }
+    // A debt is stored negative; what is owed is typed as a positive
+    // number, as in the New Account wizard.
+    await onCreate(name.trim(), type, owed ? -typed : typed, asOf);
+  }
+
+  return (
+    <form className="space-y-2 py-2" aria-label={`New account for ${sf.name}`} onSubmit={(e) => void submit(e)}>
+      <div className="flex flex-wrap items-center gap-3">
+        <label className="inline-flex items-center gap-1">
+          Name
+          <input className="aero-field w-48" value={name} onChange={(e) => setName(e.target.value)} />
+        </label>
+        <label className="inline-flex items-center gap-1">
+          Type
+          <select className="aero-field" value={type} onChange={(e) => setType(e.target.value as AccountType)}>
+            {NEW_TYPES.map((t) => (
+              <option key={t} value={t}>
+                {labelFor(t)}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <label className="inline-flex items-center gap-1">
+          {owed ? "Amount you owed" : "Opening balance"}
+          <input
+            className="aero-field w-28 text-right"
+            inputMode="decimal"
+            placeholder="0.00"
+            value={opening}
+            onChange={(e) => setOpening(e.target.value)}
+          />
+        </label>
+        <DateField label="Opening balance as of" value={asOf} onChange={setAsOf} width={130} />
+      </div>
+      <div className="text-slate-500">
+        Optional: what the account held on that date. The date is set before the first fetch reaches back, so the
+        opening balance sits at the top of the register. Kept in {sf.currency}.
+      </div>
+      {error && <Notice tone="error">{error}</Notice>}
+      <div className="flex gap-2">
+        <button type="submit" className="aero-btn default" disabled={busy}>
+          Create and link
+        </button>
+        <button type="button" className="aero-btn" disabled={busy} onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
+    </form>
   );
 }
 
@@ -77,6 +194,8 @@ export default function BankSyncPane() {
   const [confirmOff, setConfirmOff] = useState(false);
   const [messages, setMessages] = useState<string[]>([]);
   const [progress, setProgress] = useState<Progress | null>(null);
+  /** The SimpleFIN account a new T-Money account is being made for. */
+  const [creating, setCreating] = useState<string | null>(null);
 
   // The backend names each account as it starts writing it.
   useEffect(() => {
@@ -119,6 +238,22 @@ export default function BankSyncPane() {
       setBusy(false);
       setProgress(null);
     }
+  }
+
+  /** Make the account, then link it: two writes, and a failed link leaves
+   *  an ordinary account that can be picked from the list. */
+  async function createAndLink(sf: SimplefinAccount, name: string, type: AccountType, openingCents: number, openedOn: string) {
+    setBusy(true);
+    setError(null);
+    let made: Account;
+    try {
+      made = await useAccountStore.getState().addAccount(name, type, openingCents, openedOn, sf.currency ?? undefined);
+    } catch (e) {
+      setError(String(e));
+      setBusy(false);
+      return;
+    }
+    if (await run(() => api.simplefinLink(sf.sf_id, made.id))) setCreating(null);
   }
 
   async function connect(e: React.FormEvent) {
@@ -293,7 +428,7 @@ export default function BankSyncPane() {
           </div>
           <div className="p-3 space-y-2 text-[12px]">
             <div className="text-slate-500">
-              Pick the T-Money account each one fills. The first fetch reaches back 88 days; later ones start a few
+              Pick the T-Money account each one fills, or choose New account… to make one. The first fetch reaches back 88 days; later ones start a few
               days before the last, and anything already in the register is skipped.
             </div>
             <table className="w-full" aria-label="SimpleFIN accounts">
@@ -309,7 +444,8 @@ export default function BankSyncPane() {
                 {status.accounts.map((sf) => {
                   const choices = fillable(sf, accounts, status.accounts);
                   return (
-                    <tr key={sf.sf_id} className="border-t border-slate-200/60">
+                    <Fragment key={sf.sf_id}>
+                    <tr className="border-t border-slate-200/60">
                       <td className="py-1">
                         {sf.org ? <span className="text-slate-500">{sf.org} · </span> : null}
                         {sf.name}
@@ -324,9 +460,16 @@ export default function BankSyncPane() {
                           <select
                             className="aero-field"
                             aria-label={`T-Money account for ${sf.name}`}
-                            value={sf.account_id ?? ""}
+                            value={creating === sf.sf_id ? NEW_ACCOUNT : (sf.account_id ?? "")}
                             disabled={busy}
-                            onChange={(e) => void run(() => api.simplefinLink(sf.sf_id, e.target.value || null))}
+                            onChange={(e) => {
+                              if (e.target.value === NEW_ACCOUNT) {
+                                setCreating(sf.sf_id);
+                                return;
+                              }
+                              if (creating === sf.sf_id) setCreating(null);
+                              void run(() => api.simplefinLink(sf.sf_id, e.target.value || null));
+                            }}
                           >
                             <option value="">Not linked</option>
                             {/* The linked account, even before the account list has loaded. */}
@@ -338,6 +481,7 @@ export default function BankSyncPane() {
                                 {a.name}
                               </option>
                             ))}
+                            {!sf.account_id && <option value={NEW_ACCOUNT}>New account…</option>}
                           </select>
                         ) : (
                           <span className="text-slate-500">Not a currency T-Money keeps</span>
@@ -347,6 +491,19 @@ export default function BankSyncPane() {
                         {sf.synced_through ? formatDate(sf.synced_through) : "—"}
                       </td>
                     </tr>
+                    {creating === sf.sf_id && (
+                      <tr>
+                        <td colSpan={4}>
+                          <NewAccountForm
+                            sf={sf}
+                            busy={busy}
+                            onCreate={(name, type, cents, on) => createAndLink(sf, name, type, cents, on)}
+                            onCancel={() => setCreating(null)}
+                          />
+                        </td>
+                      </tr>
+                    )}
+                    </Fragment>
                   );
                 })}
               </tbody>

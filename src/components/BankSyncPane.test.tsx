@@ -14,7 +14,7 @@ vi.mock("@tauri-apps/api/event", () => ({
   },
 }));
 
-import BankSyncPane, { fillable } from "./BankSyncPane";
+import BankSyncPane, { daysAgoIso, fillable, guessType } from "./BankSyncPane";
 import { invokeCalls, resetIpc, setIpcHandlers } from "../test/tauriMock";
 import { useAccountStore } from "../stores/useAccountStore";
 import type { Account, SimplefinAccount, SimplefinStatus } from "../lib/types";
@@ -187,5 +187,83 @@ describe("BankSyncPane", () => {
     expect(invokeCalls.some((c) => c.cmd === "simplefin_disconnect")).toBe(false);
     fireEvent.click(screen.getByRole("button", { name: "Yes, disconnect" }));
     await screen.findByLabelText("SimpleFIN setup token");
+  });
+});
+
+// Issue #3: make the T-Money account from the bank's, and link it.
+describe("New account… from a SimpleFIN account", () => {
+  function stubNew(type = "checking") {
+    let s = status({ accounts: [sf("A", "Everyday Checking", { currency: "USD" })] });
+    setIpcHandlers({
+      simplefin_status: () => s,
+      create_account: (args) => acct("a-new", args.name as string, { type: args.accountType as Account["type"] }),
+      simplefin_link: (args) => {
+        s = status({ accounts: [sf("A", "Everyday Checking", { account_id: args.accountId as string, account_name: "Everyday Checking" })] });
+        return s;
+      },
+      get_all_accounts: () => [savings],
+      list_payees: () => [],
+      list_categories: () => [],
+    });
+    return type;
+  }
+
+  beforeEach(() => {
+    resetIpc();
+    useAccountStore.setState({ accounts: [savings] });
+  });
+
+  it("guesses the kind from the bank's name", () => {
+    expect(guessType("Visa Signature")).toBe("credit");
+    expect(guessType("High Yield Savings")).toBe("savings");
+    expect(guessType("Auto Loan")).toBe("loan");
+    expect(guessType("Everyday Checking")).toBe("checking");
+  });
+
+  it("dates the opening balance before the first fetch", () => {
+    expect(daysAgoIso(89, new Date(2026, 10, 22))).toBe("2026-08-25");
+  });
+
+  it("creates the account in the bank's currency, then links it", async () => {
+    stubNew();
+    render(<BankSyncPane />);
+    const pick = await screen.findByLabelText("T-Money account for Everyday Checking");
+    fireEvent.change(pick, { target: { value: "__new__" } });
+    const form = await screen.findByRole("form", { name: "New account for Everyday Checking" });
+    expect(screen.getByDisplayValue("Everyday Checking")).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText("0.00"), { target: { value: "1,250.00" } });
+    fireEvent.submit(form);
+    await waitFor(() => expect(invokeCalls.some((c) => c.cmd === "simplefin_link")).toBe(true));
+    expect(invokeCalls.find((c) => c.cmd === "create_account")?.args).toEqual({
+      name: "Everyday Checking",
+      accountType: "checking",
+      openingBalanceCents: 125_000,
+      openedOn: daysAgoIso(89),
+      currency: "USD",
+    });
+    expect(invokeCalls.find((c) => c.cmd === "simplefin_link")?.args).toEqual({ sfId: "A", accountId: "a-new" });
+    await waitFor(() => expect(screen.queryByRole("form", { name: /New account for/ })).toBeNull());
+  });
+
+  it("a card's balance is what is owed, stored negative", async () => {
+    stubNew();
+    render(<BankSyncPane />);
+    fireEvent.change(await screen.findByLabelText("T-Money account for Everyday Checking"), { target: { value: "__new__" } });
+    const form = await screen.findByRole("form", { name: "New account for Everyday Checking" });
+    fireEvent.change(screen.getByDisplayValue("Checking"), { target: { value: "credit" } });
+    expect(screen.getByText("Amount you owed")).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText("0.00"), { target: { value: "250" } });
+    fireEvent.submit(form);
+    await waitFor(() => expect(invokeCalls.some((c) => c.cmd === "create_account")).toBe(true));
+    expect(invokeCalls.find((c) => c.cmd === "create_account")?.args).toMatchObject({ accountType: "credit", openingBalanceCents: -25_000 });
+  });
+
+  it("Cancel makes nothing", async () => {
+    stubNew();
+    render(<BankSyncPane />);
+    fireEvent.change(await screen.findByLabelText("T-Money account for Everyday Checking"), { target: { value: "__new__" } });
+    fireEvent.click(await screen.findByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("form", { name: /New account for/ })).toBeNull();
+    expect(invokeCalls.some((c) => c.cmd === "create_account")).toBe(false);
   });
 });
