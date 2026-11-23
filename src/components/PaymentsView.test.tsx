@@ -626,7 +626,8 @@ describe("Schedule this transaction, arriving from the register", () => {
     const monthly = nextScheduledDate("monthly", taxPaid, today())!;
     const yearly = nextScheduledDate("yearly", taxPaid, today())!;
     expect(yearly).not.toBe(monthly);
-    expect(yearly.slice(5)).toBe(taxPaid.slice(5));
+    // Next year (a Feb 29 payment comes on the 28th, so the year is compared).
+    expect(yearly.slice(0, 4)).toBe(String(Number(taxPaid.slice(0, 4)) + 1));
     fireEvent.change(screen.getByLabelText("Repeats"), { target: { value: "yearly" } });
     expect(screen.getByLabelText("First due")).toHaveValue(formatDateUS(yearly));
     // And back: Monthly puts the monthly date back.
