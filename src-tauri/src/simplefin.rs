@@ -417,7 +417,10 @@ pub fn apply_fetch(
                         let Some(bal) = a.balance_cents else {
                             return Err("SimpleFIN sent no balance for it this time.".to_string());
                         };
-                        let day = a.balance_date.clone().unwrap_or_else(|| today.to_string());
+                        // SimpleFIN's balance date is UTC and can be ahead
+                        // of the local day; a row dated tomorrow would be
+                        // left out of today's Net worth.
+                        let day = a.balance_date.clone().filter(|d| d.as_str() <= today).unwrap_or_else(|| today.to_string());
                         queries::record_bank_balance(&conn, &account_id, &day, bal)?;
                         queries::set_simplefin_synced(&conn, &link.sf_id, today)?;
                         Ok(day)

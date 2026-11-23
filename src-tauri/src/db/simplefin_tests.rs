@@ -333,14 +333,25 @@ fn a_retirement_account_without_shares_is_kept_at_the_banks_balance() {
 
     // The same balance again writes nothing; a new one writes the difference.
     apply_fetch(&db.pool, &reply, "2026-11-22", "2026-11-17", &mut |_, _, _| {}).unwrap();
+    let n: i64 = c.query_row("SELECT COUNT(*) FROM transactions WHERE account_id = ?1", [&k401], |r| r.get(0)).unwrap();
+    assert_eq!(n, 1);
+    // A balance date ahead of the local day is written as today.
+    let mut ahead = a.clone();
+    ahead.balance_cents = Some(813_300);
+    ahead.balance_date = Some("2026-11-23".into());
+    apply_fetch(&db.pool, &set(vec![ahead]), "2026-11-22", "2026-11-17", &mut |_, _, _| {}).unwrap();
+    let newest: String = c.query_row("SELECT MAX(date) FROM transactions WHERE account_id = ?1", [&k401], |r| r.get(0)).unwrap();
+    assert_eq!(newest, "2026-11-22");
     let mut b = a.clone();
     b.balance_cents = Some(820_000);
     b.balance_date = Some("2026-11-21".into());
     apply_fetch(&db.pool, &set(vec![b]), "2026-11-22", "2026-11-17", &mut |_, _, _| {}).unwrap();
     let n: i64 = c.query_row("SELECT COUNT(*) FROM transactions WHERE account_id = ?1", [&k401], |r| r.get(0)).unwrap();
-    assert_eq!(n, 2);
+    assert_eq!(n, 3);
     assert_eq!(queries::get_account(&c, &k401).unwrap().balance_cents, 820_000);
-    assert_eq!(queries::latest_feed_date(&c, &k401).unwrap().as_deref(), Some("2026-11-21"));
+    // Dated 11-21 by the bank, but the account already has a row on 11-22:
+    // the new row goes there, and the account ends at the bank's balance.
+    assert_eq!(queries::latest_feed_date(&c, &k401).unwrap().as_deref(), Some("2026-11-22"));
 
     // Shares and a synced balance never mix: a holding added later stops it.
     give_holding(&c, &k401);

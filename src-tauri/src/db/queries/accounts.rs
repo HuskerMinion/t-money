@@ -982,9 +982,12 @@ pub fn is_valued_asset(kind: &str) -> bool {
 }
 
 /// The bank's balance for a balance-only account (an investment or
-/// retirement account SimpleFIN fills): one revaluation row on `date` for
-/// the difference, bringing the account to `value_cents` as of that date,
-/// like Update value: Net worth counts it, no income or spending report does.
+/// retirement account SimpleFIN fills): one revaluation row for the
+/// difference, bringing the account's balance to `value_cents`, like Update
+/// value: Net worth counts it, no income or spending report does. The bank's
+/// newest balance is what the account is worth now, so the row is dated
+/// `date`, or the account's latest row if that is later, and the account
+/// as a whole ends at `value_cents`.
 ///
 /// Unlike `set_account_value` it only ever adds a row and never changes
 /// another, so a fetch's undo step (which takes back the rows it created)
@@ -994,18 +997,22 @@ pub fn is_valued_asset(kind: &str) -> bool {
 pub fn record_bank_balance(conn: &Conn, account_id: &str, date: &str, value_cents: i64) -> Result<Option<i64>, String> {
     parse_date(date)?;
     let tx = conn.unchecked_transaction().map_err(|e| e.to_string())?;
-    let asof: i64 = tx
+    let (total, latest): (i64, Option<String>) = tx
         .query_row(
-            "SELECT COALESCE(SUM(amount_cents), 0) FROM transactions
-              WHERE account_id = ?1 AND is_void = 0 AND date <= ?2",
-            params![account_id, date],
-            |r| r.get(0),
+            "SELECT COALESCE(SUM(amount_cents), 0), MAX(date) FROM transactions
+              WHERE account_id = ?1 AND is_void = 0",
+            params![account_id],
+            |r| Ok((r.get(0)?, r.get(1)?)),
         )
         .map_err(|e| e.to_string())?;
-    let delta = value_cents - asof;
+    let delta = value_cents - total;
     if delta == 0 {
         return Ok(None);
     }
+    let date = match latest {
+        Some(l) if l.as_str() > date => l,
+        _ => date.to_string(),
+    };
     tx.execute(
         "INSERT INTO transactions
            (id, account_id, date, payee, payee_id, category_id, amount_cents,
