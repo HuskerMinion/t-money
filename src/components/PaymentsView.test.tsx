@@ -593,8 +593,14 @@ describe("Schedule this transaction, arriving from the register", () => {
 
   // Discussion #5: property tax paid once a year, scheduled from the
   // register. Yearly kept the monthly start date, a month after the payment.
+  let taxPaid = "";
   async function parkTax() {
     const { requestSchedule, nextMonthlyDate } = await import("../lib/scheduleDraft");
+    // Paid 20 days ago: the monthly date is about 10 days off, the yearly one
+    // about 11 months, so the two never coincide whatever today is.
+    const paid = new Date(`${today()}T12:00:00`);
+    paid.setDate(paid.getDate() - 20);
+    taxPaid = `${paid.getFullYear()}-${String(paid.getMonth() + 1).padStart(2, "0")}-${String(paid.getDate()).padStart(2, "0")}`;
     resetIpc();
     setIpcHandlers({
       list_recurrences: () => [],
@@ -607,8 +613,8 @@ describe("Schedule this transaction, arriving from the register", () => {
     });
     requestSchedule({
       payee: "County Treasurer", amount_cents: -312_000, account_id: null, category_id: null, freq: "monthly",
-      interval_n: 1, start_date: nextMonthlyDate("2026-03-10", today()), end_date: null, second_day: null,
-      weekend_rule: "none", notes: null, from_date: "2026-03-10",
+      interval_n: 1, start_date: nextMonthlyDate(taxPaid, today()), end_date: null, second_day: null,
+      weekend_rule: "none", notes: null, from_date: taxPaid,
     });
     render(<PaymentsView />);
     await waitFor(() => expect(screen.getByLabelText("Payee")).toHaveValue("County Treasurer"));
@@ -617,13 +623,21 @@ describe("Schedule this transaction, arriving from the register", () => {
   it("Yearly moves the start date to the payment's day next time it comes", async () => {
     const { nextScheduledDate } = await import("../lib/scheduleDraft");
     await parkTax();
+    const monthly = nextScheduledDate("monthly", taxPaid, today())!;
+    const yearly = nextScheduledDate("yearly", taxPaid, today())!;
+    expect(yearly).not.toBe(monthly);
+    expect(yearly.slice(5)).toBe(taxPaid.slice(5));
     fireEvent.change(screen.getByLabelText("Repeats"), { target: { value: "yearly" } });
-    const yearly = nextScheduledDate("yearly", "2026-03-10", today())!;
-    expect(yearly.slice(5)).toBe("03-10");
     expect(screen.getByLabelText("First due")).toHaveValue(formatDateUS(yearly));
     // And back: Monthly puts the monthly date back.
     fireEvent.change(screen.getByLabelText("Repeats"), { target: { value: "monthly" } });
-    expect(screen.getByLabelText("First due")).toHaveValue(formatDateUS(nextScheduledDate("monthly", "2026-03-10", today())!));
+    expect(screen.getByLabelText("First due")).toHaveValue(formatDateUS(monthly));
+    // Through Once (which has no next time and keeps the date) and on to
+    // Yearly: the date still follows.
+    fireEvent.change(screen.getByLabelText("Repeats"), { target: { value: "once" } });
+    expect(screen.getByLabelText("First due")).toHaveValue(formatDateUS(monthly));
+    fireEvent.change(screen.getByLabelText("Repeats"), { target: { value: "yearly" } });
+    expect(screen.getByLabelText("First due")).toHaveValue(formatDateUS(yearly));
   });
 
   it("a start date the user typed stays when Repeats changes", async () => {

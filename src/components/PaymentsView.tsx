@@ -175,7 +175,8 @@ export default function PaymentsView() {
   const [intervalText, setIntervalText] = useState("1");
   // The date of the register row a "Schedule this transaction…" draft came
   // from: changing Repeats moves the start date to that choice's next time,
-  // so Yearly property tax starts next year, not next month.
+  // so Yearly property tax starts next year, not next month. Cleared once the
+  // user changes First due: a date they chose is theirs.
   const [fromDate, setFromDate] = useState<string | null>(null);
   const [direction, setDirection] = useState<"out" | "in">("out");
   // Money's bill calendar: the same occurrences as a month grid.
@@ -926,12 +927,8 @@ export default function PaymentsView() {
                   // the backend, and schedule.rs scheduled the start day only.
                   const second_day =
                     freq === "semi_monthly" && draft.second_day === null ? 15 : draft.second_day;
-                  // A start date the user typed is theirs; only the one the
-                  // draft came with follows the choice.
-                  let start_date = draft.start_date;
-                  if (fromDate && draft.start_date === nextScheduledDate(draft.freq, fromDate, today())) {
-                    start_date = nextScheduledDate(freq, fromDate, today()) ?? draft.start_date;
-                  }
+                  // Once has no next time, so it leaves the date as it is.
+                  const start_date = (fromDate && nextScheduledDate(freq, fromDate, today())) || draft.start_date;
                   setDraft({ ...draft, freq, second_day, start_date });
                 }}
               >
@@ -985,7 +982,14 @@ export default function PaymentsView() {
             <label className="block flex-1">
               First due
               <span className="block mt-1">
-                <DateField label="First due" value={draft.start_date} onChange={(v) => setDraft({ ...draft, start_date: v })} />
+                <DateField
+                  label="First due"
+                  value={draft.start_date}
+                  onChange={(v) => {
+                    if (v !== draft.start_date) setFromDate(null);
+                    setDraft({ ...draft, start_date: v });
+                  }}
+                />
               </span>
             </label>
             <label className="block flex-1">
