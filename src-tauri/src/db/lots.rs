@@ -1028,6 +1028,24 @@ fn annual_bps(daily: i128) -> i64 {
 }
 
 /// Cash in the account (or every investment account) at the close of `date`.
+/// An investment or retirement account kept at the bank's balance by
+/// SimpleFIN has no shares and no prices, and its "Balance from the bank"
+/// rows mix contributions with growth, so no return can be worked out for
+/// it: it is left out of performance (Net worth still counts it). Such an
+/// account is one with a `sfin:balance:` row; `a` is its alias.
+const NOT_BALANCE_ONLY: &str = " AND NOT EXISTS (SELECT 1 FROM transactions bb
+              WHERE bb.account_id = a.id AND bb.fitid >= 'sfin:balance:' AND bb.fitid < 'sfin:balance;')";
+
+/// Whether `account_id` is kept at the bank's balance (see `NOT_BALANCE_ONLY`).
+pub fn is_balance_only_account(conn: &Connection, account_id: &str) -> Result<bool, String> {
+    conn.query_row(
+        "SELECT EXISTS (SELECT 1 FROM transactions WHERE account_id = ?1 AND fitid >= 'sfin:balance:' AND fitid < 'sfin:balance;')",
+        [account_id],
+        |r| r.get(0),
+    )
+    .map_err(|e| e.to_string())
+}
+
 fn cash_on(conn: &Connection, account_id: Option<&str>, date: &str) -> Result<i64, String> {
     let mut sql = String::from(
         "SELECT COALESCE(SUM(t.amount_cents), 0)
@@ -1035,6 +1053,7 @@ fn cash_on(conn: &Connection, account_id: Option<&str>, date: &str) -> Result<i6
           WHERE t.is_void = 0 AND t.date <= ?1
             AND a.type IN ('investment','retirement')",
     );
+    sql.push_str(NOT_BALANCE_ONLY);
     let mut args: Vec<String> = vec![date.to_string()];
     if let Some(a) = account_id {
         args.push(a.to_string());
@@ -1152,6 +1171,7 @@ fn account_flows(conn: &Connection, account_id: Option<&str>, after: &str, to: &
             AND t.date > ?1 AND t.date <= ?2
             AND (t.transfer_id IS NOT NULL OR COALESCE(c.kind, 'income') <> 'expense')",
     );
+    sql.push_str(NOT_BALANCE_ONLY);
     let mut args = vec![after.to_string(), to.to_string()];
     if let Some(a) = account_id {
         args.push(a.to_string());
@@ -1254,8 +1274,15 @@ pub fn performance(conn: &Connection, account_id: Option<&str>, security_id: Opt
         NaiveDate::from_ymd_opt(y, m, to.day().min(last.day())).unwrap()
     };
     let year_start = NaiveDate::from_ymd_opt(to.year(), 1, 1).unwrap().pred_opt().unwrap();
+    // No return for an account kept at the bank's balance.
+    if let Some(a) = account_id {
+        if is_balance_only_account(conn, a)? {
+            return Ok(Vec::new());
+        }
+    }
     let first: Option<String> = {
         let mut sql = String::from("SELECT MIN(t.date) FROM transactions t JOIN accounts a ON a.id = t.account_id WHERE t.is_void = 0 AND a.type IN ('investment','retirement')");
+        sql.push_str(NOT_BALANCE_ONLY);
         let mut args: Vec<String> = Vec::new();
         if let Some(a) = account_id {
             args.push(a.to_string());

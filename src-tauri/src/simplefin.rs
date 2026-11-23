@@ -411,7 +411,7 @@ pub fn apply_fetch(
                     let written = pool.get().map_err(|e| e.to_string()).and_then(|conn| {
                         if queries::has_holdings(&conn, &account_id)? {
                             return Err(format!(
-                                "{account_name} has holdings now, so its balance was not updated. SimpleFIN keeps the balance only of an investment or retirement account without shares."
+                                "{account_name} has share transactions now, so its balance was not updated. SimpleFIN keeps the balance only of an investment or retirement account without any."
                             ));
                         }
                         let Some(bal) = a.balance_cents else {
@@ -421,7 +421,7 @@ pub fn apply_fetch(
                         // of the local day; a row dated tomorrow would be
                         // left out of today's Net worth.
                         let day = a.balance_date.clone().filter(|d| d.as_str() <= today).unwrap_or_else(|| today.to_string());
-                        queries::record_bank_balance(&conn, &account_id, &day, bal)?;
+                        queries::record_bank_balance(&conn, &account_id, &day, today, bal)?;
                         queries::set_simplefin_synced(&conn, &link.sf_id, today)?;
                         Ok(day)
                     });

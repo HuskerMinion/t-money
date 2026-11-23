@@ -118,7 +118,7 @@ pub fn link_simplefin_account(conn: &Connection, sf_id: &str, account_id: Option
     }
     if is_balance_only(&kind) && has_holdings(conn, account_id)? {
         return Err(format!(
-            "{name} has holdings. SimpleFIN can keep an investment or retirement account's balance only when T-Money tracks no shares in it, so the two never mix. Link it to an investment or retirement account without holdings."
+            "{name} has share transactions in T-Money (sold ones count too). SimpleFIN can keep an investment or retirement account's balance only when it has none, so the two never mix. Link it to one without any, or make a new one."
         ));
     }
     match sf_currency.as_deref() {

@@ -38,7 +38,8 @@ export function fillable(sf: SimplefinAccount, accounts: Account[], all: Simplef
     (a) =>
       (!a.is_closed || a.id === sf.account_id) &&
       !NOT_FILLABLE.includes(a.type) &&
-      !(isBalanceOnly(a.type) && a.holdings_value_cents !== 0) &&
+      // Its own link stays offered even if it gained shares since.
+      !(isBalanceOnly(a.type) && a.holdings_value_cents !== 0 && a.id !== sf.account_id) &&
       currencyOf(a) === sf.currency &&
       !taken.has(a.id)
   );
@@ -51,10 +52,19 @@ export const NEW_ACCOUNT = "__new__";
  *  cash-like ones SimpleFIN fills. */
 export const NEW_TYPES: AccountType[] = ["checking", "savings", "credit", "cash", "line_of_credit", "loan", "retirement", "investment"];
 
+/** The kinds offered for a SimpleFIN account in `currency`: investment and
+ *  retirement accounts are kept in the home currency only, as the New
+ *  Account wizard says. */
+export function newTypes(currency: string | null, home = homeCurrency()): AccountType[] {
+  return currency === home ? NEW_TYPES : NEW_TYPES.filter((t) => !isBalanceOnly(t));
+}
+
 /** A first guess at the kind from the bank's name for the account. */
 export function guessType(name: string): AccountType {
+  // A checking account first: "Investor Checking" is one.
+  if (/checking/i.test(name)) return "checking";
   if (/401\s*\(?k\)?|403\s*\(?b\)?|\b457\b|\bira\b|roth|retire|pension|\btsp\b/i.test(name)) return "retirement";
-  if (/brokerage|invest/i.test(name)) return "investment";
+  if (/brokerage|\binvestment\b/i.test(name)) return "investment";
   // "Credit Union Checking" is a checking account, so a bare "credit" is
   // not enough; a line of credit is tested before a card.
   // Savings first: "Discover Online Savings" is a deposit account.
@@ -90,7 +100,10 @@ function NewAccountForm({
   onCancel: () => void;
 }) {
   const [name, setName] = useState(sf.name);
-  const [type, setType] = useState<AccountType>(guessType(sf.name));
+  const [type, setType] = useState<AccountType>(() => {
+    const g = guessType(sf.name);
+    return newTypes(sf.currency).includes(g) ? g : "checking";
+  });
   const [opening, setOpening] = useState("");
   const [asOf, setAsOf] = useState(daysAgoIso(OPENING_DAYS_BACK));
   const [error, setError] = useState<string | null>(null);
@@ -133,7 +146,7 @@ function NewAccountForm({
         <label className="inline-flex items-center gap-1">
           Type
           <select className="aero-field" value={type} onChange={(e) => setType(e.target.value as AccountType)}>
-            {NEW_TYPES.map((t) => (
+            {newTypes(sf.currency).map((t) => (
               <option key={t} value={t}>
                 {labelFor(t)}
               </option>
@@ -553,7 +566,7 @@ export default function BankSyncPane() {
                           </select>
                         ) : (
                           <span className="text-slate-500" title="SimpleFIN gives this account in a unit of its own, such as points.">
-                            Not a currency T-Money keeps
+                            Not a currency T-Money keeps. Check for new accounts asks SimpleFIN again.
                           </span>
                         )}
                         {sf.currency_missing && sf.currency_confirmed && !sf.account_id && (

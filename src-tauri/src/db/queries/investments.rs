@@ -1610,6 +1610,21 @@ mod tests {
         let mwr = p.mwr_annual_bps.expect("a rate exists");
         assert!(mwr < annual && mwr > 1_050, "money-weighted {mwr} vs time-weighted {annual}");
 
+        // A 401(k) kept at the bank's balance by SimpleFIN has no shares to
+        // measure: its "Balance from the bank" rows are neither flows nor
+        // growth here. All accounts reads as the IRA alone, and the 401(k)
+        // on its own has no figures.
+        let k401 = inv_account(&c, "401(k)", "retirement");
+        for (day, bal) in [("2026-03-31", 4_000_000), ("2026-09-30", 4_400_000), ("2026-12-31", 4_900_000)] {
+            record_bank_balance(&c, &k401, day, "2026-12-31", bal).unwrap();
+        }
+        let all = lots::performance_between(&c, None, None, "2025-12-31", "2026-12-31").unwrap();
+        assert_eq!(
+            (all.start_value_cents, all.end_value_cents, all.flows_in_cents, all.flows_out_cents, all.gain_cents, all.twr_bps),
+            (p.start_value_cents, p.end_value_cents, p.flows_in_cents, p.flows_out_cents, p.gain_cents, p.twr_bps)
+        );
+        assert!(lots::performance(&c, Some(&k401), None, "2026-12-31").unwrap().is_empty());
+
         // A fee paid from cash is a cost inside the return, not money out;
         // a dividend paid in cash is return, not money in.
         let fees = ensure_category(&c, "Investment Fees").unwrap();

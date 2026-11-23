@@ -149,10 +149,10 @@ export const api = {
    *  kept in Credential Manager and never comes back here. */
   simplefinConnect: (setupToken: string) => invoke<SimplefinStatus>("simplefin_connect", { setupToken }),
   simplefinRefreshAccounts: () => invoke<SimplefinStatus>("simplefin_refresh_accounts"),
-  /** `accountId` null unlinks. */
   /** Say which currency a SimpleFIN account with a blank one is in; null forgets it. */
   simplefinConfirmCurrency: (sfId: string, currency: string | null) =>
     invoke<SimplefinStatus>("simplefin_confirm_currency", { sfId, currency }),
+  /** `accountId` null unlinks. */
   simplefinLink: (sfId: string, accountId: string | null) =>
     invoke<SimplefinStatus>("simplefin_link", { sfId, accountId }),
   simplefinDisconnect: () => invoke<SimplefinStatus>("simplefin_disconnect"),

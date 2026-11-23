@@ -986,23 +986,34 @@ pub fn is_valued_asset(kind: &str) -> bool {
 /// difference, bringing the account's balance to `value_cents`, like Update
 /// value: Net worth counts it, no income or spending report does. The bank's
 /// newest balance is what the account is worth now, so the row is dated
-/// `date`, or the account's latest row if that is later, and the account
-/// as a whole ends at `value_cents`.
+/// `date` (at most `today`), or the account's latest row up to `today` if
+/// that is later, and the account as a whole ends at `value_cents`.
 ///
 /// Unlike `set_account_value` it only ever adds a row and never changes
 /// another, so a fetch's undo step (which takes back the rows it created)
-/// undoes it exactly. Its `fitid` is `sfin:balance:<date>`, so the next
-/// fetch starts from that day. Returns the amount written, or None when the
-/// account already matched.
-pub fn record_bank_balance(conn: &Conn, account_id: &str, date: &str, value_cents: i64) -> Result<Option<i64>, String> {
+/// undoes it exactly. Its `fitid` is `sfin:balance:<date>`, which marks the
+/// account as balance-only (performance leaves such an account out). A row
+/// someone dated after today never pulls this one past today.
+/// Returns the amount written, or None when the account already matched.
+pub fn record_bank_balance(conn: &Conn, account_id: &str, date: &str, today: &str, value_cents: i64) -> Result<Option<i64>, String> {
     parse_date(date)?;
+    parse_date(today)?;
+    let date = if date > today { today } else { date };
     let tx = conn.unchecked_transaction().map_err(|e| e.to_string())?;
-    let (total, latest): (i64, Option<String>) = tx
+    let total: i64 = tx
         .query_row(
-            "SELECT COALESCE(SUM(amount_cents), 0), MAX(date) FROM transactions
-              WHERE account_id = ?1 AND is_void = 0",
+            "SELECT COALESCE(SUM(amount_cents), 0) FROM transactions WHERE account_id = ?1 AND is_void = 0",
             params![account_id],
-            |r| Ok((r.get(0)?, r.get(1)?)),
+            |r| r.get(0),
+        )
+        .map_err(|e| e.to_string())?;
+    // The newest row up to today, so the register stays in date order and a
+    // future-dated row cannot pull this one past today.
+    let latest: Option<String> = tx
+        .query_row(
+            "SELECT MAX(date) FROM transactions WHERE account_id = ?1 AND is_void = 0 AND date <= ?2",
+            params![account_id, today],
+            |r| r.get(0),
         )
         .map_err(|e| e.to_string())?;
     let delta = value_cents - total;

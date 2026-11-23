@@ -353,10 +353,27 @@ fn a_retirement_account_without_shares_is_kept_at_the_banks_balance() {
     // the new row goes there, and the account ends at the bank's balance.
     assert_eq!(queries::latest_feed_date(&c, &k401).unwrap().as_deref(), Some("2026-11-22"));
 
+    // A row someone dated after today does not pull the bank's row past today.
+    c.execute(
+        "INSERT INTO transactions (id, account_id, date, payee, amount_cents) VALUES ('later', ?1, '2026-12-25', 'Typed ahead', 100)",
+        [&k401],
+    )
+    .unwrap();
+    c.execute("UPDATE accounts SET balance_cents = balance_cents + 100 WHERE id = ?1", [&k401]).unwrap();
+    let mut d = a.clone();
+    d.balance_cents = Some(830_000);
+    d.balance_date = Some("2026-11-22".into());
+    apply_fetch(&db.pool, &set(vec![d]), "2026-11-22", "2026-11-17", &mut |_, _, _| {}).unwrap();
+    let day: String = c
+        .query_row("SELECT date FROM transactions WHERE account_id = ?1 AND fitid LIKE 'sfin:balance:%' ORDER BY rowid DESC LIMIT 1", [&k401], |r| r.get(0))
+        .unwrap();
+    assert_eq!(day, "2026-11-22");
+    assert_eq!(queries::get_account(&c, &k401).unwrap().balance_cents, 830_000);
+
     // Shares and a synced balance never mix: a holding added later stops it.
     give_holding(&c, &k401);
     let out = apply_fetch(&db.pool, &reply, "2026-11-23", "2026-11-18", &mut |_, _, _| {}).unwrap();
-    assert!(out.lines[0].error.as_deref().unwrap_or("").contains("has holdings now"), "{:?}", out.lines[0].error);
+    assert!(out.lines[0].error.as_deref().unwrap_or("").contains("has share transactions now"), "{:?}", out.lines[0].error);
 }
 
 #[test]
@@ -367,7 +384,7 @@ fn an_account_with_shares_cannot_be_linked() {
     give_holding(&c, &brokerage);
     queries::upsert_simplefin_accounts(&c, &set(vec![acct("A", "Plan", "USD", vec![])])).unwrap();
     let e = queries::link_simplefin_account(&c, "A", Some(&brokerage)).unwrap_err();
-    assert!(e.contains("has holdings"), "{e}");
+    assert!(e.contains("has share transactions"), "{e}");
 }
 
 #[test]

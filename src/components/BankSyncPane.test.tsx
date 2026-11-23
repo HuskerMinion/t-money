@@ -14,7 +14,8 @@ vi.mock("@tauri-apps/api/event", () => ({
   },
 }));
 
-import BankSyncPane, { daysAgoIso, fillable, guessType } from "./BankSyncPane";
+import BankSyncPane, { currencyChoices, daysAgoIso, fillable, guessType, newTypes } from "./BankSyncPane";
+import { useFileFormat } from "../lib/region";
 import { invokeCalls, resetIpc, setIpcHandlers } from "../test/tauriMock";
 import { useAccountStore } from "../stores/useAccountStore";
 import type { Account, SimplefinAccount, SimplefinStatus } from "../lib/types";
@@ -59,6 +60,9 @@ describe("fillable", () => {
     expect(names(all[1])).toEqual(["Checking", "401(k)"]);
     // Its own link stays offered.
     expect(names(all[0])).toEqual(["Checking", "Savings", "401(k)"]);
+    // Once linked, an account that gained shares keeps showing as the link.
+    const linked = sf("D", "Plan", { account_id: "a-brk" });
+    expect(fillable(linked, [brokerage], [linked]).map((a) => a.name)).toEqual(["Brokerage"]);
     expect(names(sf("C", "Euro side", { currency: "EUR" }))).toEqual(["Euro"]);
   });
 });
@@ -114,7 +118,7 @@ describe("BankSyncPane", () => {
     // The server's message is shown, and an account in a currency T-Money
     // cannot keep is listed but cannot be linked.
     expect(screen.getByText(/SimpleFIN says: Example Bank needs you to sign in again\./)).toBeInTheDocument();
-    expect(screen.getByText("Not a currency T-Money keeps")).toBeInTheDocument();
+    expect(screen.getByText(/^Not a currency T-Money keeps\. Check for new accounts asks SimpleFIN again\.$/)).toBeInTheDocument();
     expect(screen.queryByLabelText("T-Money account for Points")).toBeNull();
   });
 
@@ -323,6 +327,7 @@ describe("New account… from a SimpleFIN account", () => {
 describe("A SimpleFIN account with no currency", () => {
   beforeEach(() => {
     resetIpc();
+    useFileFormat.setState({ home: "USD" });
     useAccountStore.setState({ accounts: [checking, k401] });
   });
 
@@ -347,7 +352,7 @@ describe("A SimpleFIN account with no currency", () => {
     // Nothing to link until a currency is chosen.
     expect(screen.queryByLabelText("T-Money account for Plan")).toBeNull();
     // A custom unit is said plainly, and offers nothing.
-    expect(screen.getByText("Not a currency T-Money keeps")).toBeInTheDocument();
+    expect(screen.getByText(/^Not a currency T-Money keeps\. Check for new accounts asks SimpleFIN again\.$/)).toBeInTheDocument();
     expect(screen.queryByLabelText("Currency for Points")).toBeNull();
 
     fireEvent.change(pick, { target: { value: "USD" } });
@@ -360,6 +365,7 @@ describe("A SimpleFIN account with no currency", () => {
 describe("Balance-only accounts", () => {
   beforeEach(() => {
     resetIpc();
+    useFileFormat.setState({ home: "USD" });
     useAccountStore.setState({ accounts: [savings] });
   });
 
@@ -368,6 +374,22 @@ describe("Balance-only accounts", () => {
     expect(guessType("Roth IRA")).toBe("retirement");
     expect(guessType("Individual Brokerage")).toBe("investment");
     expect(guessType("Everyday Checking")).toBe("checking");
+    expect(guessType("Bank Investor Checking")).toBe("checking");
+  });
+
+  it("offers retirement and investment only in the home currency", () => {
+    expect(newTypes("USD", "USD")).toContain("retirement");
+    expect(newTypes("CAD", "USD")).not.toContain("retirement");
+    expect(newTypes("CAD", "USD")).not.toContain("investment");
+    expect(newTypes("CAD", "USD")).toContain("checking");
+  });
+
+  it("lists the home currency first", () => {
+    const all = [
+      { code: "EUR", name: "Euro", symbol: "€", decimals: 2 },
+      { code: "CAD", name: "Canadian dollar", symbol: "CA$", decimals: 2 },
+    ];
+    expect(currencyChoices(all, "CAD").map((c) => c.code)).toEqual(["CAD", "EUR"]);
   });
 
   it("a new retirement account takes no opening balance: the bank's comes on each fetch", async () => {
