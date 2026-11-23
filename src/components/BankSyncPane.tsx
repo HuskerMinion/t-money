@@ -13,24 +13,32 @@ import TmIcon from "./TmIcon";
 import Notice from "./Notice";
 import DateField from "./DateField";
 import { api } from "../lib/ipc";
-import { currencyOf } from "../lib/currency";
+import { currencyOf, homeCurrency } from "../lib/currency";
 import { formatDate, formatMoney, parseMoneyToCents } from "../lib/format";
 import { isDebt, labelFor } from "../lib/accountTypes";
 import { refreshUndo } from "../lib/undo";
 import { useAccountStore } from "../stores/useAccountStore";
-import type { Account, AccountType, SimplefinAccount, SimplefinStatus, SimplefinSync } from "../lib/types";
+import type { Account, AccountType, Currency, SimplefinAccount, SimplefinStatus, SimplefinSync } from "../lib/types";
 
-/** Shares, not cash: SimpleFIN cannot fill these. */
-const NOT_FILLABLE = ["investment", "retirement", "employee_stock_option", "watch"];
+/** Shares only: SimpleFIN cannot fill these. */
+const NOT_FILLABLE = ["employee_stock_option", "watch"];
 
-/** The T-Money accounts a SimpleFIN account may fill: open, cash-like, in
- *  the same currency, and not already filled by another. */
+/** Kept at the bank's balance only, never its transactions, and only while
+ *  T-Money tracks no shares in them. Mirrors `queries::is_balance_only`. */
+export function isBalanceOnly(type: string): boolean {
+  return type === "investment" || type === "retirement";
+}
+
+/** The T-Money accounts a SimpleFIN account may fill: open, in the same
+ *  currency, not already filled by another, and not one holding shares
+ *  (the backend has the last word on that). */
 export function fillable(sf: SimplefinAccount, accounts: Account[], all: SimplefinAccount[]): Account[] {
   const taken = new Set(all.filter((a) => a.sf_id !== sf.sf_id && a.account_id).map((a) => a.account_id));
   return accounts.filter(
     (a) =>
       (!a.is_closed || a.id === sf.account_id) &&
       !NOT_FILLABLE.includes(a.type) &&
+      !(isBalanceOnly(a.type) && a.holdings_value_cents !== 0) &&
       currencyOf(a) === sf.currency &&
       !taken.has(a.id)
   );
@@ -41,10 +49,12 @@ export const NEW_ACCOUNT = "__new__";
 
 /** The kinds a new account made from a SimpleFIN account can be: the
  *  cash-like ones SimpleFIN fills. */
-export const NEW_TYPES: AccountType[] = ["checking", "savings", "credit", "cash", "line_of_credit", "loan"];
+export const NEW_TYPES: AccountType[] = ["checking", "savings", "credit", "cash", "line_of_credit", "loan", "retirement", "investment"];
 
 /** A first guess at the kind from the bank's name for the account. */
 export function guessType(name: string): AccountType {
+  if (/401\s*\(?k\)?|403\s*\(?b\)?|\b457\b|\bira\b|roth|retire|pension|\btsp\b/i.test(name)) return "retirement";
+  if (/brokerage|invest/i.test(name)) return "investment";
   // "Credit Union Checking" is a checking account, so a bare "credit" is
   // not enough; a line of credit is tested before a card.
   // Savings first: "Discover Online Savings" is a deposit account.
@@ -85,12 +95,18 @@ function NewAccountForm({
   const [asOf, setAsOf] = useState(daysAgoIso(OPENING_DAYS_BACK));
   const [error, setError] = useState<string | null>(null);
   const owed = isDebt(type);
+  const balanceOnly = isBalanceOnly(type);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     if (!name.trim()) {
       setError("Give the account a name.");
+      return;
+    }
+    // Its balance comes from the bank on every fetch: no opening balance.
+    if (balanceOnly) {
+      await onCreate(name.trim(), type, 0, asOf);
       return;
     }
     const typed = opening.trim() === "" ? 0 : parseMoneyToCents(opening);
@@ -125,6 +141,13 @@ function NewAccountForm({
           </select>
         </label>
       </div>
+      {balanceOnly ? (
+        <div className="text-slate-500">
+          Each fetch sets its balance to the bank&apos;s: no transactions and no shares, just what it is worth. Kept in{" "}
+          {sf.currency}.
+        </div>
+      ) : (
+      <>
       <div className="flex flex-wrap items-center gap-3">
         <label className="inline-flex items-center gap-1">
           {owed ? "Amount you owe" : "Opening balance"}
@@ -142,6 +165,8 @@ function NewAccountForm({
         Optional: what the account held on that date. The date is set before the first fetch reaches back, so the
         opening balance sits at the top of the register. Kept in {sf.currency}.
       </div>
+      </>
+      )}
       {error && <Notice tone="error">{error}</Notice>}
       <div className="flex gap-2">
         <button type="submit" className="aero-btn default" disabled={busy}>
@@ -153,6 +178,11 @@ function NewAccountForm({
       </div>
     </form>
   );
+}
+
+/** The currencies to offer for a blank one: home first, then the rest. */
+export function currencyChoices(all: Currency[], home = homeCurrency()): Currency[] {
+  return [...all.filter((c) => c.code === home), ...all.filter((c) => c.code !== home)];
 }
 
 /** What a long step is doing. `share` is how far through, 0..1, when that
@@ -200,6 +230,8 @@ export default function BankSyncPane() {
   const [progress, setProgress] = useState<Progress | null>(null);
   /** The SimpleFIN account a new T-Money account is being made for. */
   const [creating, setCreating] = useState<string | null>(null);
+  /** The currencies T-Money keeps, for a SimpleFIN account that names none. */
+  const [currencies, setCurrencies] = useState<Currency[]>([]);
 
   // The backend names each account as it starts writing it.
   useEffect(() => {
@@ -218,6 +250,7 @@ export default function BankSyncPane() {
 
   useEffect(() => {
     api.simplefinStatus().then(setStatus, (e) => setError(String(e)));
+    api.listCurrencies().then(setCurrencies, () => setCurrencies([]));
     if (useAccountStore.getState().accounts.length === 0) void useAccountStore.getState().loadAccounts();
   }, []);
 
@@ -442,7 +475,9 @@ export default function BankSyncPane() {
           </div>
           <div className="p-3 space-y-2 text-[12px]">
             <div className="text-slate-500">
-              Pick the T-Money account each one fills, or choose New account… to make one. The first fetch reaches back 88 days; later ones start a few
+              Pick the T-Money account each one fills, or choose New account… to make one. An investment or
+              retirement account is kept at the bank&apos;s balance only, as long as T-Money tracks no shares in it.
+              The first fetch reaches back 88 days; later ones start a few
               days before the last, and anything already in the register is skipped.
             </div>
             <table className="w-full" aria-label="SimpleFIN accounts">
@@ -497,8 +532,42 @@ export default function BankSyncPane() {
                             ))}
                             {!sf.account_id && <option value={NEW_ACCOUNT}>New account…</option>}
                           </select>
+                        ) : sf.currency_missing ? (
+                          // SimpleFIN left it blank: the person says which,
+                          // once. Never assumed.
+                          <select
+                            className="aero-field"
+                            aria-label={`Currency for ${sf.name}`}
+                            value=""
+                            disabled={busy}
+                            onChange={(e) => {
+                              if (e.target.value) void run(() => api.simplefinConfirmCurrency(sf.sf_id, e.target.value));
+                            }}
+                          >
+                            <option value="">Currency not given: choose…</option>
+                            {currencyChoices(currencies).map((c) => (
+                              <option key={c.code} value={c.code}>
+                                {c.code} — {c.name}
+                              </option>
+                            ))}
+                          </select>
                         ) : (
-                          <span className="text-slate-500">Not a currency T-Money keeps</span>
+                          <span className="text-slate-500" title="SimpleFIN gives this account in a unit of its own, such as points.">
+                            Not a currency T-Money keeps
+                          </span>
+                        )}
+                        {sf.currency_missing && sf.currency_confirmed && !sf.account_id && (
+                          <div className="text-slate-500">
+                            SimpleFIN gave no currency; you chose {sf.currency_confirmed}.{" "}
+                            <button
+                              type="button"
+                              className="underline"
+                              disabled={busy}
+                              onClick={() => void run(() => api.simplefinConfirmCurrency(sf.sf_id, null))}
+                            >
+                              Change
+                            </button>
+                          </div>
                         )}
                       </td>
                       <td className="py-1 pl-3 text-slate-500">

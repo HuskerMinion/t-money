@@ -18,6 +18,7 @@ fn acct(id: &str, name: &str, currency: &str, transactions: Vec<SfTxn>) -> SfAcc
         name: name.into(),
         org: Some("Example Bank".into()),
         currency: Some(currency.into()),
+        currency_missing: false,
         balance_cents: Some(98_765),
         balance_date: Some("2026-10-02".into()),
         transactions,
@@ -39,13 +40,13 @@ fn only_a_same_currency_cash_account_not_already_fed_can_be_linked() {
     let c = db.conn();
     queries::set_rate(&c, "EUR", "2026-01-01", 1_100_000, "manual").unwrap();
     let checking = queries::create_account(&c, "Checking", "checking", 0, None).unwrap().id;
-    let brokerage = queries::create_account(&c, "Brokerage", "investment", 0, None).unwrap().id;
+    let options = queries::create_account(&c, "Options", "employee_stock_option", 0, None).unwrap().id;
     let euro = queries::create_account_in(&c, "Euro", "checking", 0, None, "EUR").unwrap().id;
     queries::upsert_simplefin_accounts(&c, &set(vec![acct("A", "Everyday", "USD", vec![]), acct("B", "Second", "USD", vec![])])).unwrap();
 
     assert!(queries::link_simplefin_account(&c, "nope", Some(&checking)).unwrap_err().contains("not known"));
     assert!(queries::link_simplefin_account(&c, "A", Some("nope")).unwrap_err().contains("not in the file"));
-    assert!(queries::link_simplefin_account(&c, "A", Some(&brokerage)).unwrap_err().contains("investment account"));
+    assert!(queries::link_simplefin_account(&c, "A", Some(&options)).unwrap_err().contains("tracks shares only"));
     let e = queries::link_simplefin_account(&c, "A", Some(&euro)).unwrap_err();
     assert!(e.contains("is in USD") && e.contains("kept in EUR"), "{e}");
 
@@ -288,4 +289,106 @@ fn days_beyond_the_90_day_reach_are_named() {
     // Fetched recently: nothing to say.
     let out = apply_fetch(&db.pool, &reply, "2026-10-04", "2026-09-28", &mut |_, _, _| {}).unwrap();
     assert_eq!(out.lines[0].note, None);
+}
+
+/// A holding in `account`: one live row naming a security.
+fn give_holding(c: &Conn, account: &str) {
+    let sec = queries::create_security(c, "Index Fund", "IDX", "mutual_fund", None).unwrap().id;
+    c.execute(
+        "INSERT INTO transactions (id, account_id, date, payee, amount_cents, security_id, activity, shares_micro)
+         VALUES ('hold-1', ?1, '2026-09-01', 'Buy', -10000, ?2, 'buy', 1000000)",
+        rusqlite::params![account, sec],
+    )
+    .unwrap();
+    // The cash it cost, so the stored balance still sums its rows.
+    c.execute("UPDATE accounts SET balance_cents = balance_cents - 10000 WHERE id = ?1", [account]).unwrap();
+}
+
+#[test]
+fn a_retirement_account_without_shares_is_kept_at_the_banks_balance() {
+    let db = TestDb::new("sf-balance-only");
+    let c = db.conn();
+    let k401 = queries::create_account(&c, "401(k)", "retirement", 0, None).unwrap().id;
+    let mut a = acct("R", "Plan", "USD", vec![txn("T1", "2026-09-30", 50_000, "Contribution")]);
+    a.balance_cents = Some(813_270);
+    a.balance_date = Some("2026-11-20".into());
+    let reply = set(vec![a.clone()]);
+    queries::upsert_simplefin_accounts(&c, &reply).unwrap();
+    queries::link_simplefin_account(&c, "R", Some(&k401)).unwrap();
+
+    let out = apply_fetch(&db.pool, &reply, "2026-11-22", "2026-08-26", &mut |_, _, _| {}).unwrap();
+    let l = &out.lines[0];
+    assert_eq!((l.imported, l.error.as_deref()), (0, None), "the balance only, never the transactions");
+    assert!(l.note.as_deref().unwrap_or("").starts_with("Balance only"), "{:?}", l.note);
+    assert_eq!(l.balance_cents, 813_270);
+    let rows: Vec<(String, i64, bool, String)> = c
+        .prepare("SELECT payee, amount_cents, is_revaluation, date FROM transactions WHERE account_id = ?1")
+        .unwrap()
+        .query_map([&k401], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)))
+        .unwrap()
+        .collect::<Result<_, _>>()
+        .unwrap();
+    assert_eq!(rows, vec![("Balance from the bank".to_string(), 813_270, true, "2026-11-20".to_string())]);
+    assert_eq!(linked(&c, "R").1.as_deref(), Some("2026-11-22"));
+
+    // The same balance again writes nothing; a new one writes the difference.
+    apply_fetch(&db.pool, &reply, "2026-11-22", "2026-11-17", &mut |_, _, _| {}).unwrap();
+    let mut b = a.clone();
+    b.balance_cents = Some(820_000);
+    b.balance_date = Some("2026-11-21".into());
+    apply_fetch(&db.pool, &set(vec![b]), "2026-11-22", "2026-11-17", &mut |_, _, _| {}).unwrap();
+    let n: i64 = c.query_row("SELECT COUNT(*) FROM transactions WHERE account_id = ?1", [&k401], |r| r.get(0)).unwrap();
+    assert_eq!(n, 2);
+    assert_eq!(queries::get_account(&c, &k401).unwrap().balance_cents, 820_000);
+    assert_eq!(queries::latest_feed_date(&c, &k401).unwrap().as_deref(), Some("2026-11-21"));
+
+    // Shares and a synced balance never mix: a holding added later stops it.
+    give_holding(&c, &k401);
+    let out = apply_fetch(&db.pool, &reply, "2026-11-23", "2026-11-18", &mut |_, _, _| {}).unwrap();
+    assert!(out.lines[0].error.as_deref().unwrap_or("").contains("has holdings now"), "{:?}", out.lines[0].error);
+}
+
+#[test]
+fn an_account_with_shares_cannot_be_linked() {
+    let db = TestDb::new("sf-holdings");
+    let c = db.conn();
+    let brokerage = queries::create_account(&c, "Brokerage", "investment", 0, None).unwrap().id;
+    give_holding(&c, &brokerage);
+    queries::upsert_simplefin_accounts(&c, &set(vec![acct("A", "Plan", "USD", vec![])])).unwrap();
+    let e = queries::link_simplefin_account(&c, "A", Some(&brokerage)).unwrap_err();
+    assert!(e.contains("has holdings"), "{e}");
+}
+
+#[test]
+fn a_blank_currency_is_asked_once_never_assumed() {
+    let db = TestDb::new("sf-blank-currency");
+    let c = db.conn();
+    let checking = queries::create_account(&c, "Checking", "checking", 0, None).unwrap().id;
+    let mut blank = acct("A", "Plan", "USD", vec![txn("T1", "2026-11-01", -500, "Fee")]);
+    blank.currency = None;
+    blank.currency_missing = true;
+    let mut points = acct("P", "Points", "USD", vec![]);
+    points.currency = None;
+    let reply = set(vec![blank, points, acct("U", "Everyday", "USD", vec![])]);
+    queries::upsert_simplefin_accounts(&c, &reply).unwrap();
+
+    let e = queries::link_simplefin_account(&c, "A", Some(&checking)).unwrap_err();
+    assert!(e.contains("did not say what currency"), "{e}");
+    assert!(queries::link_simplefin_account(&c, "P", Some(&checking)).unwrap_err().contains("not in a currency"));
+    // Only a blank one may be confirmed, and only to a currency T-Money keeps.
+    assert!(queries::confirm_simplefin_currency(&c, "U", Some("USD")).unwrap_err().contains("already says"));
+    assert!(queries::confirm_simplefin_currency(&c, "P", Some("USD")).unwrap_err().contains("already says"));
+    assert!(queries::confirm_simplefin_currency(&c, "A", Some("XYZ")).unwrap_err().contains("not a currency"));
+
+    queries::confirm_simplefin_currency(&c, "A", Some("usd")).unwrap();
+    let a = queries::list_simplefin_accounts(&c).unwrap().into_iter().find(|a| a.sf_id == "A").unwrap();
+    assert_eq!((a.currency.as_deref(), a.currency_missing, a.currency_confirmed.as_deref()), (Some("USD"), true, Some("USD")));
+    queries::link_simplefin_account(&c, "A", Some(&checking)).unwrap();
+    // A refresh keeps the choice.
+    queries::upsert_simplefin_accounts(&c, &reply).unwrap();
+    let out = apply_fetch(&db.pool, &reply, "2026-11-22", "2026-08-26", &mut |_, _, _| {}).unwrap();
+    let l = out.lines.iter().find(|l| l.sf_name == "Plan").unwrap();
+    assert_eq!((l.imported, l.error.as_deref()), (1, None));
+    // While linked to a dollar account it cannot be changed to another.
+    assert!(queries::confirm_simplefin_currency(&c, "A", Some("EUR")).unwrap_err().contains("Unlink it first"));
 }

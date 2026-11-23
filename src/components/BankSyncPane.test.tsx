@@ -29,6 +29,8 @@ function sf(sf_id: string, name: string, extra: Partial<SimplefinAccount> = {}):
     name,
     org: "Example Bank",
     currency: "USD",
+    currency_missing: false,
+    currency_confirmed: null,
     balance_cents: 123_456,
     balance_date: "2026-10-02",
     account_id: null,
@@ -44,17 +46,19 @@ function status(extra: Partial<SimplefinStatus> = {}): SimplefinStatus {
 
 const checking = acct("a-chk", "Checking");
 const savings = acct("a-sav", "Savings", { type: "savings" });
-const brokerage = acct("a-brk", "Brokerage", { type: "investment" });
+const brokerage = acct("a-brk", "Brokerage", { type: "investment", holdings_value_cents: 6_151_763 });
+const k401 = acct("a-401", "401(k)", { type: "retirement", holdings_value_cents: 0 });
 const euro = acct("a-eur", "Euro", { currency: "EUR" });
 const closed = acct("a-old", "Old", { is_closed: true });
 
 describe("fillable", () => {
-  it("offers open cash accounts in the same currency that nothing else fills", () => {
+  it("offers open accounts in the same currency that nothing else fills, and no account holding shares", () => {
     const all = [sf("A", "Everyday", { account_id: "a-sav" }), sf("B", "Other")];
-    const names = (s: SimplefinAccount) => fillable(s, [checking, savings, brokerage, euro, closed], all).map((a) => a.name);
-    expect(names(all[1])).toEqual(["Checking"]);
+    const names = (s: SimplefinAccount) => fillable(s, [checking, savings, brokerage, k401, euro, closed], all).map((a) => a.name);
+    // The 401(k) holds no shares, so its balance can come from the bank.
+    expect(names(all[1])).toEqual(["Checking", "401(k)"]);
     // Its own link stays offered.
-    expect(names(all[0])).toEqual(["Checking", "Savings"]);
+    expect(names(all[0])).toEqual(["Checking", "Savings", "401(k)"]);
     expect(names(sf("C", "Euro side", { currency: "EUR" }))).toEqual(["Euro"]);
   });
 });
@@ -312,5 +316,80 @@ describe("New account… from a SimpleFIN account", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Cancel" }));
     expect(screen.queryByRole("form", { name: /New account for/ })).toBeNull();
     expect(invokeCalls.some((c) => c.cmd === "create_account")).toBe(false);
+  });
+});
+
+// Issue #4: SimpleFIN 401(k)s — a blank currency, and balance-only accounts.
+describe("A SimpleFIN account with no currency", () => {
+  beforeEach(() => {
+    resetIpc();
+    useAccountStore.setState({ accounts: [checking, k401] });
+  });
+
+  it("asks which currency, home first, and never assumes one", async () => {
+    let s = status({ accounts: [sf("A", "Plan", { currency: null, currency_missing: true }), sf("P", "Points", { currency: null })] });
+    setIpcHandlers({
+      simplefin_status: () => s,
+      simplefin_confirm_currency: (args) => {
+        s = status({ accounts: [sf("A", "Plan", { currency: args.currency as string, currency_missing: true, currency_confirmed: args.currency as string }), sf("P", "Points", { currency: null })] });
+        return s;
+      },
+      list_currencies: () => [
+        { code: "EUR", name: "Euro", symbol: "€", decimals: 2 },
+        { code: "USD", name: "US dollar", symbol: "$", decimals: 2 },
+      ],
+      get_all_accounts: () => [checking, k401],
+    });
+    render(<BankSyncPane />);
+    const pick = (await screen.findByLabelText("Currency for Plan")) as HTMLSelectElement;
+    await waitFor(() => expect(pick.options.length).toBe(3));
+    expect([...pick.options].map((o) => o.value)).toEqual(["", "USD", "EUR"]);
+    // Nothing to link until a currency is chosen.
+    expect(screen.queryByLabelText("T-Money account for Plan")).toBeNull();
+    // A custom unit is said plainly, and offers nothing.
+    expect(screen.getByText("Not a currency T-Money keeps")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Currency for Points")).toBeNull();
+
+    fireEvent.change(pick, { target: { value: "USD" } });
+    await waitFor(() => expect(invokeCalls.find((c) => c.cmd === "simplefin_confirm_currency")?.args).toEqual({ sfId: "A", currency: "USD" }));
+    expect(await screen.findByLabelText("T-Money account for Plan")).toBeInTheDocument();
+    expect(screen.getByText(/SimpleFIN gave no currency; you chose USD/)).toBeInTheDocument();
+  });
+});
+
+describe("Balance-only accounts", () => {
+  beforeEach(() => {
+    resetIpc();
+    useAccountStore.setState({ accounts: [savings] });
+  });
+
+  it("guesses a retirement or investment account from the bank's name", () => {
+    expect(guessType("Acme 401(k) Plan")).toBe("retirement");
+    expect(guessType("Roth IRA")).toBe("retirement");
+    expect(guessType("Individual Brokerage")).toBe("investment");
+    expect(guessType("Everyday Checking")).toBe("checking");
+  });
+
+  it("a new retirement account takes no opening balance: the bank's comes on each fetch", async () => {
+    let s = status({ accounts: [sf("R", "Acme 401(k) Plan")] });
+    setIpcHandlers({
+      simplefin_status: () => s,
+      create_account: (args) => acct("a-new", args.name as string, { type: args.accountType as Account["type"], holdings_value_cents: 0 }),
+      simplefin_link: (args) => {
+        s = status({ accounts: [sf("R", "Acme 401(k) Plan", { account_id: args.accountId as string, account_name: "Acme 401(k) Plan" })] });
+        return s;
+      },
+      get_all_accounts: () => [savings],
+      list_currencies: () => [],
+    });
+    render(<BankSyncPane />);
+    fireEvent.change(await screen.findByLabelText("T-Money account for Acme 401(k) Plan"), { target: { value: "__new__" } });
+    const form = await screen.findByRole("form", { name: "New account for Acme 401(k) Plan" });
+    expect(screen.getByDisplayValue("Retirement")).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("0.00")).toBeNull();
+    expect(screen.getByText(/Each fetch sets its balance to the bank's/)).toBeInTheDocument();
+    fireEvent.submit(form);
+    await waitFor(() => expect(invokeCalls.some((c) => c.cmd === "simplefin_link")).toBe(true));
+    expect(invokeCalls.find((c) => c.cmd === "create_account")?.args).toMatchObject({ accountType: "retirement", openingBalanceCents: 0, currency: "USD" });
   });
 });

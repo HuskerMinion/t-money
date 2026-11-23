@@ -33,7 +33,10 @@ pub fn new_simplefin_connection_id(conn: &Connection) -> Result<String, String> 
 pub fn list_simplefin_accounts(conn: &Connection) -> Result<Vec<SimplefinAccount>, String> {
     let mut st = conn
         .prepare(
-            "SELECT s.sf_id, s.name, s.org, s.currency, s.balance_cents, s.balance_date, s.account_id, a.name, s.synced_through
+            "SELECT s.sf_id, s.name, s.org,
+                    COALESCE(s.currency, CASE WHEN s.currency_missing = 1 THEN s.currency_confirmed END),
+                    s.balance_cents, s.balance_date, s.account_id, a.name, s.synced_through,
+                    s.currency_missing, s.currency_confirmed
                FROM simplefin_accounts s LEFT JOIN accounts a ON a.id = s.account_id
               ORDER BY COALESCE(s.org, ''), s.name COLLATE NOCASE",
         )
@@ -50,6 +53,8 @@ pub fn list_simplefin_accounts(conn: &Connection) -> Result<Vec<SimplefinAccount
                 account_id: r.get(6)?,
                 account_name: r.get(7)?,
                 synced_through: r.get(8)?,
+                currency_missing: r.get(9)?,
+                currency_confirmed: r.get(10)?,
             })
         })
         .map_err(|e| e.to_string())?
@@ -64,12 +69,12 @@ pub fn upsert_simplefin_accounts(conn: &Connection, set: &AccountSet) -> Result<
     let tx = conn.unchecked_transaction().map_err(|e| e.to_string())?;
     for a in &set.accounts {
         tx.execute(
-            "INSERT INTO simplefin_accounts (sf_id, name, org, currency, balance_cents, balance_date)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+            "INSERT INTO simplefin_accounts (sf_id, name, org, currency, currency_missing, balance_cents, balance_date)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
              ON CONFLICT (sf_id) DO UPDATE SET name = excluded.name, org = excluded.org,
-                currency = excluded.currency, balance_cents = excluded.balance_cents,
-                balance_date = excluded.balance_date",
-            params![a.id, a.name, a.org, a.currency, a.balance_cents, a.balance_date],
+                currency = excluded.currency, currency_missing = excluded.currency_missing,
+                balance_cents = excluded.balance_cents, balance_date = excluded.balance_date",
+            params![a.id, a.name, a.org, a.currency, a.currency_missing, a.balance_cents, a.balance_date],
         )
         .map_err(|e| e.to_string())?;
     }
@@ -80,8 +85,13 @@ pub fn upsert_simplefin_accounts(conn: &Connection, set: &AccountSet) -> Result<
 /// Refused when the currencies differ or the account is already fed by
 /// another one. A link to a different account starts its fetching afresh.
 pub fn link_simplefin_account(conn: &Connection, sf_id: &str, account_id: Option<&str>) -> Result<(), String> {
-    let (sf_name, sf_currency, current): (String, Option<String>, Option<String>) = conn
-        .query_row("SELECT name, currency, account_id FROM simplefin_accounts WHERE sf_id = ?1", params![sf_id], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
+    let (sf_name, sf_currency, missing, current): (String, Option<String>, bool, Option<String>) = conn
+        .query_row(
+            "SELECT name, COALESCE(currency, CASE WHEN currency_missing = 1 THEN currency_confirmed END), currency_missing, account_id
+               FROM simplefin_accounts WHERE sf_id = ?1",
+            params![sf_id],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+        )
         .optional()
         .map_err(|e| e.to_string())?
         .ok_or_else(|| "That SimpleFIN account is not known to this file.".to_string())?;
@@ -101,14 +111,22 @@ pub fn link_simplefin_account(conn: &Connection, sf_id: &str, account_id: Option
     if closed {
         return Err(format!("{name} is closed. Reopen it first if the bank account is still in use."));
     }
-    if matches!(kind.as_str(), "investment" | "retirement" | "employee_stock_option" | "watch") {
+    if matches!(kind.as_str(), "employee_stock_option" | "watch") {
         return Err(format!(
-            "{name} is an investment account. SimpleFIN reports cash amounts only, not shares, so it can fill bank, card, cash and loan accounts."
+            "{name} tracks shares only. SimpleFIN reports amounts, not shares, so it cannot fill this kind of account."
+        ));
+    }
+    if is_balance_only(&kind) && has_holdings(conn, account_id)? {
+        return Err(format!(
+            "{name} has holdings. SimpleFIN can keep an investment or retirement account's balance only when T-Money tracks no shares in it, so the two never mix. Link it to an investment or retirement account without holdings."
         ));
     }
     match sf_currency.as_deref() {
         Some(c) if c == currency => {}
         Some(c) => return Err(format!("{sf_name} is in {c} and {name} is kept in {currency}. Link it to an account kept in {c}.")),
+        None if missing => {
+            return Err(format!("SimpleFIN did not say what currency {sf_name} is in. Choose its currency first."))
+        }
         None => return Err(format!("{sf_name} is not in a currency T-Money can account for.")),
     }
     let taken: Option<String> = conn
@@ -123,6 +141,58 @@ pub fn link_simplefin_account(conn: &Connection, sf_id: &str, account_id: Option
         params![sf_id, account_id],
     )
     .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// An investment or retirement account: SimpleFIN fills it with its balance
+/// only, never transactions, and only while it holds no shares.
+pub fn is_balance_only(kind: &str) -> bool {
+    matches!(kind, "investment" | "retirement")
+}
+
+/// Whether T-Money tracks any shares in the account: any live row naming
+/// a security.
+pub fn has_holdings(conn: &Connection, account_id: &str) -> Result<bool, String> {
+    conn.query_row(
+        "SELECT EXISTS (SELECT 1 FROM transactions WHERE account_id = ?1 AND security_id IS NOT NULL AND is_void = 0)",
+        params![account_id],
+        |r| r.get(0),
+    )
+    .map_err(|e| e.to_string())
+}
+
+/// Say which currency a SimpleFIN account with a blank currency is in
+/// (`None` forgets the choice). Only for one SimpleFIN left blank; a code
+/// SimpleFIN gave is never overridden. Refused while it is linked to an
+/// account kept in another currency.
+pub fn confirm_simplefin_currency(conn: &Connection, sf_id: &str, code: Option<&str>) -> Result<(), String> {
+    let (name, missing, account): (String, bool, Option<String>) = conn
+        .query_row(
+            "SELECT name, currency_missing, account_id FROM simplefin_accounts WHERE sf_id = ?1",
+            params![sf_id],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+        )
+        .optional()
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| "That SimpleFIN account is not known to this file.".to_string())?;
+    if !missing {
+        return Err(format!("SimpleFIN already says what currency {name} is in."));
+    }
+    let code = match code.map(|c| c.trim().to_ascii_uppercase()).filter(|c| !c.is_empty()) {
+        Some(c) if crate::currency::CURRENCIES.iter().any(|k| k.code == c) => Some(c),
+        Some(c) => return Err(format!("{c} is not a currency T-Money keeps.")),
+        None => None,
+    };
+    if let Some(account_id) = account {
+        let kept: String = conn
+            .query_row("SELECT currency FROM accounts WHERE id = ?1", params![account_id], |r| r.get(0))
+            .map_err(|e| e.to_string())?;
+        if code.as_deref() != Some(kept.as_str()) {
+            return Err(format!("{name} is linked to an account kept in {kept}. Unlink it first to change its currency."));
+        }
+    }
+    conn.execute("UPDATE simplefin_accounts SET currency_confirmed = ?2 WHERE sf_id = ?1", params![sf_id, code])
+        .map_err(|e| e.to_string())?;
     Ok(())
 }
 

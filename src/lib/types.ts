@@ -1500,7 +1500,13 @@ export interface SimplefinAccount {
   sf_id: string;
   name: string;
   org: string | null;
+  /** SimpleFIN's code, or the one the person confirmed for a blank one;
+   *  null until then, and for a custom currency. */
   currency: string | null;
+  /** SimpleFIN left the currency blank, so the person is asked. */
+  currency_missing: boolean;
+  /** What the person said a blank currency is. */
+  currency_confirmed: string | null;
   balance_cents: number | null;
   balance_date: string | null;
   account_id: string | null;

@@ -858,7 +858,7 @@ The same review also lists any new row that would land with **no category** — 
     body: `
 # What it is
 
-SimpleFIN Bridge (bridge.simplefin.org) is a separate paid service, about $15 a year, that reads your bank and card accounts and hands the transactions to an app you choose. Its fee goes to SimpleFIN; T-Money stays free. It covers most US and Canadian banks and card issuers. It reports cash amounts only, so it can fill checking, savings, card, cash and loan accounts but not investment accounts.
+SimpleFIN Bridge (bridge.simplefin.org) is a separate paid service, about $15 a year, that reads your bank and card accounts and hands the transactions to an app you choose. Its fee goes to SimpleFIN; T-Money stays free. It covers most US and Canadian banks and card issuers. It reports amounts, not shares: it fills checking, savings, card, cash and loan accounts with their transactions, and keeps an investment or retirement account at the bank's balance (see below).
 
 # Connecting
 
@@ -868,13 +868,17 @@ The connection is kept in this computer's **credential store** (Credential Manag
 
 # Linking accounts
 
-Once connected, the list shows each account SimpleFIN reports, with the bank's balance. For each one, pick the T-Money account it fills. Only open accounts in the same currency are offered, and one T-Money account can be filled from only one bank account, or every transaction would come in twice. No T-Money account for it yet? Choose **New account…** at the bottom of the list: give it a name and a type (checking, savings, credit card, cash, line of credit or loan), and, if you like, what it held on a date. The date starts the day before the first fetch reaches back, so the opening balance heads the register. The account is made in the bank's currency and linked at once.
+Once connected, the list shows each account SimpleFIN reports, with the bank's balance. For each one, pick the T-Money account it fills. Only open accounts in the same currency are offered, and one T-Money account can be filled from only one bank account, or every transaction would come in twice. No T-Money account for it yet? Choose **New account…** at the bottom of the list: give it a name and a type (checking, savings, credit card, cash, line of credit, loan, retirement or investment), and, if you like, what it held on a date. The date starts the day before the first fetch reaches back, so the opening balance heads the register. The account is made in the bank's currency and linked at once.
 
 # Getting transactions
 
 Click **Get bank transactions**. T-Money never fetches on its own. One click is one request for every linked account. The first fetch for an account reaches back 88 days, as two requests, because SimpleFIN asks that one request cover no more than 45 days; later ones start five days before the newest transaction it sent, and anything already in the register is skipped, so overlapping is harmless.
 
 They come in through the same path as a statement file, marked cleared: rename rules apply, a row the bank has sent before is recognized by its id, and a row that is very likely one you typed in ahead (same amount, within three days, a similar name) is **matched** to it rather than written again. Your payee, category and memo stand, and the row is marked cleared. Anything less sure comes in as new. If something does arrive twice, delete the one you typed: the bank's copy carries its id, so it is not fetched again. To be rid of a transaction the bank sent, **Void** it rather than deleting it, or a later fetch brings it back.
+
+**Investment and retirement accounts** (a 401(k), an IRA, a brokerage account) are kept at the bank's balance only. Each fetch adds one "Balance from the bank" row for the difference, the way **Update value** does, so Net worth counts it and no income or spending report does. No transactions and no shares come in. This works only for an account in which T-Money tracks no shares: one with holdings can't be linked, so a synced balance and your own buys and sells never mix.
+
+**No currency?** SimpleFIN sometimes leaves an account's currency blank. T-Money doesn't guess: the account shows **Currency not given: choose…**. Pick the one its amounts are in, once, and it can be linked. An account SimpleFIN keeps in a unit of its own, such as points, shows **Not a currency T-Money keeps** and can't be linked.
 
 Each fetch is **one Undo step**, and the next fetch reaches back for whatever an Undo took away. Afterwards the result lists, per account, how many came in, how many were matched and how many were already there, beside the bank's balance and T-Money's, so a gap shows at once. A bank that needs you to sign in again is shown as SimpleFIN wrote it; fix it on SimpleFIN's site. If an account was not fetched for longer than SimpleFIN reaches back (90 days), the result says which days were missed, so you can import a statement for them.
 

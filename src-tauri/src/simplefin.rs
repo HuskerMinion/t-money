@@ -212,8 +212,11 @@ pub struct SfAccount {
     /// The bank, when the server says.
     pub org: Option<String>,
     /// ISO code; None when the server gave a custom currency, which T-Money
-    /// cannot account for.
+    /// cannot account for, or none at all.
     pub currency: Option<String>,
+    /// The server left the currency out or blank (not a custom one): the
+    /// person may say which it is.
+    pub currency_missing: bool,
     pub balance_cents: Option<i64>,
     /// YYYY-MM-DD, UTC.
     pub balance_date: Option<String>,
@@ -300,6 +303,7 @@ pub fn parse_account_set(body: &str) -> Result<AccountSet, String> {
             .as_str()
             .map(clean_text)
             .or_else(|| str_or_num(&a["conn_id"]).and_then(|c| connections.get(&c).cloned()));
+        let currency_missing = a["currency"].as_str().map_or(true, |c| c.trim().is_empty());
         let currency = a["currency"]
             .as_str()
             .map(|c| c.trim().to_ascii_uppercase())
@@ -327,7 +331,7 @@ pub fn parse_account_set(body: &str) -> Result<AccountSet, String> {
                 _ => out.messages.push(format!("A transaction in {name} could not be read and was left out.")),
             }
         }
-        out.accounts.push(SfAccount { id, name, org, currency, balance_cents, balance_date, transactions });
+        out.accounts.push(SfAccount { id, name, org, currency, currency_missing, balance_cents, balance_date, transactions });
     }
     Ok(out)
 }
@@ -379,11 +383,10 @@ pub fn apply_fetch(
             None => line.error = Some("SimpleFIN did not report this account this time.".to_string()),
             Some(a) => {
                 line.bank_balance_cents = a.balance_cents;
-                let currency: String = match pool
-                    .get()
-                    .map_err(|e| e.to_string())
-                    .and_then(|conn| conn.query_row("SELECT currency FROM accounts WHERE id = ?1", [&account_id], |r| r.get(0)).map_err(|e| e.to_string()))
-                {
+                let (currency, kind): (String, String) = match pool.get().map_err(|e| e.to_string()).and_then(|conn| {
+                    conn.query_row("SELECT currency, type FROM accounts WHERE id = ?1", [&account_id], |r| Ok((r.get(0)?, r.get(1)?)))
+                        .map_err(|e| e.to_string())
+                }) {
                     Ok(c) => c,
                     Err(e) => {
                         line.error = Some(e);
@@ -391,12 +394,38 @@ pub fn apply_fetch(
                         continue;
                     }
                 };
-                if a.currency.as_deref() != Some(currency.as_str()) {
-                    line.error = Some(format!(
-                        "{} is in {} and {account_name} is kept in {currency}, so nothing was imported.",
-                        a.name,
-                        a.currency.as_deref().unwrap_or("a currency T-Money cannot account for")
-                    ));
+                // `link.currency` is SimpleFIN's code, or the one the person
+                // confirmed for a blank one (the list was read after this
+                // reply was recorded).
+                if link.currency.as_deref() != Some(currency.as_str()) {
+                    line.error = Some(match link.currency.as_deref() {
+                        Some(c) => format!("{} is in {c} and {account_name} is kept in {currency}, so nothing was imported.", a.name),
+                        None if link.currency_missing => {
+                            format!("SimpleFIN did not say what currency {} is in, so nothing was imported. Choose its currency first.", a.name)
+                        }
+                        None => format!("{} is not in a currency T-Money can account for, so nothing was imported.", a.name),
+                    });
+                } else if queries::is_balance_only(&kind) {
+                    // An investment or retirement account: the balance only,
+                    // never the transactions, and never into one with shares.
+                    let written = pool.get().map_err(|e| e.to_string()).and_then(|conn| {
+                        if queries::has_holdings(&conn, &account_id)? {
+                            return Err(format!(
+                                "{account_name} has holdings now, so its balance was not updated. SimpleFIN keeps the balance only of an investment or retirement account without shares."
+                            ));
+                        }
+                        let Some(bal) = a.balance_cents else {
+                            return Err("SimpleFIN sent no balance for it this time.".to_string());
+                        };
+                        let day = a.balance_date.clone().unwrap_or_else(|| today.to_string());
+                        queries::record_bank_balance(&conn, &account_id, &day, bal)?;
+                        queries::set_simplefin_synced(&conn, &link.sf_id, today)?;
+                        Ok(day)
+                    });
+                    match written {
+                        Ok(day) => line.note = Some(format!("Balance only: {account_name} now matches the bank as of {}.", show_date(&day))),
+                        Err(e) => line.error = Some(e),
+                    }
                 } else {
                     let rows = a
                         .transactions
@@ -465,6 +494,7 @@ pub fn merge_sets(into: &mut AccountSet, more: AccountSet) {
                 x.name = a.name;
                 x.org = a.org;
                 x.currency = a.currency;
+                x.currency_missing = a.currency_missing;
                 x.balance_cents = a.balance_cents;
                 x.balance_date = a.balance_date;
             }
@@ -608,7 +638,7 @@ mod tests {
     fn two_replies_fold_into_one() {
         let t = |id: &str| SfTxn { id: id.into(), date: "2026-09-01".into(), amount_cents: -1, payee: "X".into(), memo: None };
         let acct = |name: &str, bal: i64, txns: Vec<SfTxn>| SfAccount {
-            id: "A".into(), name: name.into(), org: None, currency: Some("USD".into()), balance_cents: Some(bal), balance_date: None, transactions: txns,
+            id: "A".into(), name: name.into(), org: None, currency: Some("USD".into()), currency_missing: false, balance_cents: Some(bal), balance_date: None, transactions: txns,
         };
         let mut a = AccountSet { accounts: vec![acct("Old name", 1, vec![t("1"), t("2")])], messages: vec!["m".into()] };
         let b = AccountSet { accounts: vec![acct("New name", 2, vec![t("2"), t("3")])], messages: vec!["m".into(), "n".into()] };

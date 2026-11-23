@@ -1559,6 +1559,18 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
            AND NOT EXISTS (SELECT 1 FROM splits s WHERE s.transaction_id = transactions.id);
         "#,
     ),
+    (
+        "0051",
+        "simplefin_currency_confirmed",
+        r#"
+        -- SimpleFIN may send an account with its currency left blank. Such an
+        -- account is marked, and the person says once which currency it is
+        -- in; T-Money never assumes one. A custom currency (a URL) is not
+        -- "missing" and stays unlinkable.
+        ALTER TABLE simplefin_accounts ADD COLUMN currency_missing INTEGER NOT NULL DEFAULT 0;
+        ALTER TABLE simplefin_accounts ADD COLUMN currency_confirmed TEXT;
+        "#,
+    ),
 ];
 
 /// Apply all pending migrations to `conn`. Returns the number applied.

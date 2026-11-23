@@ -528,6 +528,7 @@ pub fn run() {
             commands::simplefin_connect,
             commands::simplefin_refresh_accounts,
             commands::simplefin_link,
+            commands::simplefin_confirm_currency,
             commands::simplefin_disconnect,
             commands::simplefin_sync,
             commands::delete_account,

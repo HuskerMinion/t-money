@@ -1068,6 +1068,9 @@ const FROZEN: &[(&str, u64)] = &[
     // Opening balances written without `create_account` are marked
     // revaluations, so category reports leave them out.
     ("0050", 0x6c761f2318d9d321),
+    // SimpleFIN accounts with a blank currency, and the one the person
+    // confirmed for it.
+    ("0051", 0x7eb531145551f1dd),
 ];
 
 #[test]

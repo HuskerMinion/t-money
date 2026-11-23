@@ -450,6 +450,17 @@ pub async fn simplefin_refresh_accounts(state: State<'_, AppState>) -> Result<cr
     status_with(&state, messages)
 }
 
+/// Say which currency a SimpleFIN account with a blank currency is in, or
+/// forget it (`None`).
+#[tauri::command(rename_all = "camelCase")]
+pub fn simplefin_confirm_currency(state: State<AppState>, sf_id: String, currency: Option<String>) -> Result<crate::models::SimplefinStatus, String> {
+    {
+        let (_g, conn) = with_conn(&state)?;
+        queries::confirm_simplefin_currency(&conn, &sf_id, currency.as_deref())?;
+    }
+    simplefin_status(state)
+}
+
 /// Link a SimpleFIN account to a T-Money account, or unlink it (`None`).
 #[tauri::command(rename_all = "camelCase")]
 pub fn simplefin_link(state: State<AppState>, sf_id: String, account_id: Option<String>) -> Result<crate::models::SimplefinStatus, String> {
@@ -499,10 +510,18 @@ pub async fn simplefin_sync(app: tauri::AppHandle, state: State<'_, AppState>) -
             .into_iter()
             .filter_map(|a| a.account_id)
             .map(|id| {
+                // A balance-only account needs today's balance, not history:
+                // it must not stretch the window back 88 days every time.
+                let kind: String = conn
+                    .query_row("SELECT type FROM accounts WHERE id = ?1", [&id], |r| r.get(0))
+                    .map_err(|e| e.to_string())?;
+                if queries::is_balance_only(&kind) {
+                    return Ok(Some(today));
+                }
                 queries::latest_feed_date(&conn, &id)
                     .map(|d| d.and_then(|d| chrono::NaiveDate::parse_from_str(&d, "%Y-%m-%d").ok()))
             })
-            .collect::<Result<_, _>>()?
+            .collect::<Result<_, String>>()?
     };
     if linked.is_empty() {
         return Err("No SimpleFIN account is linked to a T-Money account yet. Pick one for each in the list first.".to_string());

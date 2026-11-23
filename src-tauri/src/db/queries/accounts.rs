@@ -981,6 +981,48 @@ pub fn is_valued_asset(kind: &str) -> bool {
     matches!(kind, "asset" | "vehicle" | "home" | "other")
 }
 
+/// The bank's balance for a balance-only account (an investment or
+/// retirement account SimpleFIN fills): one revaluation row on `date` for
+/// the difference, bringing the account to `value_cents` as of that date,
+/// like Update value: Net worth counts it, no income or spending report does.
+///
+/// Unlike `set_account_value` it only ever adds a row and never changes
+/// another, so a fetch's undo step (which takes back the rows it created)
+/// undoes it exactly. Its `fitid` is `sfin:balance:<date>`, so the next
+/// fetch starts from that day. Returns the amount written, or None when the
+/// account already matched.
+pub fn record_bank_balance(conn: &Conn, account_id: &str, date: &str, value_cents: i64) -> Result<Option<i64>, String> {
+    parse_date(date)?;
+    let tx = conn.unchecked_transaction().map_err(|e| e.to_string())?;
+    let asof: i64 = tx
+        .query_row(
+            "SELECT COALESCE(SUM(amount_cents), 0) FROM transactions
+              WHERE account_id = ?1 AND is_void = 0 AND date <= ?2",
+            params![account_id, date],
+            |r| r.get(0),
+        )
+        .map_err(|e| e.to_string())?;
+    let delta = value_cents - asof;
+    if delta == 0 {
+        return Ok(None);
+    }
+    tx.execute(
+        "INSERT INTO transactions
+           (id, account_id, date, payee, payee_id, category_id, amount_cents,
+            is_reconciled, notes, cleared_state, is_revaluation, fitid)
+         VALUES (?1, ?2, ?3, 'Balance from the bank', NULL, NULL, ?4, 0, NULL, 'C', 1, ?5)",
+        params![Uuid::new_v4().to_string(), account_id, date, delta, format!("sfin:balance:{date}")],
+    )
+    .map_err(|e| e.to_string())?;
+    tx.execute(
+        "UPDATE accounts SET balance_cents = balance_cents + ?2, updated_at = datetime('now') WHERE id = ?1",
+        params![account_id, delta],
+    )
+    .map_err(|e| e.to_string())?;
+    tx.commit().map_err(|e| e.to_string())?;
+    Ok(Some(delta))
+}
+
 /// What the thing is worth now.
 ///
 /// Not "adjust by": the user knows the Pickup is worth $9,000, not that it

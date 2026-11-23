@@ -79,7 +79,14 @@ pub struct SimplefinAccount {
     pub name: String,
     /// The bank, when SimpleFIN says.
     pub org: Option<String>,
+    /// The currency it is in: SimpleFIN's own code, or, when SimpleFIN left
+    /// it blank, the one the person confirmed. None until then, and for a
+    /// custom currency.
     pub currency: Option<String>,
+    /// SimpleFIN left the currency blank, so the person is asked.
+    pub currency_missing: bool,
+    /// What the person said a blank currency is.
+    pub currency_confirmed: Option<String>,
     /// What the bank says the balance is, as of `balance_date`.
     pub balance_cents: Option<i64>,
     pub balance_date: Option<String>,
