@@ -1575,6 +1575,21 @@ mod tests {
         assert_eq!(n, 0, "no category for nothing");
     }
 
+    // An account SimpleFIN kept at the bank's balance that later gets its
+    // shares (statements imported into it) counts in full again.
+    #[test]
+    fn a_balance_only_account_that_gains_shares_counts_again() {
+        let db = TestDb::new("perf-balance-then-shares");
+        let c = db.conn();
+        let k401 = inv_account(&c, "401(k)", "retirement");
+        let fund = create_security(&c, "Index Fund", "IDX", "mutual_fund", None).unwrap();
+        record_bank_balance(&c, &k401, "2026-06-30", "2026-06-30", 500_000).unwrap();
+        assert!(lots::performance(&c, Some(&k401), None, "2026-12-31").unwrap().is_empty());
+        create_investment_transaction(&c, &inv(&k401, "2026-07-01", "buy", &fund.id, 10 * lots::MICRO, 100_000)).unwrap();
+        set_security_price(&c, &fund.id, "2026-12-31", 11_000_000, "manual").unwrap();
+        assert!(!lots::performance(&c, Some(&k401), None, "2026-12-31").unwrap().is_empty());
+    }
+
     // The time-weighted return is the investments'; the money-weighted
     // return is the investor's. Money that crossed the account's edge is a
     // flow; a fee paid from cash is a cost; a dividend paid in cash is return.

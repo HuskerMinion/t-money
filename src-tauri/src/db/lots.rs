@@ -1031,14 +1031,18 @@ fn annual_bps(daily: i128) -> i64 {
 /// SimpleFIN has no shares and no prices, and its "Balance from the bank"
 /// rows mix contributions with growth, so no return can be worked out for
 /// it: it is left out of performance (Net worth still counts it). Such an
-/// account is one with a `sfin:balance:` row; `a` is its alias.
-const NOT_BALANCE_ONLY: &str = " AND NOT EXISTS (SELECT 1 FROM transactions bb
-              WHERE bb.account_id = a.id AND bb.fitid >= 'sfin:balance:' AND bb.fitid < 'sfin:balance;')";
+/// account is one with a `sfin:balance:` row and no share rows; once shares
+/// are kept in it, it counts in full again. `a` is its alias.
+const NOT_BALANCE_ONLY: &str = " AND NOT (EXISTS (SELECT 1 FROM transactions bb
+              WHERE bb.account_id = a.id AND bb.fitid >= 'sfin:balance:' AND bb.fitid < 'sfin:balance;')
+            AND NOT EXISTS (SELECT 1 FROM transactions ss
+              WHERE ss.account_id = a.id AND ss.security_id IS NOT NULL AND ss.is_void = 0))";
 
 /// Whether `account_id` is kept at the bank's balance (see `NOT_BALANCE_ONLY`).
 pub fn is_balance_only_account(conn: &Connection, account_id: &str) -> Result<bool, String> {
     conn.query_row(
-        "SELECT EXISTS (SELECT 1 FROM transactions WHERE account_id = ?1 AND fitid >= 'sfin:balance:' AND fitid < 'sfin:balance;')",
+        "SELECT EXISTS (SELECT 1 FROM transactions WHERE account_id = ?1 AND fitid >= 'sfin:balance:' AND fitid < 'sfin:balance;')
+            AND NOT EXISTS (SELECT 1 FROM transactions WHERE account_id = ?1 AND security_id IS NOT NULL AND is_void = 0)",
         [account_id],
         |r| r.get(0),
     )
