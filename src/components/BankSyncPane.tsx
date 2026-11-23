@@ -156,8 +156,9 @@ function NewAccountForm({
       </div>
       {balanceOnly ? (
         <div className="text-slate-500">
-          Each fetch sets its balance to the bank&apos;s: no transactions and no shares, just what it is worth. Kept in{" "}
-          {sf.currency}.
+          No opening balance needed. Get bank transactions adds a &quot;Balance from the bank&quot; row that brings it to
+          the bank&apos;s balance, and each fetch after keeps it there: no transactions and no shares, just what it is
+          worth. Kept in {sf.currency}.
         </div>
       ) : (
       <>

@@ -409,7 +409,7 @@ describe("Balance-only accounts", () => {
     const form = await screen.findByRole("form", { name: "New account for Acme 401(k) Plan" });
     expect(screen.getByDisplayValue("Retirement")).toBeInTheDocument();
     expect(screen.queryByPlaceholderText("0.00")).toBeNull();
-    expect(screen.getByText(/Each fetch sets its balance to the bank's/)).toBeInTheDocument();
+    expect(screen.getByText(/No opening balance needed\. Get bank transactions adds a "Balance from the bank" row/)).toBeInTheDocument();
     fireEvent.submit(form);
     await waitFor(() => expect(invokeCalls.some((c) => c.cmd === "simplefin_link")).toBe(true));
     expect(invokeCalls.find((c) => c.cmd === "create_account")?.args).toMatchObject({ accountType: "retirement", openingBalanceCents: 0, currency: "USD" });

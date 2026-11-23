@@ -868,7 +868,7 @@ The connection is kept in this computer's **credential store** (Credential Manag
 
 # Linking accounts
 
-Once connected, the list shows each account SimpleFIN reports, with the bank's balance. For each one, pick the T-Money account it fills. Only open accounts in the same currency are offered, and one T-Money account can be filled from only one bank account, or every transaction would come in twice. No T-Money account for it yet? Choose **New account…** at the bottom of the list: give it a name and a type (checking, savings, credit card, cash, line of credit, loan, retirement or investment), and, if you like, what it held on a date. The date starts the day before the first fetch reaches back, so the opening balance heads the register. The account is made in the bank's currency and linked at once.
+Once connected, the list shows each account SimpleFIN reports, with the bank's balance. For each one, pick the T-Money account it fills. Only open accounts in the same currency are offered, and one T-Money account can be filled from only one bank account, or every transaction would come in twice. No T-Money account for it yet? Choose **New account…** at the bottom of the list: give it a name and a type (checking, savings, credit card, cash, line of credit, loan, retirement or investment), and, if you like, what it held on a date. The date starts the day before the first fetch reaches back, so the opening balance heads the register. The account is made in the bank's currency and linked at once. A retirement or investment account asks for no opening balance: the first **Get bank transactions** brings it to the bank's balance.
 
 # Getting transactions
 
