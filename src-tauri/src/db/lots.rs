@@ -1027,7 +1027,6 @@ fn annual_bps(daily: i128) -> i64 {
     ((fx_pow(daily, 365) - FX) * 10_000 / FX) as i64
 }
 
-/// Cash in the account (or every investment account) at the close of `date`.
 /// An investment or retirement account kept at the bank's balance by
 /// SimpleFIN has no shares and no prices, and its "Balance from the bank"
 /// rows mix contributions with growth, so no return can be worked out for
@@ -1046,6 +1045,7 @@ pub fn is_balance_only_account(conn: &Connection, account_id: &str) -> Result<bo
     .map_err(|e| e.to_string())
 }
 
+/// Cash in the account (or every investment account) at the close of `date`.
 fn cash_on(conn: &Connection, account_id: Option<&str>, date: &str) -> Result<i64, String> {
     let mut sql = String::from(
         "SELECT COALESCE(SUM(t.amount_cents), 0)
