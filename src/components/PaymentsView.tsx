@@ -28,7 +28,7 @@ import ForecastChart from "./ForecastChart";
 import { api } from "../lib/ipc";
 import { useCommand } from "../lib/useCommand";
 import { ALL_CASH, describeStatus, isOpen, pickForecastAccount, spendableAccounts } from "../lib/bills";
-import { takeScheduleDraft } from "../lib/scheduleDraft";
+import { nextScheduledDate, takeScheduleDraft, type ScheduleDraft } from "../lib/scheduleDraft";
 import ContextMenu, { useContextMenu } from "./ContextMenu";
 import BillCalendar, { monthRange } from "./BillCalendar";
 import { useAccountStore } from "../stores/useAccountStore";
@@ -173,6 +173,10 @@ export default function PaymentsView() {
   // "Every" as typed. Held as text so clearing the box to type 3 does
   // not snap it back to 1 and leave "13"; it is read into a number on save.
   const [intervalText, setIntervalText] = useState("1");
+  // The date of the register row a "Schedule this transaction…" draft came
+  // from: changing Repeats moves the start date to that choice's next time,
+  // so Yearly property tax starts next year, not next month.
+  const [fromDate, setFromDate] = useState<string | null>(null);
   const [direction, setDirection] = useState<"out" | "in">("out");
   // Money's bill calendar: the same occurrences as a month grid.
   const [billsView, setBillsView] = useState<"list" | "calendar">("list");
@@ -329,7 +333,8 @@ export default function PaymentsView() {
 
   /** Put a schedule into the form: the amount as typed text, the sign
    *  as the direction. */
-  function fill(d: NewRecurrence) {
+  function fill({ from_date, ...d }: ScheduleDraft) {
+    setFromDate(from_date ?? null);
     setDirection(d.amount_cents < 0 ? "out" : "in");
     setAmount(d.amount_cents === 0 ? "" : (Math.abs(d.amount_cents) / 100).toFixed(2).replace(".", currentRegion().decimal));
     setIntervalText(String(d.interval_n));
@@ -407,6 +412,7 @@ export default function PaymentsView() {
     setAmount("");
     setIntervalText("1");
     setDirection("out");
+    setFromDate(null);
   }
 
   async function submit(e: React.FormEvent) {
@@ -920,7 +926,13 @@ export default function PaymentsView() {
                   // the backend, and schedule.rs scheduled the start day only.
                   const second_day =
                     freq === "semi_monthly" && draft.second_day === null ? 15 : draft.second_day;
-                  setDraft({ ...draft, freq, second_day });
+                  // A start date the user typed is theirs; only the one the
+                  // draft came with follows the choice.
+                  let start_date = draft.start_date;
+                  if (fromDate && draft.start_date === nextScheduledDate(draft.freq, fromDate, today())) {
+                    start_date = nextScheduledDate(freq, fromDate, today()) ?? draft.start_date;
+                  }
+                  setDraft({ ...draft, freq, second_day, start_date });
                 }}
               >
                 {(Object.keys(FREQ_LABELS) as Recurrence["freq"][]).map((f) => (

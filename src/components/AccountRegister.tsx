@@ -53,7 +53,7 @@ import { samePicks } from "./ClassPicker";
 import { noteChanged } from "../lib/undo";
 import type { Classification, NewRecurrence, RegisterRow, ClearedState, CommonTransaction, Goal, NewInvestmentTransaction, NewSplit, Security, Statement } from "../lib/types";
 import { keys } from "../lib/keys";
-import { requestSchedule } from "../lib/scheduleDraft";
+import { nextMonthlyDate, requestSchedule, type ScheduleDraft } from "../lib/scheduleDraft";
 import { runCommand } from "../lib/commands";
 
 /** Money's register views. `view` is the Show
@@ -83,27 +83,12 @@ function writeShowForms(on: boolean) {
   }
 }
 
-/** The first monthly date after `date`, on its day of the month, that is not
- *  before `notBefore`. Jan 31 → Feb 28, not Mar 3; a row from two years ago
- *  starts its schedule now, not with two years of overdue bills. */
-export function nextMonthlyDate(date: string, notBefore: string): string {
-  const [y, m, d] = date.split("-").map(Number);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  let iso = date;
-  // Bounded: a row from a century ago still stops.
-  for (let k = 1; k <= 1200; k++) {
-    const last = new Date(y, m - 1 + k + 1, 0).getDate();
-    const next = new Date(y, m - 1 + k, Math.min(d, last));
-    iso = `${next.getFullYear()}-${pad(next.getMonth() + 1)}-${pad(next.getDate())}`;
-    if (iso >= notBefore) break;
-  }
-  return iso;
-}
+export { nextMonthlyDate };
 
 /** The Bills form's starting point for a register row: the same payee, amount
  *  and sign, monthly from the next time it would come, so a one-off becomes
  *  a monthly bill or deposit. */
-function scheduleDraftFor(row: RegisterRow): NewRecurrence {
+function scheduleDraftFor(row: RegisterRow): ScheduleDraft {
   return {
     payee: row.payee,
     amount_cents: row.amount_cents,
@@ -117,6 +102,7 @@ function scheduleDraftFor(row: RegisterRow): NewRecurrence {
     second_day: null,
     weekend_rule: "none",
     notes: row.notes,
+    from_date: row.date,
   };
 }
 

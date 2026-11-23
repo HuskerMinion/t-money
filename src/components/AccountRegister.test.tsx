@@ -2346,6 +2346,8 @@ describe("register interactions", () => {
         second_day: null,
         weekend_rule: "none",
         notes: "monthly top-up",
+        // The row's own date, so Repeats can move the start date.
+        from_date: "2026-01-31",
       });
     });
 

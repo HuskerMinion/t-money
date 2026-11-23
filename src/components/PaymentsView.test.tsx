@@ -14,6 +14,7 @@ import PaymentsView, { describeRule, describeStatus, isOpen } from "./PaymentsVi
 import { resetIpc, setIpcHandlers } from "../test/tauriMock";
 import type { Account, Occurrence, Recurrence } from "../lib/types";
 import { useFileFormat } from "../lib/region";
+import { formatDateUS, today } from "../lib/format";
 
 function occ(over: Partial<Occurrence> = {}): Occurrence {
   return {
@@ -588,6 +589,51 @@ describe("Schedule this transaction, arriving from the register", () => {
     // Taken once: the next visit starts blank.
     const { takeScheduleDraft } = await import("../lib/scheduleDraft");
     expect(takeScheduleDraft()).toBeNull();
+  });
+
+  // Discussion #5: property tax paid once a year, scheduled from the
+  // register. Yearly kept the monthly start date, a month after the payment.
+  async function parkTax() {
+    const { requestSchedule, nextMonthlyDate } = await import("../lib/scheduleDraft");
+    resetIpc();
+    setIpcHandlers({
+      list_recurrences: () => [],
+      get_upcoming: () => [],
+      get_all_accounts: () => [],
+      list_categories: () => [],
+      list_goals: () => [],
+      get_ui_setting: () => null,
+      get_cash_forecast: () => null,
+    });
+    requestSchedule({
+      payee: "County Treasurer", amount_cents: -312_000, account_id: null, category_id: null, freq: "monthly",
+      interval_n: 1, start_date: nextMonthlyDate("2026-03-10", today()), end_date: null, second_day: null,
+      weekend_rule: "none", notes: null, from_date: "2026-03-10",
+    });
+    render(<PaymentsView />);
+    await waitFor(() => expect(screen.getByLabelText("Payee")).toHaveValue("County Treasurer"));
+  }
+
+  it("Yearly moves the start date to the payment's day next time it comes", async () => {
+    const { nextScheduledDate } = await import("../lib/scheduleDraft");
+    await parkTax();
+    fireEvent.change(screen.getByLabelText("Repeats"), { target: { value: "yearly" } });
+    const yearly = nextScheduledDate("yearly", "2026-03-10", today())!;
+    expect(yearly.slice(5)).toBe("03-10");
+    expect(screen.getByLabelText("First due")).toHaveValue(formatDateUS(yearly));
+    // And back: Monthly puts the monthly date back.
+    fireEvent.change(screen.getByLabelText("Repeats"), { target: { value: "monthly" } });
+    expect(screen.getByLabelText("First due")).toHaveValue(formatDateUS(nextScheduledDate("monthly", "2026-03-10", today())!));
+  });
+
+  it("a start date the user typed stays when Repeats changes", async () => {
+    await parkTax();
+    const due = screen.getByLabelText("First due");
+    fireEvent.change(due, { target: { value: formatDateUS("2031-01-31") } });
+    fireEvent.blur(due);
+    await waitFor(() => expect(due).toHaveValue(formatDateUS("2031-01-31")));
+    fireEvent.change(screen.getByLabelText("Repeats"), { target: { value: "yearly" } });
+    expect(due).toHaveValue(formatDateUS("2031-01-31"));
   });
 });
 
